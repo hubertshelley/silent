@@ -1,9 +1,12 @@
 /// The `silent` library.
 #[warn(missing_docs)]
 mod error;
-// mod service;
-// mod route;
 mod handler;
+mod route;
+mod service;
+
+pub use route::Route;
+pub use service::Server;
 
 /// The main entry point for the library.
 pub fn add(left: usize, right: usize) -> usize {
