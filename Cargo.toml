@@ -1,0 +1,18 @@
+[package]
+name = "silent"
+edition = "2021"
+authors = ["Hubert Shelley <hubertshelley@163.com>"]
+categories = ["web-programming::web", "web-programming::web-framework"]
+documentation = "https://docs.rs/"
+description = """
+Silent Web Framework
+"""
+homepage = "https://github.com/hubertshelley/silent"
+keywords = ["web", "web-framework"]
+license = "Apache-2.0"
+readme = "./readme.md"
+repository = "https://github.com/hubertshelley/silent"
+version = "0.1.0"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
