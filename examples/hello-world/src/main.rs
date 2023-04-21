@@ -1,7 +1,7 @@
 use silent::{Route, Server};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn main() {
     let route = Route {
         path: "".to_string(),
         handler: None,
@@ -9,5 +9,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         middlewares: vec![],
     };
     Server::new().append(route).run().await;
-    Ok(())
 }

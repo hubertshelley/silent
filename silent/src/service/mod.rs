@@ -8,10 +8,17 @@ use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use tokio::net::TcpListener;
+// use crate::rt::RtExecutor;
 
 pub struct Server {
     route: Option<Route>,
     addr: SocketAddr,
+}
+
+impl Default for Server {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Server {
