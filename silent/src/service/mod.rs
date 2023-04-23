@@ -1,18 +1,20 @@
+use crate::conn::SilentConnection;
 use crate::route::Route;
 use bytes::Bytes;
 use http_body_util::Full;
-use hyper::server::conn::http1;
 use hyper::service::Service;
 use hyper::{body::Incoming as IncomingBody, Request, Response};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 // use crate::rt::RtExecutor;
 
 pub struct Server {
     route: Option<Route>,
     addr: SocketAddr,
+    conn: Arc<SilentConnection>,
 }
 
 impl Default for Server {
@@ -26,6 +28,7 @@ impl Server {
         Self {
             route: None,
             addr: ([127, 0, 0, 1], 8000).into(),
+            conn: Arc::new(SilentConnection::default()),
         }
     }
 
@@ -35,26 +38,42 @@ impl Server {
     }
 
     #[must_use]
-    pub fn append(&mut self, route: Route) -> &mut Self {
+    pub fn bind_route(&mut self, route: Route) -> &mut Self {
         self.route = Some(route);
         self
     }
 
-    pub async fn run(&self) {
+    pub async fn serve(&self) {
+        let Self { conn, .. } = self;
         println!("Listening on http://{}", self.addr);
         let listener = TcpListener::bind(self.addr).await.unwrap();
+        // let conn = Arc::new(conn.clone());
         loop {
-            let (stream, _) = listener.accept().await.unwrap();
-            let route = self.route.clone().unwrap();
-            tokio::task::spawn(async move {
-                if let Err(err) = http1::Builder::new()
-                    .serve_connection(stream, Serve { route })
-                    .await
-                {
-                    println!("Failed to serve connection: {:?}", err);
+            match listener.accept().await {
+                Ok((stream, _)) => {
+                    println!("Accepting from: {}", stream.peer_addr().unwrap());
+                    let route = self.route.clone().unwrap();
+                    let conn = conn.clone();
+                    tokio::task::spawn(async move {
+                        if let Err(err) = conn.http1.serve_connection(stream, Serve { route }).await
+                        {
+                            println!("Failed to serve connection: {:?}", err);
+                        }
+                    });
                 }
-            });
+                Err(e) => {
+                    tracing::error!(error = ?e, "accept connection failed");
+                }
+            }
         }
+    }
+
+    pub fn run(&self) {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(self.serve());
     }
 }
 
