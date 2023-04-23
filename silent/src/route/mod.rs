@@ -8,3 +8,18 @@ pub struct Route {
 }
 
 impl Route {}
+
+#[derive(Debug, Clone)]
+pub struct Routes {
+    pub children: Vec<Route>,
+}
+
+impl Routes {
+    pub fn new() -> Self {
+        Self { children: vec![] }
+    }
+
+    pub fn add(&mut self, route: Route) {
+        self.children.push(route);
+    }
+}

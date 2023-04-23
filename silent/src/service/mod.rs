@@ -1,5 +1,5 @@
 use crate::conn::SilentConnection;
-use crate::route::Route;
+use crate::route::{Route, Routes};
 use bytes::Bytes;
 use http_body_util::Full;
 use hyper::service::Service;
@@ -9,12 +9,14 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-// use crate::rt::RtExecutor;
+use tokio::runtime::Runtime;
+use tokio::sync::RwLock;
 
 pub struct Server {
-    route: Option<Route>,
+    routes: Arc<RwLock<Routes>>,
     addr: SocketAddr,
     conn: Arc<SilentConnection>,
+    rt: Runtime,
 }
 
 impl Default for Server {
@@ -26,9 +28,13 @@ impl Default for Server {
 impl Server {
     pub fn new() -> Self {
         Self {
-            route: None,
+            routes: Arc::new(RwLock::new(Routes::new())),
             addr: ([127, 0, 0, 1], 8000).into(),
             conn: Arc::new(SilentConnection::default()),
+            rt: tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap(),
         }
     }
 
@@ -37,14 +43,13 @@ impl Server {
         self
     }
 
-    #[must_use]
     pub fn bind_route(&mut self, route: Route) -> &mut Self {
-        self.route = Some(route);
+        self.rt.block_on(self.routes.write()).add(route);
         self
     }
 
     pub async fn serve(&self) {
-        let Self { conn, .. } = self;
+        let Self { conn, routes, .. } = self;
         println!("Listening on http://{}", self.addr);
         let listener = TcpListener::bind(self.addr).await.unwrap();
         // let conn = Arc::new(conn.clone());
@@ -52,10 +57,11 @@ impl Server {
             match listener.accept().await {
                 Ok((stream, _)) => {
                     println!("Accepting from: {}", stream.peer_addr().unwrap());
-                    let route = self.route.clone().unwrap();
+                    let routes = routes.read().await.clone();
                     let conn = conn.clone();
                     tokio::task::spawn(async move {
-                        if let Err(err) = conn.http1.serve_connection(stream, Serve { route }).await
+                        if let Err(err) =
+                            conn.http1.serve_connection(stream, Serve { routes }).await
                         {
                             println!("Failed to serve connection: {:?}", err);
                         }
@@ -69,22 +75,12 @@ impl Server {
     }
 
     pub fn run(&self) {
-        tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(self.serve());
+        self.rt.block_on(self.serve());
     }
 }
 
 struct Serve {
-    route: Route,
-}
-
-impl From<Route> for Serve {
-    fn from(route: Route) -> Self {
-        Self { route }
-    }
+    routes: Routes,
 }
 
 impl Service<Request<IncomingBody>> for Serve {
@@ -97,7 +93,7 @@ impl Service<Request<IncomingBody>> for Serve {
             Ok(Response::builder().body(Full::new(Bytes::from(s))).unwrap())
         }
 
-        println!("req: {:?}", self.route);
+        println!("req: {:?}", self.routes);
 
         let res = match req.uri().path() {
             "/" => mk_response(format!("home! counter = {:?}", 1)),

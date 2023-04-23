@@ -1,11 +1,5 @@
-use silent::{Route, Server};
+use silent::Server;
 
 fn main() {
-    let route = Route {
-        path: "".to_string(),
-        handler: None,
-        children: vec![],
-        middlewares: vec![],
-    };
-    Server::new().bind_route(route).run();
+    Server::new().run();
 }
