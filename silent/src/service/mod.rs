@@ -55,8 +55,9 @@ impl Server {
         // let conn = Arc::new(conn.clone());
         loop {
             match listener.accept().await {
-                Ok((stream, _)) => {
+                Ok((stream, addr)) => {
                     println!("Accepting from: {}", stream.peer_addr().unwrap());
+                    println!("{}", addr);
                     let routes = routes.read().await.clone();
                     let conn = conn.clone();
                     tokio::task::spawn(async move {

@@ -1,4 +1,5 @@
 mod conn;
+mod core;
 /// The `silent` library.
 #[warn(missing_docs)]
 mod error;
