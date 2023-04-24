@@ -4,10 +4,12 @@ mod core;
 #[warn(missing_docs)]
 mod error;
 mod handler;
+mod log;
 mod route;
 mod rt;
 mod service;
 
+pub use log::logger;
 pub use route::Route;
 pub use service::Server;
 
