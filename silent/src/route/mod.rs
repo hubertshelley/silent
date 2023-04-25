@@ -15,19 +15,26 @@ pub struct Route {
 
 impl Match for Route {
     fn handler_match(&self, path: &str) -> Matched {
-        if self.path == path {
-            return Matched::Matched(self.clone());
-        }
         for route in &self.children {
             if let Matched::Matched(route) = route.handler_match(path) {
                 return Matched::Matched(route);
             }
         }
+        if self.path == path {
+            return Matched::Matched(self.clone());
+        }
         Matched::Unmatched
     }
 }
 
-impl Route {}
+impl Route {
+    // fn path_split(path: &str) -> (&str, &str) {
+    //     let mut iter = path.splitn(2, '/');
+    //     let first = iter.next().unwrap_or("");
+    //     let second = iter.next().unwrap_or("");
+    //     (first, second)
+    // }
+}
 
 #[derive(Debug, Clone)]
 pub struct Routes {
