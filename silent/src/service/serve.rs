@@ -1,31 +1,36 @@
+use crate::conn::SilentConnection;
+use crate::core::request::Request;
 use crate::core::res_body::ResBody;
 use crate::core::response::Response;
 use crate::route::Routes;
-use hyper::service::Service;
-use hyper::{body::Incoming as IncomingBody, Request, Response as HyperResponse};
-use std::future::Future;
-use std::pin::Pin;
+use hyper::service::service_fn;
+use hyper::Response as HyperResponse;
+use std::sync::Arc;
+use tokio::net::TcpStream;
 
 pub(crate) struct Serve {
     pub(crate) routes: Routes,
+    pub(crate) conn: Arc<SilentConnection>,
 }
 
-impl Service<Request<IncomingBody>> for Serve {
-    type Response = HyperResponse<ResBody>;
-    type Error = hyper::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
-
-    fn call(&mut self, req: Request<IncomingBody>) -> Self::Future {
+impl Serve {
+    pub(crate) fn new(routes: Routes, conn: Arc<SilentConnection>) -> Self {
+        Self { routes, conn }
+    }
+    pub(crate) async fn call(&self, stream: TcpStream) -> Result<(), hyper::Error> {
         tracing::info!("req: {:?}", self.routes);
+        let service = service_fn(move |req| self.handle(req));
+        self.conn.http1.serve_connection(stream, service).await
+    }
 
-        let res = match req.uri().path() {
-            "/" => Response::from(format!("home! counter = {:?}", 1)),
-            "/posts" => Response::from(format!("posts, of course! counter = {:?}", 1)),
-            "/authors" => Response::from(format!("authors extraordinare! counter = {:?}", 1)),
-            // Return the 404 Not Found for other routes, and don't increment counter.
-            _ => return Box::pin(async { Ok(Response::from("oh no! not found").res) }),
-        };
-
-        Box::pin(async { Ok(res.res) })
+    async fn handle(&self, req: Request) -> Result<HyperResponse<ResBody>, hyper::Error> {
+        match self.routes.handle(req).await {
+            Ok(res) => Ok(res.res),
+            Err((mes, code)) => {
+                tracing::error!("Failed to handle request: {:?}", mes);
+                let res = Response::from(mes).set_status(code);
+                Ok(res.res)
+            }
+        }
     }
 }

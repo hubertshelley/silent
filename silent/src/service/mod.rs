@@ -56,9 +56,7 @@ impl Server {
                     let routes = routes.read().await.clone();
                     let conn = conn.clone();
                     tokio::task::spawn(async move {
-                        if let Err(err) =
-                            conn.http1.serve_connection(stream, Serve { routes }).await
-                        {
+                        if let Err(err) = Serve::new(routes, conn).call(stream).await {
                             tracing::error!("Failed to serve connection: {:?}", err);
                         }
                     });

@@ -1,8 +1,6 @@
 // use std::future::Future;
 // use std::pin::Pin;
-// use bytes::Bytes;
-// use http_body_util::Full;
-// use hyper::{body::Incoming as IncomingBody, Request, Response};
+// use crate::core::request::Request;
 // use crate::error::SilentError;
 //
 // pub struct Handler<T> {
@@ -11,8 +9,10 @@
 // }
 //
 // impl<T> Handler<T> {
-//     pub(crate) async fn call(&self, req: Request<IncomingBody>) -> Result<Response<Full<Bytes>>, SilentError> {
+//     pub(crate) async fn call(&self, req: Request) -> Result<Vec<&str>, SilentError> {
+//         let _ = req;
 //         println!("{:?}", self.middlewares);
-//         Ok(Response::builder().body(Full::new(Bytes::from(self.handler(req)?.await))).unwrap())
+//         let data = vec!["foo", "bar"];
+//         Ok(data)
 //     }
 // }

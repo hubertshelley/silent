@@ -9,8 +9,8 @@ pub struct Response {
 
 impl Response {
     #[allow(dead_code)]
-    pub fn set_status(&mut self, status: hyper::StatusCode) -> &mut Self {
-        *self.status_mut() = status;
+    pub fn set_status(mut self, status: hyper::StatusCode) -> Self {
+        *self.res.status_mut() = status;
         self
     }
     #[allow(dead_code)]

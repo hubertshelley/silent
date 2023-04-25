@@ -196,7 +196,7 @@ unknown-git = "warn"
 # List of URLs for allowed crate registries. Defaults to the crates.io index
 # if not specified. If it is specified but empty, no registries are allowed.
 allow-registry = [
-    # "https://github.com/rust-lang/crates.io-index",
+    "https://github.com/rust-lang/crates.io-index",
     "https://mirrors.ustc.edu.cn/crates.io-index",
 ]
 # List of URLs for allowed Git repositories

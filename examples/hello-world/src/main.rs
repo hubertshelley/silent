@@ -1,6 +1,12 @@
-use silent::{logger, Server};
+use silent::{logger, Route, Server};
 
 fn main() {
     logger::fmt::init();
-    Server::new().run();
+    let route = Route {
+        path: "/".to_string(),
+        handler: None,
+        children: vec![],
+        middlewares: vec![],
+    };
+    Server::new().bind_route(route).run();
 }
