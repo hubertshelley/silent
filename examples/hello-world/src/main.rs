@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use silent::{logger, Handler, Response, Route, Server, SilentError};
+use silent::{logger, Handler, Request, Response, Route, Server, SilentError};
 use std::sync::Arc;
 
 struct HandleRoot;
@@ -25,7 +25,7 @@ struct HandleRoot11;
 #[async_trait]
 impl Handler for HandleRoot11 {
     async fn call(&self, _req: silent::Request) -> Result<Response, SilentError> {
-        Ok(Response::from("hello world12".to_string()))
+        Ok(Response::from("hello world11".to_string()))
     }
 }
 
@@ -35,6 +35,14 @@ struct HandleRoot12;
 impl Handler for HandleRoot12 {
     async fn call(&self, _req: silent::Request) -> Result<Response, SilentError> {
         Ok(Response::from("hello world12".to_string()))
+    }
+    async fn middleware_call(
+        &self,
+        _req: &mut Request,
+        res: &mut Response,
+    ) -> Result<(), SilentError> {
+        res.set_status(404.try_into().unwrap());
+        Ok(())
     }
 }
 
@@ -57,7 +65,7 @@ fn main() {
                     path: "2".to_string(),
                     handler: Some(Arc::new(HandleRoot12)),
                     children: vec![],
-                    middlewares: vec![],
+                    middlewares: vec![Arc::new(HandleRoot12)],
                 },
             ],
             middlewares: vec![],

@@ -19,15 +19,23 @@ impl Serve {
     }
     pub(crate) async fn call(&self, stream: TcpStream) -> Result<(), hyper::Error> {
         let service = service_fn(move |req| self.handle(req));
-        self.conn.http1.serve_connection(stream, service).await
+        self.conn
+            .http1
+            .serve_connection(stream, service)
+            .with_upgrades()
+            .await
     }
 
     async fn handle(&self, req: Request) -> Result<HyperResponse<ResBody>, hyper::Error> {
         match self.routes.handle(req).await {
-            Ok(res) => Ok(res.res),
+            Ok(res) => {
+                println!("{:?}", res);
+                Ok(res.res)
+            }
             Err((mes, code)) => {
                 tracing::error!("Failed to handle request: {:?}", mes);
-                let res = Response::from(mes).set_status(code);
+                let mut res = Response::from(mes);
+                res.set_status(code);
                 Ok(res.res)
             }
         }

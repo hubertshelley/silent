@@ -3,14 +3,22 @@ use bytes::Bytes;
 use hyper::Response as HyperResponse;
 use std::ops::{Deref, DerefMut};
 
+#[derive(Debug)]
 pub struct Response {
     pub res: HyperResponse<ResBody>,
 }
 
 impl Response {
+    pub fn empty() -> Self {
+        Response::from(Bytes::new())
+    }
     #[allow(dead_code)]
-    pub fn set_status(mut self, status: hyper::StatusCode) -> Self {
+    pub fn set_status(&mut self, status: hyper::StatusCode) {
         *self.res.status_mut() = status;
+    }
+    #[allow(dead_code)]
+    pub fn set_body(mut self, body: ResBody) -> Self {
+        *self.res.body_mut() = body;
         self
     }
     #[allow(dead_code)]

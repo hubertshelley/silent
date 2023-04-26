@@ -2,22 +2,22 @@ use crate::core::request::Request;
 use crate::core::response::Response;
 use crate::error::SilentError;
 use async_trait::async_trait;
+// use std::future::Future;
 
 #[async_trait]
 pub trait Handler: Send + Sync + 'static {
-    async fn call(&self, req: Request) -> Result<Response, SilentError> {
-        let _ = req;
-        let data = vec!["foo", "bar"];
-        let json = serde_json::to_string(&data).unwrap();
-        Ok(Response::from(json))
+    async fn call(&self, _req: Request) -> Result<Response, SilentError> {
+        Ok(Response::empty())
+    }
+    async fn middleware_call(
+        &self,
+        _req: &mut Request,
+        _res: &mut Response,
+    ) -> Result<(), SilentError> {
+        Ok(())
     }
 }
 
-// impl Handler {
-//     pub(crate) async fn call(&self, req: Request) -> Result<Response, SilentError> {
-//         let _ = req;
-//         let data = vec!["foo", "bar"];
-//         let json = serde_json::to_string(&data).unwrap();
-//         Ok(Response::from(json))
-//     }
+// struct HandlerWrapper {
+//     handler: Box<dyn FnOnce(Request) -> dyn Future<Result<dyn <Into<Bytes>>, SilentError>> + Send + Sync + 'static>,
 // }

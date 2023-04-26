@@ -93,15 +93,22 @@ impl Routes {
         self.children.push(route);
     }
 
-    pub async fn handle(&self, req: Request) -> Result<Response, (String, StatusCode)> {
+    pub async fn handle(&self, mut req: Request) -> Result<Response, (String, StatusCode)> {
         println!("{:?}", req);
         match self.handler_match(req.uri().path()) {
             Matched::Matched(route) => {
                 if route.handler.is_none() {
                     return Err((String::from("404"), StatusCode::NOT_FOUND));
                 }
+                let mut pre_res = Response::empty();
+                for middleware in &route.middlewares {
+                    if let Err(e) = middleware.middleware_call(&mut req, &mut pre_res).await {
+                        return Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR));
+                    }
+                }
+                println!("{:?}", pre_res);
                 match route.handler.unwrap().call(req).await {
-                    Ok(res) => Ok(res),
+                    Ok(res) => Ok(pre_res.set_body(res.res.into_body())),
                     Err(e) => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
                 }
             }
