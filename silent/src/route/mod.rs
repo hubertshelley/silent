@@ -1,16 +1,32 @@
 use crate::core::request::Request;
 use crate::core::response::Response;
+use crate::handler::Handler;
 use crate::route::handler_match::{Match, Matched};
 use hyper::StatusCode;
+use std::fmt::Display;
+use std::sync::Arc;
 
 mod handler_match;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Route {
     pub path: String,
-    pub handler: Option<String>,
+    pub handler: Option<Arc<dyn Handler>>,
     pub children: Vec<Route>,
-    pub middlewares: Vec<String>,
+    pub middlewares: Vec<Arc<dyn Handler>>,
+}
+
+impl Display for Route {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut path = self.path.clone();
+        if path.is_empty() {
+            path = "/".to_string();
+        }
+        for route in &self.children {
+            write!(f, "{}", route)?;
+        }
+        write!(f, "{}", path)
+    }
 }
 
 impl Match for Route {
@@ -40,9 +56,21 @@ impl Route {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Routes {
     pub children: Vec<Route>,
+}
+
+impl Display for Routes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let path = self
+            .children
+            .iter()
+            .map(|route| route.to_string())
+            .collect::<Vec<String>>()
+            .join("\n");
+        write!(f, "{}", path)
+    }
 }
 
 impl Match for Routes {
@@ -72,8 +100,10 @@ impl Routes {
                 if route.handler.is_none() {
                     return Err((String::from("404"), StatusCode::NOT_FOUND));
                 }
-                println!("{:?}", route.middlewares);
-                Ok(Response::from(route.handler.unwrap()))
+                match route.handler.unwrap().call(req).await {
+                    Ok(res) => Ok(res),
+                    Err(e) => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
+                }
             }
             Matched::Unmatched => Err((String::from("404"), StatusCode::NOT_FOUND)),
         }

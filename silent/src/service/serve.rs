@@ -18,7 +18,6 @@ impl Serve {
         Self { routes, conn }
     }
     pub(crate) async fn call(&self, stream: TcpStream) -> Result<(), hyper::Error> {
-        tracing::info!("req: {:?}", self.routes);
         let service = service_fn(move |req| self.handle(req));
         self.conn.http1.serve_connection(stream, service).await
     }

@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 silent = { version = "0.1.0", path = "../../silent" }
+async-trait = "0.1.68"

@@ -9,6 +9,9 @@ mod route;
 mod rt;
 mod service;
 
+pub use crate::core::{request::Request, response::Response};
+pub use error::SilentError;
+pub use handler::Handler;
 pub use log::logger;
 pub use route::Route;
 pub use service::Server;
