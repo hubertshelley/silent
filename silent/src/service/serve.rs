@@ -1,10 +1,10 @@
 use crate::conn::SilentConnection;
-use crate::core::request::Request;
 use crate::core::res_body::ResBody;
 use crate::core::response::Response;
 use crate::route::Routes;
+use hyper::body::Incoming;
 use hyper::service::service_fn;
-use hyper::Response as HyperResponse;
+use hyper::{Request as HyperRequest, Response as HyperResponse};
 use std::sync::Arc;
 use tokio::net::TcpStream;
 
@@ -26,7 +26,13 @@ impl Serve {
             .await
     }
 
-    async fn handle(&self, req: Request) -> Result<HyperResponse<ResBody>, hyper::Error> {
+    async fn handle(
+        &self,
+        req: HyperRequest<Incoming>,
+    ) -> Result<HyperResponse<ResBody>, hyper::Error> {
+        let (parts, body) = req.into_parts();
+        let req = HyperRequest::from_parts(parts, body.into());
+        let req = req.into();
         match self.routes.handle(req).await {
             Ok(res) => {
                 println!("{:?}", res);
