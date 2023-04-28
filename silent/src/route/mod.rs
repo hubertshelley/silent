@@ -100,6 +100,15 @@ impl Routes {
                 if route.handler.is_none() {
                     return Err((String::from("404"), StatusCode::NOT_FOUND));
                 }
+                if !route
+                    .handler
+                    .as_ref()
+                    .unwrap()
+                    .match_method(req.method())
+                    .await
+                {
+                    return Err((String::from("405"), StatusCode::METHOD_NOT_ALLOWED));
+                }
                 let mut pre_res = Response::empty();
                 for middleware in &route.middlewares {
                     if let Err(e) = middleware.middleware_call(&mut req, &mut pre_res).await {
