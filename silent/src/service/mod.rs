@@ -10,7 +10,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::RwLock;
 
 pub struct Server {
-    routes: Arc<RwLock<Routes>>,
+    pub routes: Arc<RwLock<Routes>>,
     addr: SocketAddr,
     conn: Arc<SilentConnection>,
     rt: Runtime,
