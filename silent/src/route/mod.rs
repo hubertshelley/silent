@@ -7,6 +7,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 mod handler_match;
+// mod path_param;
 
 #[derive(Clone)]
 pub struct Route {
@@ -30,14 +31,14 @@ impl Display for Route {
 }
 
 impl Match for Route {
-    fn handler_match(&self, path: &str) -> Matched {
+    fn handler_match(&self, req: &Request, path: &str) -> Matched {
         let (local_url, last_url) = Self::path_split(path);
-        if self.path == local_url {
+        if self.path_match(req, local_url) {
             if last_url.is_empty() {
                 return Matched::Matched(self.clone());
             } else {
                 for route in &self.children {
-                    if let Matched::Matched(route) = route.handler_match(last_url) {
+                    if let Matched::Matched(route) = route.handler_match(req, last_url) {
                         return Matched::Matched(route);
                     }
                 }
@@ -48,6 +49,14 @@ impl Match for Route {
 }
 
 impl Route {
+    fn path_match(&self, req: &Request, path: &str) -> bool {
+        if self.path.starts_with('<') && self.path.ends_with('>') {
+            let _ = req;
+            // todo: 路由特殊匹配待编写
+            return false;
+        }
+        self.path == path
+    }
     fn path_split(path: &str) -> (&str, &str) {
         let mut iter = path.splitn(2, '/');
         let local_url = iter.next().unwrap_or("");
@@ -74,9 +83,9 @@ impl Display for Routes {
 }
 
 impl Match for Routes {
-    fn handler_match(&self, path: &str) -> Matched {
+    fn handler_match(&self, req: &Request, path: &str) -> Matched {
         for route in &self.children {
-            if let Matched::Matched(route) = route.handler_match(path) {
+            if let Matched::Matched(route) = route.handler_match(req, path) {
                 return Matched::Matched(route);
             }
         }
@@ -95,7 +104,7 @@ impl Routes {
 
     pub async fn handle(&self, mut req: Request) -> Result<Response, (String, StatusCode)> {
         println!("{:?}", req);
-        match self.handler_match(req.uri().path()) {
+        match self.handler_match(&req, req.uri().path()) {
             Matched::Matched(route) => {
                 if route.handler.is_none() {
                     return Err((String::from("404"), StatusCode::NOT_FOUND));

@@ -1,4 +1,4 @@
-use crate::Route;
+use crate::{Request, Route};
 
 pub(crate) enum Matched {
     Matched(Route),
@@ -6,5 +6,5 @@ pub(crate) enum Matched {
 }
 
 pub(crate) trait Match {
-    fn handler_match(&self, path: &str) -> Matched;
+    fn handler_match(&self, req: &Request, path: &str) -> Matched;
 }
