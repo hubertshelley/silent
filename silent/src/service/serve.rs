@@ -33,10 +33,7 @@ impl Serve {
         let (parts, body) = req.into_parts();
         let req = HyperRequest::from_parts(parts, body.into()).into();
         match self.routes.handle(req).await {
-            Ok(res) => {
-                println!("{:?}", res);
-                Ok(res.res)
-            }
+            Ok(res) => Ok(res.res),
             Err((mes, code)) => {
                 tracing::error!("Failed to handle request: {:?}", mes);
                 let mut res = Response::from(mes);
