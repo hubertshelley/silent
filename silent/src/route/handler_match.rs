@@ -1,26 +1,20 @@
 use super::{Route, Routes};
+use crate::core::path_param::PathParam;
 use crate::Request;
 
-pub(crate) enum Matched {
+pub(crate) enum RouteMatched {
     Matched(Route),
     Unmatched,
 }
 
 pub(crate) trait Match {
-    fn handler_match(&self, req: &Request, path: &str) -> Matched;
+    fn handler_match(&self, req: &mut Request, path: &str) -> RouteMatched;
 }
 
 pub(crate) trait RouteMatch: Match {
     fn get_path(&self) -> &str;
-    fn path_match(&self, req: &Request, path: &str) -> bool {
-        let self_path = self.get_path();
-        if self_path.starts_with('<') && self_path.ends_with('>') {
-            let _ = req;
-            // todo: 路由特殊匹配待编写
-            return false;
-        }
-        self_path == path
-    }
+    /// 最终匹配
+    fn last_matched(&self, req: &mut Request, last_url: &str) -> RouteMatched;
     fn path_split(path: &str) -> (&str, &str) {
         let mut iter = path.splitn(2, '/');
         let local_url = iter.next().unwrap_or("");
@@ -29,26 +23,77 @@ pub(crate) trait RouteMatch: Match {
     }
 }
 
+enum SpecialPath {
+    String(String),
+    Int(String),
+    UUid(String),
+    Path(String),
+    FullPath(String),
+}
+
+impl<'a> From<&'a str> for SpecialPath {
+    fn from(value: &str) -> Self {
+        // 去除首尾的尖括号
+        let value = &value[1..value.len() - 1];
+        let mut type_str = value.splitn(2, ':');
+        let key = type_str.next().unwrap_or("");
+        let path_type = type_str.next().unwrap_or("");
+        match path_type {
+            "str" => SpecialPath::String(key.to_string()),
+            "int" => SpecialPath::Int(key.to_string()),
+            "uuid" => SpecialPath::UUid(key.to_string()),
+            "path" => SpecialPath::Path(key.to_string()),
+            "full_path" => SpecialPath::FullPath(key.to_string()),
+            "*" => SpecialPath::Path(key.to_string()),
+            "**" => SpecialPath::FullPath(key.to_string()),
+            _ => SpecialPath::String(key.to_string()),
+        }
+    }
+}
+
 impl Match for Route {
-    fn handler_match(&self, req: &Request, path: &str) -> Matched {
+    fn handler_match(&self, req: &mut Request, path: &str) -> RouteMatched {
         let (local_url, last_url) = Self::path_split(path);
-        println!("handler_match: path: {}", path);
-        println!(
-            "handler_match: local_url: {}, last_url: {}",
-            local_url, last_url
-        );
-        if self.path_match(req, local_url) {
-            if last_url.is_empty() {
-                return Matched::Matched(self.clone());
+
+        if !self.special_match {
+            if self.path == local_url {
+                self.last_matched(req, last_url)
             } else {
-                for route in &self.children {
-                    if let Matched::Matched(route) = route.handler_match(req, last_url) {
-                        return Matched::Matched(route);
+                RouteMatched::Unmatched
+            }
+        } else {
+            match self.get_path().into() {
+                SpecialPath::String(key) => {
+                    req.set_path_params(key, local_url.to_string().into());
+                    self.last_matched(req, last_url)
+                }
+                SpecialPath::Int(key) => match local_url.parse::<i32>() {
+                    Ok(value) => {
+                        req.set_path_params(key, value.into());
+                        self.last_matched(req, last_url)
+                    }
+                    Err(_) => RouteMatched::Unmatched,
+                },
+                SpecialPath::UUid(key) => match local_url.parse::<uuid::Uuid>() {
+                    Ok(value) => {
+                        req.set_path_params(key, value.into());
+                        self.last_matched(req, last_url)
+                    }
+                    Err(_) => RouteMatched::Unmatched,
+                },
+                SpecialPath::Path(key) => {
+                    req.set_path_params(key, PathParam::Path(local_url.to_string()));
+                    self.last_matched(req, last_url)
+                }
+                SpecialPath::FullPath(key) => {
+                    req.set_path_params(key, PathParam::Path(path.to_string()));
+                    match self.last_matched(req, last_url) {
+                        RouteMatched::Matched(route) => RouteMatched::Matched(route),
+                        RouteMatched::Unmatched => RouteMatched::Matched(self.clone()),
                     }
                 }
             }
         }
-        Matched::Unmatched
     }
 }
 
@@ -56,10 +101,24 @@ impl RouteMatch for Route {
     fn get_path(&self) -> &str {
         self.path.as_str()
     }
+
+    fn last_matched(&self, req: &mut Request, last_url: &str) -> RouteMatched {
+        if last_url.is_empty() {
+            return RouteMatched::Matched(self.clone());
+        } else {
+            for route in &self.children {
+                if let RouteMatched::Matched(route) = route.handler_match(req, last_url) {
+                    return RouteMatched::Matched(route);
+                }
+            }
+        }
+
+        RouteMatched::Unmatched
+    }
 }
 
 impl Match for Routes {
-    fn handler_match(&self, req: &Request, path: &str) -> Matched {
+    fn handler_match(&self, req: &mut Request, path: &str) -> RouteMatched {
         tracing::debug!("path: {}", path);
         let mut path = path;
         // 去除路由开始的第一个斜杠
@@ -67,11 +126,11 @@ impl Match for Routes {
             path = &path[1..];
         }
         for route in &self.children {
-            if let Matched::Matched(route) = route.handler_match(req, path) {
-                return Matched::Matched(route);
+            if let RouteMatched::Matched(route) = route.handler_match(req, path) {
+                return RouteMatched::Matched(route);
             }
         }
-        Matched::Unmatched
+        RouteMatched::Unmatched
     }
 }
 
@@ -80,15 +139,22 @@ mod tests {
     use super::*;
     use crate::prelude::HandlerAppend;
     use crate::SilentError;
+    use bytes::Bytes;
+    use http_body_util::BodyExt;
 
     async fn hello(_: Request) -> Result<String, SilentError> {
         Ok("hello".to_string())
     }
 
-    fn get_matched(routes: &Routes, req: &Request) -> bool {
-        match routes.handler_match(req, req.uri().path()) {
-            Matched::Matched(_) => true,
-            Matched::Unmatched => false,
+    async fn world<'a>(_: Request) -> Result<&'a str, SilentError> {
+        Ok("world")
+    }
+
+    fn get_matched(routes: &Routes, req: Request) -> bool {
+        let (mut req, path) = req.split_url();
+        match routes.handler_match(&mut req, path.as_str()) {
+            RouteMatched::Matched(_) => true,
+            RouteMatched::Unmatched => false,
         }
     }
 
@@ -99,19 +165,17 @@ mod tests {
         routes.add(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/hello".parse().unwrap();
-        assert!(get_matched(&routes, &req));
+        assert!(get_matched(&routes, req));
     }
 
     #[test]
     fn multi_route_match_test() {
-        let route = Route::new("hello")
-            .get(hello)
-            .append(Route::new("world").get(hello));
+        let route = Route::new("hello/world").get(hello);
         let mut routes = Routes::new();
         routes.add(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/hello/world".parse().unwrap();
-        assert!(get_matched(&routes, &req));
+        assert!(get_matched(&routes, req));
     }
 
     #[test]
@@ -123,6 +187,75 @@ mod tests {
         routes.add(route);
         let mut req = Request::empty();
         *req.uri_mut() = "//world".parse().unwrap();
-        assert!(get_matched(&routes, &req));
+        assert!(get_matched(&routes, req));
+    }
+
+    #[test]
+    fn special_route_match_test_2() {
+        let route = Route::new("<path:**>")
+            .get(hello)
+            .append(Route::new("world").get(hello));
+        let mut routes = Routes::new();
+        routes.add(route);
+        let mut req = Request::empty();
+        *req.uri_mut() = "/hello/world".parse().unwrap();
+        let (mut req, path) = req.split_url();
+        let matched = match routes.handler_match(&mut req, path.as_str()) {
+            RouteMatched::Matched(_) => {
+                println!("matched");
+                println!("{:?}", req.path_params());
+                true
+            }
+            RouteMatched::Unmatched => false,
+        };
+        assert!(matched)
+    }
+
+    #[tokio::test]
+    async fn special_route_match_test_3() {
+        let route = Route::new("<path:**>")
+            .get(hello)
+            .append(Route::new("world").get(world));
+        let mut routes = Routes::new();
+        routes.add(route);
+        let mut req = Request::empty();
+        *req.uri_mut() = "/hello/world".parse().unwrap();
+        assert_eq!(
+            routes
+                .handle(req)
+                .await
+                .unwrap()
+                .frame()
+                .await
+                .unwrap()
+                .unwrap()
+                .data_ref()
+                .unwrap(),
+            &Bytes::from("world")
+        );
+    }
+
+    #[tokio::test]
+    async fn special_route_match_test_4() {
+        let route = Route::new("<path:**>")
+            .get(hello)
+            .append(Route::new("world").get(world));
+        let mut routes = Routes::new();
+        routes.add(route);
+        let mut req = Request::empty();
+        *req.uri_mut() = "/hello/world1".parse().unwrap();
+        assert_eq!(
+            routes
+                .handle(req)
+                .await
+                .unwrap()
+                .frame()
+                .await
+                .unwrap()
+                .unwrap()
+                .data_ref()
+                .unwrap(),
+            &Bytes::from("hello")
+        );
     }
 }

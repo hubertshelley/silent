@@ -1,7 +1,7 @@
 use crate::core::request::Request;
 use crate::core::response::Response;
 use crate::handler::Handler;
-use crate::route::handler_match::{Match, Matched};
+use crate::route::handler_match::{Match, RouteMatched};
 use crate::Method;
 use hyper::StatusCode;
 use std::collections::HashMap;
@@ -17,6 +17,7 @@ pub struct Route {
     pub handler: HashMap<Method, Arc<dyn Handler>>,
     pub children: Vec<Route>,
     pub middlewares: Vec<Arc<dyn Handler>>,
+    special_match: bool,
 }
 
 impl Display for Route {
@@ -34,11 +35,20 @@ impl Display for Route {
 
 impl Route {
     pub fn new(path: &str) -> Self {
-        Route {
-            path: path.to_string(),
+        let mut paths = path.splitn(2, '/');
+        let first_path = paths.next().unwrap_or("");
+        let last_path = paths.next().unwrap_or("");
+        let route = Route {
+            path: first_path.to_string(),
             handler: HashMap::new(),
             children: Vec::new(),
             middlewares: Vec::new(),
+            special_match: first_path.starts_with('<') && first_path.ends_with('>'),
+        };
+        if last_path.is_empty() {
+            route
+        } else {
+            route.append(Route::new(last_path))
         }
     }
     pub fn append(mut self, route: Route) -> Self {
@@ -73,10 +83,11 @@ impl Routes {
         self.children.push(route);
     }
 
-    pub async fn handle(&self, mut req: Request) -> Result<Response, (String, StatusCode)> {
+    pub async fn handle(&self, req: Request) -> Result<Response, (String, StatusCode)> {
         tracing::debug!("{:?}", req);
-        match self.handler_match(&req, req.uri().path()) {
-            Matched::Matched(route) => match route.handler.get(req.method()) {
+        let (mut req, path) = req.split_url();
+        match self.handler_match(&mut req, path.as_str()) {
+            RouteMatched::Matched(route) => match route.handler.get(req.method()) {
                 None => Err((String::from("405"), StatusCode::METHOD_NOT_ALLOWED)),
                 Some(handler) => {
                     let mut pre_res = Response::empty();
@@ -92,7 +103,7 @@ impl Routes {
                     }
                 }
             },
-            Matched::Unmatched => Err((String::from("404"), StatusCode::NOT_FOUND)),
+            RouteMatched::Unmatched => Err((String::from("404"), StatusCode::NOT_FOUND)),
         }
     }
 }

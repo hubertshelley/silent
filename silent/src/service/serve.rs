@@ -31,8 +31,7 @@ impl Serve {
         req: HyperRequest<Incoming>,
     ) -> Result<HyperResponse<ResBody>, hyper::Error> {
         let (parts, body) = req.into_parts();
-        let req = HyperRequest::from_parts(parts, body.into());
-        let req = req.into();
+        let req = HyperRequest::from_parts(parts, body.into()).into();
         match self.routes.handle(req).await {
             Ok(res) => {
                 println!("{:?}", res);
