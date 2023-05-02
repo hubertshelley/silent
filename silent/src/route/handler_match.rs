@@ -202,8 +202,10 @@ mod tests {
         let (mut req, path) = req.split_url();
         let matched = match routes.handler_match(&mut req, path.as_str()) {
             RouteMatched::Matched(_) => {
-                println!("matched");
-                println!("{:?}", req.path_params());
+                assert_eq!(
+                    req.get_path_params("path").unwrap(),
+                    &PathParam::Path("hello/world".to_string())
+                );
                 true
             }
             RouteMatched::Unmatched => false,

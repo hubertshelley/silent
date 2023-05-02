@@ -35,6 +35,10 @@ impl Request {
         &self.path_params
     }
 
+    pub fn get_path_params(&self, key: &str) -> Option<&PathParam> {
+        self.path_params.get(key)
+    }
+
     pub(crate) fn split_url(self) -> (Self, String) {
         let url = self.uri().to_string();
         (self, url)
