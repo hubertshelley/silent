@@ -2,17 +2,19 @@ use crate::core::request::Request;
 use crate::core::response::Response;
 use crate::handler::Handler;
 use crate::route::handler_match::{Match, Matched};
+use crate::Method;
 use hyper::StatusCode;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 
+pub(crate) mod handler_append;
 mod handler_match;
-// mod path_param;
 
 #[derive(Clone)]
 pub struct Route {
     pub path: String,
-    pub handler: Option<Arc<dyn Handler>>,
+    pub handler: HashMap<Method, Arc<dyn Handler>>,
     pub children: Vec<Route>,
     pub middlewares: Vec<Arc<dyn Handler>>,
 }
@@ -30,38 +32,18 @@ impl Display for Route {
     }
 }
 
-impl Match for Route {
-    fn handler_match(&self, req: &Request, path: &str) -> Matched {
-        let (local_url, last_url) = Self::path_split(path);
-        if self.path_match(req, local_url) {
-            if last_url.is_empty() {
-                return Matched::Matched(self.clone());
-            } else {
-                for route in &self.children {
-                    if let Matched::Matched(route) = route.handler_match(req, last_url) {
-                        return Matched::Matched(route);
-                    }
-                }
-            }
-        }
-        Matched::Unmatched
-    }
-}
-
 impl Route {
-    fn path_match(&self, req: &Request, path: &str) -> bool {
-        if self.path.starts_with('<') && self.path.ends_with('>') {
-            let _ = req;
-            // todo: 路由特殊匹配待编写
-            return false;
+    pub fn new(path: &str) -> Self {
+        Route {
+            path: path.to_string(),
+            handler: HashMap::new(),
+            children: Vec::new(),
+            middlewares: Vec::new(),
         }
-        self.path == path
     }
-    fn path_split(path: &str) -> (&str, &str) {
-        let mut iter = path.splitn(2, '/');
-        let local_url = iter.next().unwrap_or("");
-        let last_url = iter.next().unwrap_or("");
-        (local_url, last_url)
+    pub fn append(mut self, route: Route) -> Self {
+        self.children.push(route);
+        self
     }
 }
 
@@ -82,17 +64,6 @@ impl Display for Routes {
     }
 }
 
-impl Match for Routes {
-    fn handler_match(&self, req: &Request, path: &str) -> Matched {
-        for route in &self.children {
-            if let Matched::Matched(route) = route.handler_match(req, path) {
-                return Matched::Matched(route);
-            }
-        }
-        Matched::Unmatched
-    }
-}
-
 impl Routes {
     pub fn new() -> Self {
         Self { children: vec![] }
@@ -103,33 +74,24 @@ impl Routes {
     }
 
     pub async fn handle(&self, mut req: Request) -> Result<Response, (String, StatusCode)> {
-        println!("{:?}", req);
+        tracing::debug!("{:?}", req);
         match self.handler_match(&req, req.uri().path()) {
-            Matched::Matched(route) => {
-                if route.handler.is_none() {
-                    return Err((String::from("404"), StatusCode::NOT_FOUND));
-                }
-                if !route
-                    .handler
-                    .as_ref()
-                    .unwrap()
-                    .match_method(req.method())
-                    .await
-                {
-                    return Err((String::from("405"), StatusCode::METHOD_NOT_ALLOWED));
-                }
-                let mut pre_res = Response::empty();
-                for middleware in &route.middlewares {
-                    if let Err(e) = middleware.middleware_call(&mut req, &mut pre_res).await {
-                        return Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR));
+            Matched::Matched(route) => match route.handler.get(req.method()) {
+                None => Err((String::from("405"), StatusCode::METHOD_NOT_ALLOWED)),
+                Some(handler) => {
+                    let mut pre_res = Response::empty();
+                    for middleware in &route.middlewares {
+                        if let Err(e) = middleware.middleware_call(&mut req, &mut pre_res).await {
+                            return Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR));
+                        }
+                    }
+                    tracing::debug!("pre_res: {:?}", pre_res);
+                    match handler.call(req).await {
+                        Ok(res) => Ok(pre_res.set_body(res.res.into_body())),
+                        Err(e) => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
                     }
                 }
-                println!("{:?}", pre_res);
-                match route.handler.unwrap().call(req).await {
-                    Ok(res) => Ok(pre_res.set_body(res.res.into_body())),
-                    Err(e) => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
-                }
-            }
+            },
             Matched::Unmatched => Err((String::from("404"), StatusCode::NOT_FOUND)),
         }
     }

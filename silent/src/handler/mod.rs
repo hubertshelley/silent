@@ -3,13 +3,12 @@ use crate::core::response::Response;
 use crate::error::SilentError;
 use async_trait::async_trait;
 use bytes::Bytes;
-use hyper::Method;
 use serde::Serialize;
 use std::future::Future;
 
 #[async_trait]
 pub trait Handler: Send + Sync + 'static {
-    async fn match_method(&self, _method: &Method) -> bool {
+    async fn match_req(&self, _req: &Request) -> bool {
         true
     }
 
@@ -33,7 +32,6 @@ pub trait Handler: Send + Sync + 'static {
 /// 请求方法不可为空，用来定义处理器
 /// 处理器为返回值为 Into<Bytes> + From<Bytes>的异步函数或者闭包函数
 pub struct HandlerWrapper<F> {
-    pub(crate) method: Option<Method>,
     handler: F,
 }
 
@@ -43,8 +41,8 @@ where
     F: Fn(Request) -> Fut,
     T: Serialize + Send,
 {
-    pub fn new(method: Option<Method>, handler: F) -> Self {
-        HandlerWrapper { method, handler }
+    pub fn new(handler: F) -> Self {
+        HandlerWrapper { handler }
     }
 
     pub async fn handle(&self, req: Request) -> Result<Bytes, SilentError> {
@@ -61,13 +59,6 @@ where
     F: Fn(Request) -> Fut + Send + Sync + 'static,
     T: Serialize + Send + 'static,
 {
-    async fn match_method(&self, method: &Method) -> bool {
-        if self.method.is_none() {
-            return false;
-        }
-        self.method.as_ref().unwrap() == method
-    }
-
     async fn call(&self, req: Request) -> Result<Response, SilentError> {
         let res = self.handle(req).await?;
         Ok(Response::from(res))
@@ -95,16 +86,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_wrapper_match_method_works() {
-        let handler_wrapper = HandlerWrapper::new(Some(Method::GET), hello_world);
+    async fn handler_wrapper_match_req_works() {
+        let handler_wrapper = HandlerWrapper::new(hello_world);
         let req = Request::empty();
-        let method = req.method();
-        assert!(handler_wrapper.match_method(method).await);
+        assert!(handler_wrapper.match_req(&req).await);
     }
 
     #[tokio::test]
     async fn handler_wrapper_works() {
-        let handler_wrapper = HandlerWrapper::new(None, hello_world);
+        let handler_wrapper = HandlerWrapper::new(hello_world);
 
         assert_eq!(
             handler_wrapper.handle(Request::empty()).await.unwrap(),
@@ -114,7 +104,7 @@ mod tests {
 
     #[tokio::test]
     async fn handler_wrapper_struct_works() {
-        let handler_wrapper = HandlerWrapper::new(None, hello_world_2);
+        let handler_wrapper = HandlerWrapper::new(hello_world_2);
         let hello = HelloHandler {
             name: "Hello World".to_string(),
         };

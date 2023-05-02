@@ -13,9 +13,17 @@ pub use crate::core::{request::Request, response::Response};
 pub use error::SilentError;
 pub use handler::{Handler, HandlerWrapper};
 pub use hyper::Method;
-pub use log::logger;
-pub use route::Route;
-pub use service::Server;
+
+pub mod prelude {
+    pub use crate::core::{request::Request, response::Response};
+    pub use crate::error::SilentError;
+    pub use crate::handler::{Handler, HandlerWrapper};
+    pub use crate::log::{logger, Level};
+    pub use crate::route::handler_append::HandlerAppend;
+    pub use crate::route::Route;
+    pub use crate::service::Server;
+    pub use hyper::Method;
+}
 
 /// The main entry point for the library.
 pub fn add(left: usize, right: usize) -> usize {
