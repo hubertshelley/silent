@@ -58,6 +58,21 @@ impl Request {
         &self.params
     }
 
+    pub fn params_parse<T>(&mut self) -> Result<T, SilentError>
+    where
+        for<'de> T: Deserialize<'de>,
+    {
+        match self.uri().query() {
+            Some(query) => {
+                let params = form_urlencoded::parse(query.as_bytes())
+                    .into_owned()
+                    .collect::<Value>();
+                Ok(serde_json::from_value::<T>(params)?)
+            }
+            None => Err(SilentError::ParamsEmpty),
+        }
+    }
+
     pub async fn body(mut self) -> Result<Option<Value>, SilentError> {
         let body = self.req.into_body();
         let body = match body {
@@ -88,7 +103,7 @@ impl Request {
         Ok(self.body)
     }
 
-    pub async fn body_parse<T>(self) -> Result<Option<T>, SilentError>
+    pub async fn body_parse<T>(self) -> Result<T, SilentError>
     where
         for<'de> T: Deserialize<'de>,
     {
@@ -97,12 +112,12 @@ impl Request {
             None => Err(SilentError::BodyEmpty),
             Some(value) => {
                 let value: T = serde_json::from_value(value)?;
-                Ok(Some(value))
+                Ok(value)
             }
         }
     }
 
-    pub async fn json_parse<T>(self) -> Result<Option<T>, SilentError>
+    pub async fn json_parse<T>(self) -> Result<T, SilentError>
     where
         for<'de> T: Deserialize<'de>,
     {
@@ -111,7 +126,7 @@ impl Request {
             None => Err(SilentError::BodyEmpty),
             Some(value) => {
                 let value: T = serde_json::from_value(value)?;
-                Ok(Some(value))
+                Ok(value)
             }
         }
     }

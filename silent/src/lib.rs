@@ -11,31 +11,17 @@ mod service;
 
 pub use crate::core::{request::Request, response::Response};
 pub use error::SilentError;
-pub(crate) use handler::{Handler, HandlerWrapper};
-pub use hyper::{header::HeaderName, header::HeaderValue, Method};
+pub use handler::Handler;
+pub(crate) use handler::HandlerWrapper;
+pub use hyper::{header::HeaderName, header::HeaderValue, Method, StatusCode};
 
 pub mod prelude {
     pub use crate::core::{path_param::PathParam, request::Request, response::Response};
     pub use crate::error::SilentError;
+    pub use crate::handler::Handler;
     pub use crate::log::{logger, Level};
     pub use crate::route::handler_append::{HandlerAppend, HtmlHandlerAppend};
     pub use crate::route::Route;
     pub use crate::service::Server;
-    pub use hyper::{header::HeaderName, header::HeaderValue, Method};
-}
-
-/// The main entry point for the library.
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+    pub use hyper::{header::HeaderName, header::HeaderValue, Method, StatusCode};
 }

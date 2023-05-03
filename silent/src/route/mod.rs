@@ -2,8 +2,7 @@ use crate::core::request::Request;
 use crate::core::response::Response;
 use crate::handler::Handler;
 use crate::route::handler_match::{Match, RouteMatched};
-use crate::Method;
-use hyper::StatusCode;
+use crate::{Method, StatusCode};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -65,8 +64,13 @@ impl Route {
             route.append(Route::new(last_path))
         }
     }
-    pub fn append(mut self, route: Route) -> Self {
+    pub fn append(mut self, mut route: Route) -> Self {
+        route.middlewares.append(&mut self.middlewares);
         self.children.push(route);
+        self
+    }
+    pub fn hook(mut self, handler: impl Handler + 'static) -> Self {
+        self.middlewares.push(Arc::new(handler));
         self
     }
 }

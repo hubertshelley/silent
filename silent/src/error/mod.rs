@@ -1,3 +1,4 @@
+use crate::StatusCode;
 use std::io;
 use thiserror::Error;
 
@@ -16,4 +17,15 @@ pub enum SilentError {
     /// Body为空 错误
     #[error("body is empty")]
     BodyEmpty,
+    /// Params为空 错误
+    #[error("params is empty")]
+    ParamsEmpty,
+    /// 业务错误
+    #[error("business error: {msg} ({code})")]
+    BusinessError {
+        /// 错误码
+        code: StatusCode,
+        /// 错误信息
+        msg: String,
+    },
 }
