@@ -8,9 +8,12 @@ pub enum SilentError {
     #[error("io error")]
     IOError(#[from] io::Error),
     /// IO 错误
-    #[error("serde_json error")]
+    #[error("serde_json error `{0}`")]
     SerdeJsonError(#[from] serde_json::Error),
     /// Hyper 错误
     #[error("the data for key `{0}` is not available")]
     HyperError(#[from] hyper::Error),
+    /// Body为空 错误
+    #[error("body is empty")]
+    BodyEmpty,
 }

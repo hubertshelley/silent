@@ -1,11 +1,16 @@
 use super::Route;
+use crate::handler::HandlerWrapperHtml;
 use crate::{Handler, HandlerWrapper, Method, Request, SilentError};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
 
-pub trait HandlerAppend<F, T, Fut>
+pub trait HandlerGetter {
+    fn get_handler_mut(&mut self) -> &mut HashMap<Method, Arc<dyn Handler>>;
+}
+
+pub trait HandlerAppend<F, T, Fut>: HandlerGetter
 where
     Fut: Future<Output = Result<T, SilentError>> + Send + Sync + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
@@ -21,7 +26,24 @@ where
         let handler = Arc::new(HandlerWrapper::new(handler));
         self.get_handler_mut().insert(method, handler);
     }
-    fn get_handler_mut(&mut self) -> &mut HashMap<Method, Arc<dyn Handler>>;
+}
+
+impl HandlerGetter for Route {
+    fn get_handler_mut(&mut self) -> &mut HashMap<Method, Arc<dyn Handler>> {
+        if self.path == self.create_path {
+            &mut self.handler
+        } else {
+            let mut iter = self.create_path.splitn(2, '/');
+            let _local_url = iter.next().unwrap_or("");
+            let last_url = iter.next().unwrap_or("");
+            let route = self
+                .children
+                .iter_mut()
+                .find(|c| c.create_path == last_url)
+                .unwrap();
+            <Route as HandlerGetter>::get_handler_mut(route)
+        }
+    }
 }
 
 impl<F, T, Fut> HandlerAppend<F, T, Fut> for Route
@@ -59,20 +81,27 @@ where
         self.handler_append(Method::OPTIONS, handler);
         self
     }
+}
 
-    fn get_handler_mut(&mut self) -> &mut HashMap<Method, Arc<dyn Handler>> {
-        if self.path == self.create_path {
-            &mut self.handler
-        } else {
-            let mut iter = self.create_path.splitn(2, '/');
-            let _local_url = iter.next().unwrap_or("");
-            let last_url = iter.next().unwrap_or("");
-            let route = self
-                .children
-                .iter_mut()
-                .find(|c| c.create_path == last_url)
-                .unwrap();
-            <Route as HandlerAppend<F, T, Fut>>::get_handler_mut(route)
-        }
+pub trait HtmlHandlerAppend<F, Fut>: HandlerGetter
+where
+    Fut: Future<Output = Result<&'static str, SilentError>> + Send + Sync + 'static,
+    F: Fn(Request) -> Fut + Send + Sync + 'static,
+{
+    fn get_html(self, handler: F) -> Self;
+    fn html_handler_append(&mut self, method: Method, handler: F) {
+        let handler = Arc::new(HandlerWrapperHtml::new(handler));
+        self.get_handler_mut().insert(method, handler);
+    }
+}
+
+impl<F, Fut> HtmlHandlerAppend<F, Fut> for Route
+where
+    Fut: Future<Output = Result<&'static str, SilentError>> + Send + Sync + 'static,
+    F: Fn(Request) -> Fut + Send + Sync + 'static,
+{
+    fn get_html(mut self, handler: F) -> Self {
+        self.html_handler_append(Method::GET, handler);
+        self
     }
 }

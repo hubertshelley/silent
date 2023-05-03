@@ -12,16 +12,16 @@ mod service;
 pub use crate::core::{request::Request, response::Response};
 pub use error::SilentError;
 pub(crate) use handler::{Handler, HandlerWrapper};
-pub use hyper::Method;
+pub use hyper::{header::HeaderName, header::HeaderValue, Method};
 
 pub mod prelude {
     pub use crate::core::{path_param::PathParam, request::Request, response::Response};
     pub use crate::error::SilentError;
     pub use crate::log::{logger, Level};
-    pub use crate::route::handler_append::HandlerAppend;
+    pub use crate::route::handler_append::{HandlerAppend, HtmlHandlerAppend};
     pub use crate::route::Route;
     pub use crate::service::Server;
-    pub use hyper::Method;
+    pub use hyper::{header::HeaderName, header::HeaderValue, Method};
 }
 
 /// The main entry point for the library.
