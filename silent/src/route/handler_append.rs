@@ -61,6 +61,18 @@ where
     }
 
     fn get_handler_mut(&mut self) -> &mut HashMap<Method, Arc<dyn Handler>> {
-        &mut self.handler
+        if self.path == self.create_path {
+            &mut self.handler
+        } else {
+            let mut iter = self.create_path.splitn(2, '/');
+            let _local_url = iter.next().unwrap_or("");
+            let last_url = iter.next().unwrap_or("");
+            let route = self
+                .children
+                .iter_mut()
+                .find(|c| c.create_path == last_url)
+                .unwrap();
+            <Route as HandlerAppend<F, T, Fut>>::get_handler_mut(route)
+        }
     }
 }

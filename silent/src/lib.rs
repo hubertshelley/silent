@@ -15,7 +15,7 @@ pub(crate) use handler::{Handler, HandlerWrapper};
 pub use hyper::Method;
 
 pub mod prelude {
-    pub use crate::core::{request::Request, response::Response};
+    pub use crate::core::{path_param::PathParam, request::Request, response::Response};
     pub use crate::error::SilentError;
     pub use crate::log::{logger, Level};
     pub use crate::route::handler_append::HandlerAppend;

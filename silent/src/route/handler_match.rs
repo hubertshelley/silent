@@ -54,7 +54,6 @@ impl<'a> From<&'a str> for SpecialPath {
 impl Match for Route {
     fn handler_match(&self, req: &mut Request, path: &str) -> RouteMatched {
         let (local_url, last_url) = Self::path_split(path);
-
         if !self.special_match {
             if self.path == local_url {
                 self.last_matched(req, last_url)
@@ -63,10 +62,13 @@ impl Match for Route {
             }
         } else {
             match self.get_path().into() {
-                SpecialPath::String(key) => {
-                    req.set_path_params(key, local_url.to_string().into());
-                    self.last_matched(req, last_url)
-                }
+                SpecialPath::String(key) => match self.last_matched(req, last_url) {
+                    RouteMatched::Matched(route) => {
+                        req.set_path_params(key, local_url.to_string().into());
+                        RouteMatched::Matched(route)
+                    }
+                    RouteMatched::Unmatched => RouteMatched::Unmatched,
+                },
                 SpecialPath::Int(key) => match local_url.parse::<i32>() {
                     Ok(value) => {
                         req.set_path_params(key, value.into());
@@ -89,7 +91,10 @@ impl Match for Route {
                     req.set_path_params(key, PathParam::Path(path.to_string()));
                     match self.last_matched(req, last_url) {
                         RouteMatched::Matched(route) => RouteMatched::Matched(route),
-                        RouteMatched::Unmatched => RouteMatched::Matched(self.clone()),
+                        RouteMatched::Unmatched => match self.handler.is_empty() {
+                            true => RouteMatched::Unmatched,
+                            false => RouteMatched::Matched(self.clone()),
+                        },
                     }
                 }
             }
@@ -103,7 +108,7 @@ impl RouteMatch for Route {
     }
 
     fn last_matched(&self, req: &mut Request, last_url: &str) -> RouteMatched {
-        if last_url.is_empty() {
+        if last_url.is_empty() && !self.handler.is_empty() {
             return RouteMatched::Matched(self.clone());
         } else {
             for route in &self.children {

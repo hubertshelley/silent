@@ -5,7 +5,7 @@ use crate::route::handler_match::{Match, RouteMatched};
 use crate::Method;
 use hyper::StatusCode;
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::fmt;
 use std::sync::Arc;
 
 pub(crate) mod handler_append;
@@ -18,18 +18,31 @@ pub struct Route {
     pub children: Vec<Route>,
     pub middlewares: Vec<Arc<dyn Handler>>,
     special_match: bool,
+    create_path: String,
 }
 
-impl Display for Route {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut path = self.path.clone();
-        if path.is_empty() {
-            path = "/".to_string();
+impl fmt::Debug for Route {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn get_route_str(pre_fix: String, route: &Route) -> String {
+            let space_pre_fix = format!("    {}", pre_fix);
+            let mut route_strs: Vec<String> = route
+                .children
+                .iter()
+                .filter(|r| !r.handler.is_empty() || !r.children.is_empty())
+                .map(|r| get_route_str(space_pre_fix.clone(), r))
+                .collect();
+            if !route.handler.is_empty() || !route.children.is_empty() {
+                let methods: Vec<String> = route.handler.keys().map(|m| m.to_string()).collect();
+                let methods_str = if methods.is_empty() {
+                    "".to_string()
+                } else {
+                    format!("({})", methods.join(","))
+                };
+                route_strs.insert(0, format!("{}{}{}", pre_fix, route.path, methods_str));
+            }
+            route_strs.join("\n")
         }
-        for route in &self.children {
-            write!(f, "{}", route)?;
-        }
-        write!(f, "{}", path)
+        write!(f, "{}", get_route_str("".to_string(), self))
     }
 }
 
@@ -44,6 +57,7 @@ impl Route {
             children: Vec::new(),
             middlewares: Vec::new(),
             special_match: first_path.starts_with('<') && first_path.ends_with('>'),
+            create_path: path.to_string(),
         };
         if last_path.is_empty() {
             route
@@ -62,12 +76,12 @@ pub struct Routes {
     pub children: Vec<Route>,
 }
 
-impl Display for Routes {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for Routes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let path = self
             .children
             .iter()
-            .map(|route| route.to_string())
+            .map(|route| format!("{:?}", route))
             .collect::<Vec<String>>()
             .join("\n");
         write!(f, "{}", path)
