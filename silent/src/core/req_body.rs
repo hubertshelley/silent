@@ -2,7 +2,7 @@ use hyper::body::Incoming;
 
 #[derive(Debug)]
 pub enum ReqBody {
-    Empty(()),
+    Empty,
     Incoming(Incoming),
 }
 
@@ -14,6 +14,6 @@ impl From<Incoming> for ReqBody {
 
 impl From<()> for ReqBody {
     fn from(_: ()) -> Self {
-        Self::Empty(())
+        Self::Empty
     }
 }

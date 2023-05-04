@@ -65,7 +65,7 @@ impl Route {
         }
     }
     pub fn append(mut self, mut route: Route) -> Self {
-        route.middlewares.append(&mut self.middlewares);
+        route.middlewares.append(&mut self.middlewares.clone());
         self.children.push(route);
         self
     }

@@ -1,11 +1,14 @@
 use crate::core::path_param::PathParam;
 use crate::core::req_body::ReqBody;
+use crate::header::{HeaderValue, CONTENT_TYPE};
 use crate::SilentError;
+use http_body_util::BodyExt;
 use hyper::Request as HyperRequest;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
+use tokio::sync::OnceCell;
 use url::form_urlencoded;
 
 #[derive(Debug)]
@@ -13,7 +16,8 @@ pub struct Request {
     req: HyperRequest<ReqBody>,
     pub path_params: HashMap<String, PathParam>,
     params: HashMap<String, String>,
-    body: Value,
+    body: ReqBody,
+    form_data: OnceCell<Value>,
 }
 
 impl Default for Request {
@@ -31,7 +35,8 @@ impl Request {
                 .unwrap(),
             path_params: HashMap::new(),
             params: HashMap::new(),
-            body: Value::Null,
+            body: ReqBody::Empty,
+            form_data: OnceCell::new(),
         }
     }
 
@@ -66,28 +71,50 @@ impl Request {
         Ok(params)
     }
 
-    pub async fn body(&self) -> Result<&Value, SilentError> {
-        // let body = self.req.into_body();
-        // let body = match body {
-        //     ReqBody::Incoming(body) => {
-        //         let body = body.collect().await?.to_bytes();
-        //         let body = form_urlencoded::parse(body.as_ref())
-        //             .into_owned()
-        //             .collect::<Value>();
-        //         Some(body)
-        //     }
-        //     ReqBody::Empty(()) => None,
-        // };
-        // self.body = body;
-        Ok(&self.body)
+    #[inline]
+    pub fn replace_body(&mut self, body: ReqBody) -> ReqBody {
+        std::mem::replace(&mut self.body, body)
     }
 
-    pub async fn body_parse<T>(&self) -> Result<T, SilentError>
+    #[inline]
+    pub fn take_body(&mut self) -> ReqBody {
+        self.replace_body(ReqBody::Empty)
+    }
+
+    pub async fn body_parse<T>(&mut self) -> Result<T, SilentError>
     where
         for<'de> T: Deserialize<'de>,
     {
-        let value: T = serde_json::from_value(self.body.clone())?;
-        Ok(value)
+        let application_json = HeaderValue::from_static("application/json");
+        let body = self.take_body();
+        let content_type = self
+            .headers()
+            .get(CONTENT_TYPE)
+            .unwrap_or(&application_json)
+            .to_str()
+            .unwrap_or("application/json");
+        match body {
+            ReqBody::Incoming(body) => {
+                let value = self
+                    .form_data
+                    .get_or_try_init(|| async {
+                        let bytes = body.collect().await.unwrap().to_bytes();
+                        match content_type {
+                            "application/x-www-form-urlencoded" => {
+                                serde_urlencoded::from_bytes(&bytes).map_err(SilentError::from)
+                            }
+                            "application/json" => {
+                                serde_json::from_slice(&bytes).map_err(|e| e.into())
+                            }
+                            _ => serde_json::from_slice(&bytes).map_err(|e| e.into()),
+                        }
+                        // serde_json::from_slice(&bytes)
+                    })
+                    .await?;
+                Ok(serde_json::from_value(value.to_owned())?)
+            }
+            ReqBody::Empty => Err(SilentError::BodyEmpty),
+        }
     }
 
     pub(crate) fn split_url(self) -> (Self, String) {
@@ -98,17 +125,9 @@ impl Request {
 
 impl From<HyperRequest<ReqBody>> for Request {
     fn from(req: HyperRequest<ReqBody>) -> Self {
+        let (parts, body) = req.into_parts();
         Self {
-            req,
-            ..Self::default()
-        }
-    }
-}
-
-impl From<(HyperRequest<ReqBody>, Value)> for Request {
-    fn from((req, body): (HyperRequest<ReqBody>, Value)) -> Self {
-        Self {
-            req,
+            req: HyperRequest::from_parts(parts, ReqBody::Empty),
             body,
             ..Self::default()
         }

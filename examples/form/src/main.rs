@@ -14,7 +14,7 @@ struct Input {
     email: String,
 }
 
-async fn accept_form(req: Request) -> Result<Option<Input>, SilentError> {
+async fn accept_form(mut req: Request) -> Result<Option<Input>, SilentError> {
     req.body_parse().await
 }
 
