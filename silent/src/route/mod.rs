@@ -75,7 +75,7 @@ impl Route {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Routes {
     pub children: Vec<Route>,
 }

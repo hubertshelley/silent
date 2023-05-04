@@ -62,15 +62,9 @@ impl Request {
     where
         for<'de> T: Deserialize<'de>,
     {
-        match self.uri().query() {
-            Some(query) => {
-                let params = form_urlencoded::parse(query.as_bytes())
-                    .into_owned()
-                    .collect::<Value>();
-                Ok(serde_json::from_value::<T>(params)?)
-            }
-            None => Err(SilentError::ParamsEmpty),
-        }
+        let query = self.uri().query().unwrap_or("");
+        let params = serde_urlencoded::from_str(query)?;
+        Ok(params)
     }
 
     pub async fn body(mut self) -> Result<Option<Value>, SilentError> {
@@ -132,7 +126,7 @@ impl Request {
     }
 
     pub(crate) fn split_url(self) -> (Self, String) {
-        let url = self.uri().to_string();
+        let url = self.uri().path().to_string();
         (self, url)
     }
 }
