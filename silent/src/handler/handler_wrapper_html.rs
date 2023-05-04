@@ -1,5 +1,5 @@
 use crate::handler::handler_trait::Handler;
-use crate::{HeaderName, HeaderValue, Request, Response, SilentError};
+use crate::{header::HeaderName, header::HeaderValue, Request, Response, SilentError};
 use async_trait::async_trait;
 use bytes::Bytes;
 use std::future::Future;

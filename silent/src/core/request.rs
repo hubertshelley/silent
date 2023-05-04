@@ -1,7 +1,6 @@
 use crate::core::path_param::PathParam;
 use crate::core::req_body::ReqBody;
 use crate::SilentError;
-use http_body_util::BodyExt;
 use hyper::Request as HyperRequest;
 use serde::Deserialize;
 use serde_json::Value;
@@ -14,7 +13,7 @@ pub struct Request {
     req: HyperRequest<ReqBody>,
     pub path_params: HashMap<String, PathParam>,
     params: HashMap<String, String>,
-    body: Option<Value>,
+    body: Value,
 }
 
 impl Default for Request {
@@ -32,7 +31,7 @@ impl Request {
                 .unwrap(),
             path_params: HashMap::new(),
             params: HashMap::new(),
-            body: None,
+            body: Value::Null,
         }
     }
 
@@ -67,62 +66,28 @@ impl Request {
         Ok(params)
     }
 
-    pub async fn body(mut self) -> Result<Option<Value>, SilentError> {
-        let body = self.req.into_body();
-        let body = match body {
-            ReqBody::Incoming(body) => {
-                let body = body.collect().await?.to_bytes();
-                let body = form_urlencoded::parse(body.as_ref())
-                    .into_owned()
-                    .collect::<Value>();
-                Some(body)
-            }
-            ReqBody::Empty(()) => None,
-        };
-        self.body = body;
-        Ok(self.body)
+    pub async fn body(&self) -> Result<&Value, SilentError> {
+        // let body = self.req.into_body();
+        // let body = match body {
+        //     ReqBody::Incoming(body) => {
+        //         let body = body.collect().await?.to_bytes();
+        //         let body = form_urlencoded::parse(body.as_ref())
+        //             .into_owned()
+        //             .collect::<Value>();
+        //         Some(body)
+        //     }
+        //     ReqBody::Empty(()) => None,
+        // };
+        // self.body = body;
+        Ok(&self.body)
     }
 
-    pub async fn json(mut self) -> Result<Option<Value>, SilentError> {
-        let body = self.req.into_body();
-        let body = match body {
-            ReqBody::Incoming(body) => {
-                let body = body.collect().await?.to_bytes();
-                let body = serde_json::from_slice(&body)?;
-                Some(body)
-            }
-            ReqBody::Empty(()) => None,
-        };
-        self.body = body;
-        Ok(self.body)
-    }
-
-    pub async fn body_parse<T>(self) -> Result<T, SilentError>
+    pub async fn body_parse<T>(&self) -> Result<T, SilentError>
     where
         for<'de> T: Deserialize<'de>,
     {
-        let body = self.body().await?;
-        match body {
-            None => Err(SilentError::BodyEmpty),
-            Some(value) => {
-                let value: T = serde_json::from_value(value)?;
-                Ok(value)
-            }
-        }
-    }
-
-    pub async fn json_parse<T>(self) -> Result<T, SilentError>
-    where
-        for<'de> T: Deserialize<'de>,
-    {
-        let body = self.json().await?;
-        match body {
-            None => Err(SilentError::BodyEmpty),
-            Some(value) => {
-                let value: T = serde_json::from_value(value)?;
-                Ok(value)
-            }
-        }
+        let value: T = serde_json::from_value(self.body.clone())?;
+        Ok(value)
     }
 
     pub(crate) fn split_url(self) -> (Self, String) {
@@ -135,6 +100,16 @@ impl From<HyperRequest<ReqBody>> for Request {
     fn from(req: HyperRequest<ReqBody>) -> Self {
         Self {
             req,
+            ..Self::default()
+        }
+    }
+}
+
+impl From<(HyperRequest<ReqBody>, Value)> for Request {
+    fn from((req, body): (HyperRequest<ReqBody>, Value)) -> Self {
+        Self {
+            req,
+            body,
             ..Self::default()
         }
     }
