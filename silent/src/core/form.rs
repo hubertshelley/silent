@@ -1,6 +1,6 @@
 use crate::core::req_body::ReqBody;
 use crate::header::{HeaderMap, CONTENT_TYPE};
-use crate::SilentError;
+use crate::{SilentError, StatusCode};
 use multer::{Field, Multipart};
 use multimap::MultiMap;
 use std::ffi::OsStr;
@@ -115,17 +115,25 @@ impl FilePart {
     pub fn do_not_delete_on_drop(&mut self) {
         self.temp_dir = None;
     }
+    #[inline]
+    pub fn save(&mut self, path: String) -> Result<u64, SilentError> {
+        std::fs::copy(self.path(), Path::new(&path)).map_err(|e| SilentError::BusinessError {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            msg: format!("Failed to save file: {}", e),
+        })
+    }
 
     /// Create a new temporary FilePart (when created this way, the file will be
     /// deleted once the FilePart object goes out of scope).
     #[inline]
     pub async fn create(field: &mut Field<'_>) -> Result<FilePart, SilentError> {
         // Setup a file to capture the contents.
-        let mut path =
-            tokio::task::spawn_blocking(|| Builder::new().prefix("salvo_http_multipart").tempdir())
-                .await
-                .expect("Runtime spawn blocking poll error")?
-                .into_path();
+        let mut path = tokio::task::spawn_blocking(|| {
+            Builder::new().prefix("silent_http_multipart").tempdir()
+        })
+        .await
+        .expect("Runtime spawn blocking poll error")?
+        .into_path();
         let temp_dir = Some(path.clone());
         let name = field.file_name().map(|s| s.to_owned());
         path.push(format!(
