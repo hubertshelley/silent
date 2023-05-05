@@ -1,4 +1,4 @@
-use crate::core::form::FormData;
+use crate::core::form::{FilePart, FormData};
 use crate::core::path_param::PathParam;
 use crate::core::req_body::ReqBody;
 use crate::core::serde::from_str_multi_val;
@@ -116,6 +116,14 @@ impl Request {
             .ok()
             .and_then(|ps| ps.fields.get_vec(key))
             .and_then(|vs| from_str_multi_val(vs).ok())
+    }
+
+    #[inline]
+    pub async fn files<'a>(&'a mut self, key: &'a str) -> Option<&'a Vec<FilePart>> {
+        self.form_data()
+            .await
+            .ok()
+            .and_then(|ps| ps.files.get_vec(key))
     }
 
     pub async fn json_parse<T>(&mut self) -> Result<T, SilentError>

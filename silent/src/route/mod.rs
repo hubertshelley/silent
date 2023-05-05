@@ -47,6 +47,7 @@ impl fmt::Debug for Route {
 
 impl Route {
     pub fn new(path: &str) -> Self {
+        let path = path.trim_start_matches('/');
         let mut paths = path.splitn(2, '/');
         let first_path = paths.next().unwrap_or("");
         let last_path = paths.next().unwrap_or("");

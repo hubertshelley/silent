@@ -1,5 +1,5 @@
 [package]
-name = "example-todo"
+name = "example-multipart-form"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,5 +8,3 @@ edition = "2021"
 [dependencies]
 silent = { path = "../../silent" }
 serde = { version = "1.0.160", features = ["derive"] }
-uuid = { version = "1.3.2", features = ["serde", "v4"] }
-async-trait = "0.1.68"
