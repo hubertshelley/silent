@@ -10,7 +10,7 @@ Silent Web Framework
 homepage = "https://github.com/hubertshelley/silent"
 keywords = ["web", "web-framework"]
 license = "Apache-2.0"
-readme = "./readme.md"
+readme = "../readme.md"
 repository = "https://github.com/hubertshelley/silent"
 version = "0.2.1"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
