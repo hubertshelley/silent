@@ -1,5 +1,5 @@
 [package]
-name = "example-hello-world"
+name = "example-multipart-form"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 silent = { path = "../../silent" }
+serde = { version = "1.0.160", features = ["derive"] }

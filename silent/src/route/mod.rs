@@ -2,8 +2,7 @@ use crate::core::request::Request;
 use crate::core::response::Response;
 use crate::handler::Handler;
 use crate::route::handler_match::{Match, RouteMatched};
-use crate::Method;
-use hyper::StatusCode;
+use crate::{Method, StatusCode};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -48,6 +47,7 @@ impl fmt::Debug for Route {
 
 impl Route {
     pub fn new(path: &str) -> Self {
+        let path = path.trim_start_matches('/');
         let mut paths = path.splitn(2, '/');
         let first_path = paths.next().unwrap_or("");
         let last_path = paths.next().unwrap_or("");
@@ -65,13 +65,18 @@ impl Route {
             route.append(Route::new(last_path))
         }
     }
-    pub fn append(mut self, route: Route) -> Self {
+    pub fn append(mut self, mut route: Route) -> Self {
+        route.middlewares.append(&mut self.middlewares.clone());
         self.children.push(route);
+        self
+    }
+    pub fn hook(mut self, handler: impl Handler + 'static) -> Self {
+        self.middlewares.push(Arc::new(handler));
         self
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Routes {
     pub children: Vec<Route>,
 }
