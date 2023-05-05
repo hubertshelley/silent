@@ -15,7 +15,7 @@ struct Input {
 }
 
 async fn accept_form(mut req: Request) -> Result<Option<Input>, SilentError> {
-    req.body_parse().await
+    req.json_parse().await
 }
 
 async fn show_form(_req: Request) -> Result<&'static str, SilentError> {

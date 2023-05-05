@@ -65,7 +65,7 @@ struct CreateTodo {
 }
 
 async fn todos_create(mut req: Request) -> Result<Todo, SilentError> {
-    let create_todo = req.body_parse::<CreateTodo>().await?;
+    let create_todo = req.json_parse::<CreateTodo>().await?;
     let db = req.extensions().get::<Db>().unwrap();
 
     let todo = Todo {
@@ -86,7 +86,7 @@ struct UpdateTodo {
 }
 
 async fn todos_update(mut req: Request) -> Result<Todo, SilentError> {
-    let input = req.body_parse::<UpdateTodo>().await?;
+    let input = req.json_parse::<UpdateTodo>().await?;
     let db = req.extensions().get::<Db>().unwrap();
     let id = req.get_path_params("id").unwrap();
     if let PathParam::UUid(id) = id {

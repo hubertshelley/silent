@@ -1,9 +1,12 @@
+use crate::core::form::FormData;
 use crate::core::path_param::PathParam;
 use crate::core::req_body::ReqBody;
-use crate::header::{HeaderValue, CONTENT_TYPE};
+use crate::core::serde::from_str_multi_val;
+use crate::header::CONTENT_TYPE;
 use crate::SilentError;
 use http_body_util::BodyExt;
 use hyper::Request as HyperRequest;
+use mime::Mime;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -17,7 +20,8 @@ pub struct Request {
     pub path_params: HashMap<String, PathParam>,
     params: HashMap<String, String>,
     body: ReqBody,
-    form_data: OnceCell<Value>,
+    form_data: OnceCell<FormData>,
+    json_data: OnceCell<Value>,
 }
 
 impl Default for Request {
@@ -37,6 +41,7 @@ impl Request {
             params: HashMap::new(),
             body: ReqBody::Empty,
             form_data: OnceCell::new(),
+            json_data: OnceCell::new(),
         }
     }
 
@@ -81,34 +86,63 @@ impl Request {
         self.replace_body(ReqBody::Empty)
     }
 
-    pub async fn body_parse<T>(&mut self) -> Result<T, SilentError>
+    #[inline]
+    pub fn content_type(&self) -> Option<Mime> {
+        self.headers()
+            .get(CONTENT_TYPE)
+            .and_then(|h| h.to_str().ok())
+            .and_then(|v| v.parse().ok())
+    }
+
+    #[inline]
+    pub async fn form_data(&mut self) -> Result<&FormData, SilentError> {
+        let content_type = self.content_type().unwrap();
+        if content_type.subtype() != mime::FORM_DATA {
+            return Err(SilentError::ContentTypeError);
+        }
+        let body = self.take_body();
+        let headers = self.headers();
+        self.form_data
+            .get_or_try_init(|| async { FormData::read(headers, body).await })
+            .await
+    }
+
+    pub async fn body_parse<T>(&mut self, key: &str) -> Option<T>
     where
         for<'de> T: Deserialize<'de>,
     {
-        let application_json = HeaderValue::from_static("application/json");
+        self.form_data()
+            .await
+            .ok()
+            .and_then(|ps| ps.fields.get_vec(key))
+            .and_then(|vs| from_str_multi_val(vs).ok())
+    }
+
+    pub async fn json_parse<T>(&mut self) -> Result<T, SilentError>
+    where
+        for<'de> T: Deserialize<'de>,
+    {
         let body = self.take_body();
-        let content_type = self
-            .headers()
-            .get(CONTENT_TYPE)
-            .unwrap_or(&application_json)
-            .to_str()
-            .unwrap_or("application/json");
+        let content_type = self.content_type().unwrap();
+        if content_type.subtype() == mime::FORM_DATA {
+            return Err(SilentError::ContentTypeError);
+        }
         match body {
             ReqBody::Incoming(body) => {
                 let value = self
-                    .form_data
+                    .json_data
                     .get_or_try_init(|| async {
-                        let bytes = body.collect().await.unwrap().to_bytes();
-                        match content_type {
-                            "application/x-www-form-urlencoded" => {
+                        match content_type.subtype() {
+                            mime::WWW_FORM_URLENCODED => {
+                                let bytes = body.collect().await.unwrap().to_bytes();
                                 serde_urlencoded::from_bytes(&bytes).map_err(SilentError::from)
                             }
-                            "application/json" => {
+                            mime::JSON => {
+                                let bytes = body.collect().await.unwrap().to_bytes();
                                 serde_json::from_slice(&bytes).map_err(|e| e.into())
                             }
-                            _ => serde_json::from_slice(&bytes).map_err(|e| e.into()),
+                            _ => Err(SilentError::JsonEmpty),
                         }
-                        // serde_json::from_slice(&bytes)
                     })
                     .await?;
                 Ok(serde_json::from_value(value.to_owned())?)
