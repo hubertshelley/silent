@@ -24,9 +24,7 @@ fn main() {
         )
         .unwrap();
     }
-    let mut route = Route::new("<path:**>");
-    route
-        .get_handler_mut()
-        .insert(Method::GET, Arc::new(static_handler("static")));
+    let route =
+        Route::new("<path:**>").insert_handler(Method::GET, Arc::new(static_handler("static")));
     Server::new().bind_route(route).run();
 }
