@@ -1,5 +1,5 @@
 [workspace]
-members = ["silent", "silent_db", "silent_macros", "examples/*"]
+members = ["silent*", "examples/*"]
 default-members = ["silent", ]
 
 [workspace.package]

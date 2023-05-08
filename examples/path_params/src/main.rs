@@ -19,11 +19,11 @@ fn main() {
 
 // 定义处理方法
 async fn hello_world(req: Request) -> Result<String, SilentError> {
-    let path_params = req.get_path_params("key").unwrap();
+    let path_params = req.path_params.get("key").unwrap();
     match path_params {
         PathParam::String(str) => Ok(format!("str {}", str)),
         PathParam::Int(int) => Ok(format!("int {}", int)),
-        PathParam::UUid(uuid) => Ok(format!("uuid {}", uuid)),
+        PathParam::Uuid(uuid) => Ok(format!("uuid {}", uuid)),
         PathParam::Path(path) => Ok(format!("path {}", path)),
     }
 }

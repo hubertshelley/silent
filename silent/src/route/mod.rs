@@ -2,7 +2,7 @@ use crate::core::request::Request;
 use crate::core::response::Response;
 use crate::handler::Handler;
 use crate::route::handler_match::{Match, RouteMatched};
-use crate::{Method, StatusCode};
+use crate::{Method, SilentError, StatusCode};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -118,7 +118,10 @@ impl Routes {
                     tracing::debug!("pre_res: {:?}", pre_res);
                     match handler.call(req).await {
                         Ok(res) => Ok(pre_res.set_body(res.res.into_body())),
-                        Err(e) => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
+                        Err(e) => match e {
+                            SilentError::BusinessError { code, msg } => Err((msg, code)),
+                            _ => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
+                        },
                     }
                 }
             },
