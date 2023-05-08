@@ -32,6 +32,9 @@ pub enum SilentError {
     /// Params为空 错误
     #[error("params is empty")]
     ParamsEmpty,
+    /// Params为空 错误
+    #[error("params not found")]
+    ParamsNotFound,
     /// 业务错误
     #[error("business error: {msg} ({code})")]
     BusinessError {
@@ -41,3 +44,5 @@ pub enum SilentError {
         msg: String,
     },
 }
+
+pub type SilentResult<T> = Result<T, SilentError>;

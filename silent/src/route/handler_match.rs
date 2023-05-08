@@ -208,8 +208,8 @@ mod tests {
         let matched = match routes.handler_match(&mut req, path.as_str()) {
             RouteMatched::Matched(_) => {
                 assert_eq!(
-                    req.get_path_params("path").unwrap(),
-                    &PathParam::Path("hello/world".to_string())
+                    req.get_path_params::<String>("path").unwrap(),
+                    "hello/world".to_string()
                 );
                 true
             }

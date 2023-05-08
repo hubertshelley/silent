@@ -1,5 +1,5 @@
 use crate::handler::handler_trait::Handler;
-use crate::{Request, Response, SilentError};
+use crate::{Request, Response, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 use serde::Serialize;
@@ -18,7 +18,7 @@ pub struct HandlerWrapper<F> {
 
 impl<F, T, Fut> HandlerWrapper<F>
 where
-    Fut: Future<Output = Result<T, SilentError>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<T>> + Send + Sync + 'static,
     F: Fn(Request) -> Fut,
     T: Serialize + Send,
 {
@@ -26,7 +26,7 @@ where
         HandlerWrapper { handler }
     }
 
-    pub async fn handle(&self, req: Request) -> Result<Bytes, SilentError> {
+    pub async fn handle(&self, req: Request) -> Result<Bytes> {
         let result = (self.handler)(req).await?;
         let mut result = serde_json::to_vec(&result)?;
         let latest_bit = result.len() - 1;
@@ -41,11 +41,11 @@ where
 #[async_trait]
 impl<F, T, Fut> Handler for HandlerWrapper<F>
 where
-    Fut: Future<Output = Result<T, SilentError>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<T>> + Send + Sync + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
     T: Serialize + Send + 'static,
 {
-    async fn call(&self, req: Request) -> Result<Response, SilentError> {
+    async fn call(&self, req: Request) -> Result<Response> {
         let res = self.handle(req).await?;
         Ok(Response::from(res))
     }
@@ -54,10 +54,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Request, SilentError};
+    use crate::{Request, Result};
     use serde::{Deserialize, Serialize};
 
-    async fn hello_world(_req: Request) -> Result<String, SilentError> {
+    async fn hello_world(_req: Request) -> Result<String> {
         Ok("Hello World".into())
     }
 
@@ -66,7 +66,7 @@ mod tests {
         name: String,
     }
 
-    async fn hello_world_2(_req: Request) -> Result<HelloHandler, SilentError> {
+    async fn hello_world_2(_req: Request) -> Result<HelloHandler> {
         Ok(HelloHandler {
             name: "Hello World".to_string(),
         })

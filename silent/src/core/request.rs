@@ -53,8 +53,14 @@ impl Request {
         &self.path_params
     }
 
-    pub fn get_path_params(&self, key: &str) -> Option<&PathParam> {
-        self.path_params.get(key)
+    pub fn get_path_params<'a, T>(&'a self, key: &'a str) -> Result<T, SilentError>
+    where
+        T: TryFrom<&'a PathParam, Error = SilentError>,
+    {
+        match self.path_params.get(key) {
+            Some(value) => value.try_into(),
+            None => Err(SilentError::ParamsNotFound),
+        }
     }
 
     pub fn params(&mut self) -> &HashMap<String, String> {

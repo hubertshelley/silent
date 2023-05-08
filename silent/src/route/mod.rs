@@ -1,8 +1,9 @@
 use crate::core::request::Request;
 use crate::core::response::Response;
 use crate::handler::Handler;
+use crate::middleware::MiddleWareHandler;
 use crate::route::handler_match::{Match, RouteMatched};
-use crate::{Method, StatusCode};
+use crate::{Method, SilentError, StatusCode};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -15,7 +16,7 @@ pub struct Route {
     pub path: String,
     pub handler: HashMap<Method, Arc<dyn Handler>>,
     pub children: Vec<Route>,
-    pub middlewares: Vec<Arc<dyn Handler>>,
+    pub middlewares: Vec<Arc<dyn MiddleWareHandler>>,
     special_match: bool,
     create_path: String,
 }
@@ -70,7 +71,7 @@ impl Route {
         self.children.push(route);
         self
     }
-    pub fn hook(mut self, handler: impl Handler + 'static) -> Self {
+    pub fn hook(mut self, handler: impl MiddleWareHandler + 'static) -> Self {
         self.middlewares.push(Arc::new(handler));
         self
     }
@@ -110,15 +111,43 @@ impl Routes {
                 None => Err((String::from("405"), StatusCode::METHOD_NOT_ALLOWED)),
                 Some(handler) => {
                     let mut pre_res = Response::empty();
-                    for middleware in &route.middlewares {
-                        if let Err(e) = middleware.middleware_call(&mut req, &mut pre_res).await {
+                    let mut active_middlewares = vec![];
+                    for (i, middleware) in route.middlewares.iter().enumerate() {
+                        if middleware.match_req(&req).await {
+                            active_middlewares.push(i);
+                        }
+                    }
+                    for i in active_middlewares.clone() {
+                        if let Err(e) = route.middlewares[i]
+                            .pre_request(&mut req, &mut pre_res)
+                            .await
+                        {
+                            if let SilentError::BusinessError { code, msg } = e {
+                                return Err((msg, code));
+                            }
                             return Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR));
                         }
                     }
                     tracing::debug!("pre_res: {:?}", pre_res);
                     match handler.call(req).await {
-                        Ok(res) => Ok(pre_res.set_body(res.res.into_body())),
-                        Err(e) => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
+                        Ok(res) => {
+                            let mut pre_res = pre_res.set_body(res.res.into_body());
+                            for i in active_middlewares {
+                                if let Err(e) =
+                                    route.middlewares[i].after_response(&mut pre_res).await
+                                {
+                                    if let SilentError::BusinessError { code, msg } = e {
+                                        return Err((msg, code));
+                                    }
+                                    return Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR));
+                                }
+                            }
+                            Ok(pre_res)
+                        }
+                        Err(e) => match e {
+                            SilentError::BusinessError { code, msg } => Err((msg, code)),
+                            _ => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
+                        },
                     }
                 }
             },

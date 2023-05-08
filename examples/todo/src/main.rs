@@ -15,6 +15,7 @@ fn main() {
         .post(todos_create)
         .append(
             Route::new("<id:uuid>")
+                .get(todos_one)
                 .patch(todos_update)
                 .delete(todos_delete),
         );
@@ -26,12 +27,8 @@ struct MiddleWare {
 }
 
 #[async_trait]
-impl Handler for MiddleWare {
-    async fn middleware_call(
-        &self,
-        req: &mut Request,
-        _res: &mut Response,
-    ) -> Result<(), SilentError> {
+impl MiddleWareHandler for MiddleWare {
+    async fn pre_request(&self, req: &mut Request, _res: &mut Response) -> Result<()> {
         req.extensions_mut().insert(self.db.clone());
         Ok(())
     }
@@ -43,7 +40,7 @@ pub struct Pagination {
     pub limit: Option<usize>,
 }
 
-async fn todos_index(mut req: Request) -> Result<Vec<Todo>, SilentError> {
+async fn todos_index(mut req: Request) -> Result<Vec<Todo>> {
     let pagination = req.params_parse::<Pagination>()?;
 
     let db = req.extensions().get::<Db>().unwrap();
@@ -64,7 +61,7 @@ struct CreateTodo {
     text: String,
 }
 
-async fn todos_create(mut req: Request) -> Result<Todo, SilentError> {
+async fn todos_create(mut req: Request) -> Result<Todo> {
     let create_todo = req.json_parse::<CreateTodo>().await?;
     let db = req.extensions().get::<Db>().unwrap();
 
@@ -85,53 +82,55 @@ struct UpdateTodo {
     completed: Option<bool>,
 }
 
-async fn todos_update(mut req: Request) -> Result<Todo, SilentError> {
+async fn todos_update(mut req: Request) -> Result<Todo> {
     let input = req.json_parse::<UpdateTodo>().await?;
     let db = req.extensions().get::<Db>().unwrap();
-    let id = req.get_path_params("id").unwrap();
-    if let PathParam::UUid(id) = id {
-        let todo = db.read().unwrap().get(id).cloned();
+    let id: Uuid = req.get_path_params("id")?;
+    let todo = db.read().unwrap().get(&id).cloned();
 
-        if todo.is_none() {
-            return Err(SilentError::BusinessError {
-                code: StatusCode::NOT_FOUND,
-                msg: "Not Found".to_string(),
-            });
-        }
-
-        let mut todo = todo.unwrap();
-
-        if let Some(text) = input.text {
-            todo.text = text;
-        }
-
-        if let Some(completed) = input.completed {
-            todo.completed = completed;
-        }
-
-        db.write().unwrap().insert(todo.id, todo.clone());
-
-        Ok(todo)
-    } else {
-        Err(SilentError::BusinessError {
+    if todo.is_none() {
+        return Err(SilentError::BusinessError {
             code: StatusCode::NOT_FOUND,
             msg: "Not Found".to_string(),
-        })
+        });
     }
+
+    let mut todo = todo.unwrap();
+
+    if let Some(text) = input.text {
+        todo.text = text;
+    }
+
+    if let Some(completed) = input.completed {
+        todo.completed = completed;
+    }
+
+    db.write().unwrap().insert(todo.id, todo.clone());
+
+    Ok(todo)
 }
 
-async fn todos_delete(req: Request) -> Result<(), SilentError> {
+async fn todos_one(req: Request) -> Result<Todo> {
     let db = req.extensions().get::<Db>().unwrap();
-    let id = req.get_path_params("id").unwrap();
-    if let PathParam::UUid(id) = id {
-        if db.write().unwrap().remove(id).is_some() {
-            Ok(())
-        } else {
-            Err(SilentError::BusinessError {
-                code: StatusCode::NOT_FOUND,
-                msg: "Not Found".to_string(),
-            })
-        }
+    let id: Uuid = req.get_path_params("id")?;
+    let todo = db.read().unwrap().get(&id).cloned();
+
+    if todo.is_none() {
+        return Err(SilentError::BusinessError {
+            code: StatusCode::NOT_FOUND,
+            msg: "Not Found".to_string(),
+        });
+    }
+
+    let todo = todo.unwrap();
+    Ok(todo)
+}
+
+async fn todos_delete(req: Request) -> Result<()> {
+    let db = req.extensions().get::<Db>().unwrap();
+    let id = req.get_path_params("id")?;
+    if db.write().unwrap().remove(&id).is_some() {
+        Ok(())
     } else {
         Err(SilentError::BusinessError {
             code: StatusCode::NOT_FOUND,

@@ -1,4 +1,3 @@
-use crate::prelude::PathParam;
 use crate::{Handler, Request, Response, SilentError, StatusCode};
 use async_trait::async_trait;
 
@@ -30,7 +29,7 @@ impl HandlerWrapperStatic {
 #[async_trait]
 impl Handler for HandlerWrapperStatic {
     async fn call(&self, req: Request) -> Result<Response, SilentError> {
-        if let PathParam::Path(file_path) = req.get_path_params("path").unwrap() {
+        if let Ok(file_path) = req.get_path_params::<String>("path") {
             let mut path = format!("{}/{}", self.path, file_path);
             if path.ends_with('/') {
                 path.push_str("index.html");
@@ -38,7 +37,7 @@ impl Handler for HandlerWrapperStatic {
             if let Ok(contents) = tokio::fs::read(path).await {
                 return Ok(contents.into());
             }
-        };
+        }
         Err(SilentError::BusinessError {
             code: StatusCode::NOT_FOUND,
             msg: "Not Found".to_string(),
