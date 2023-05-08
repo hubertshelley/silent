@@ -18,7 +18,7 @@ fn main() {
 }
 
 // 定义处理方法
-async fn hello_world(req: Request) -> Result<String, SilentError> {
+async fn hello_world(req: Request) -> Result<String> {
     let path_params = req.path_params.get("key").unwrap();
     match path_params {
         PathParam::String(str) => Ok(format!("str {}", str)),

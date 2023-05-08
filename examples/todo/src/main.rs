@@ -27,12 +27,8 @@ struct MiddleWare {
 }
 
 #[async_trait]
-impl Handler for MiddleWare {
-    async fn middleware_call(
-        &self,
-        req: &mut Request,
-        _res: &mut Response,
-    ) -> Result<(), SilentError> {
+impl MiddleWareHandler for MiddleWare {
+    async fn pre_request(&self, req: &mut Request, _res: &mut Response) -> Result<()> {
         req.extensions_mut().insert(self.db.clone());
         Ok(())
     }
@@ -44,7 +40,7 @@ pub struct Pagination {
     pub limit: Option<usize>,
 }
 
-async fn todos_index(mut req: Request) -> Result<Vec<Todo>, SilentError> {
+async fn todos_index(mut req: Request) -> Result<Vec<Todo>> {
     let pagination = req.params_parse::<Pagination>()?;
 
     let db = req.extensions().get::<Db>().unwrap();
@@ -65,7 +61,7 @@ struct CreateTodo {
     text: String,
 }
 
-async fn todos_create(mut req: Request) -> Result<Todo, SilentError> {
+async fn todos_create(mut req: Request) -> Result<Todo> {
     let create_todo = req.json_parse::<CreateTodo>().await?;
     let db = req.extensions().get::<Db>().unwrap();
 
@@ -86,7 +82,7 @@ struct UpdateTodo {
     completed: Option<bool>,
 }
 
-async fn todos_update(mut req: Request) -> Result<Todo, SilentError> {
+async fn todos_update(mut req: Request) -> Result<Todo> {
     let input = req.json_parse::<UpdateTodo>().await?;
     let db = req.extensions().get::<Db>().unwrap();
     let id: Uuid = req.get_path_params("id")?;
@@ -114,7 +110,7 @@ async fn todos_update(mut req: Request) -> Result<Todo, SilentError> {
     Ok(todo)
 }
 
-async fn todos_one(req: Request) -> Result<Todo, SilentError> {
+async fn todos_one(req: Request) -> Result<Todo> {
     let db = req.extensions().get::<Db>().unwrap();
     let id: Uuid = req.get_path_params("id")?;
     let todo = db.read().unwrap().get(&id).cloned();
@@ -130,7 +126,7 @@ async fn todos_one(req: Request) -> Result<Todo, SilentError> {
     Ok(todo)
 }
 
-async fn todos_delete(req: Request) -> Result<(), SilentError> {
+async fn todos_delete(req: Request) -> Result<()> {
     let db = req.extensions().get::<Db>().unwrap();
     let id = req.get_path_params("id")?;
     if db.write().unwrap().remove(&id).is_some() {

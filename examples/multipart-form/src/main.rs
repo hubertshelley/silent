@@ -7,7 +7,7 @@ fn main() {
     Server::new().bind_route(route).run();
 }
 
-async fn show_form(_req: Request) -> Result<&'static str, SilentError> {
+async fn show_form(_req: Request) -> Result<&'static str> {
     Ok(r#"
         <!doctype html>
         <html>
@@ -32,7 +32,7 @@ struct File {
     file_name: String,
 }
 
-async fn accept_form(mut req: Request) -> Result<Vec<File>, SilentError> {
+async fn accept_form(mut req: Request) -> Result<Vec<File>> {
     let mut result_files = vec![];
     if let Some(files) = req.files("files").await {
         for file in files {

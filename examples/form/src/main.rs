@@ -14,11 +14,11 @@ struct Input {
     email: String,
 }
 
-async fn accept_form(mut req: Request) -> Result<Option<Input>, SilentError> {
+async fn accept_form(mut req: Request) -> Result<Option<Input>> {
     req.json_parse().await
 }
 
-async fn show_form(_req: Request) -> Result<&'static str, SilentError> {
+async fn show_form(_req: Request) -> Result<&'static str> {
     Ok(r#"
         <!doctype html>
         <html>

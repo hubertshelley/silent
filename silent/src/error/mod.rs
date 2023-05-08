@@ -44,3 +44,5 @@ pub enum SilentError {
         msg: String,
     },
 }
+
+pub type SilentResult<T> = Result<T, SilentError>;
