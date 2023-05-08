@@ -18,3 +18,7 @@ version.workspace = true
 
 [dependencies]
 silent_macros = { path = "../silent_macros" }
+serde = { version = "1.0.160", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"
