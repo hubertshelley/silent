@@ -1,13 +1,16 @@
+#[cfg(feature = "server")]
+mod conn;
 /// The `silent` library.
 #[warn(missing_docs)]
-mod conn;
 mod core;
 mod error;
 mod handler;
 mod log;
 mod middleware;
 mod route;
+#[cfg(feature = "server")]
 mod rt;
+#[cfg(feature = "server")]
 mod service;
 
 pub use crate::core::{request::Request, response::Response};
@@ -23,11 +26,14 @@ pub mod prelude {
         path_param::PathParam, request::Request, res_body::full, response::Response,
     };
     pub use crate::error::{SilentError, SilentResult as Result};
-    pub use crate::handler::{static_handler, Handler};
+    #[cfg(feature = "static")]
+    pub use crate::handler::static_handler;
+    pub use crate::handler::Handler;
     pub use crate::log::{logger, Level};
     pub use crate::middleware::MiddleWareHandler;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter, HtmlHandlerAppend};
     pub use crate::route::Route;
+    #[cfg(feature = "server")]
     pub use crate::service::Server;
     pub use hyper::{header, Method, StatusCode};
 }

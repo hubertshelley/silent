@@ -1,4 +1,6 @@
-use crate::core::form::{FilePart, FormData};
+#[cfg(feature = "server")]
+use crate::core::form::FilePart;
+use crate::core::form::FormData;
 use crate::core::path_param::PathParam;
 use crate::core::req_body::ReqBody;
 use crate::core::serde::from_str_multi_val;
@@ -14,10 +16,15 @@ use std::ops::{Deref, DerefMut};
 use tokio::sync::OnceCell;
 use url::form_urlencoded;
 
+/// 请求体
+/// ```
+/// use silent::Request;
+/// let req = Request::empty();
+/// ```
 #[derive(Debug)]
 pub struct Request {
     req: HyperRequest<ReqBody>,
-    pub path_params: HashMap<String, PathParam>,
+    path_params: HashMap<String, PathParam>,
     params: HashMap<String, String>,
     body: ReqBody,
     form_data: OnceCell<FormData>,
@@ -31,6 +38,7 @@ impl Default for Request {
 }
 
 impl Request {
+    /// 创建空请求体
     pub fn empty() -> Self {
         Self {
             req: HyperRequest::builder()
@@ -49,10 +57,12 @@ impl Request {
         self.path_params.insert(key, value);
     }
 
+    /// 获取路径参数集合
     pub fn path_params(&self) -> &HashMap<String, PathParam> {
         &self.path_params
     }
 
+    /// 获取路径参数
     pub fn get_path_params<'a, T>(&'a self, key: &'a str) -> Result<T, SilentError>
     where
         T: TryFrom<&'a PathParam, Error = SilentError>,
@@ -63,6 +73,7 @@ impl Request {
         }
     }
 
+    /// 获取query参数
     pub fn params(&mut self) -> &HashMap<String, String> {
         if let Some(query) = self.uri().query() {
             let params = form_urlencoded::parse(query.as_bytes())
@@ -73,6 +84,7 @@ impl Request {
         &self.params
     }
 
+    /// 转换query参数
     pub fn params_parse<T>(&mut self) -> Result<T, SilentError>
     where
         for<'de> T: Deserialize<'de>,
@@ -82,16 +94,19 @@ impl Request {
         Ok(params)
     }
 
+    /// 获取请求body
     #[inline]
     pub fn replace_body(&mut self, body: ReqBody) -> ReqBody {
         std::mem::replace(&mut self.body, body)
     }
 
+    /// 获取请求body
     #[inline]
     pub fn take_body(&mut self) -> ReqBody {
         self.replace_body(ReqBody::Empty)
     }
 
+    /// 获取请求content_type
     #[inline]
     pub fn content_type(&self) -> Option<Mime> {
         self.headers()
@@ -100,6 +115,7 @@ impl Request {
             .and_then(|v| v.parse().ok())
     }
 
+    /// 获取请求form_data
     #[inline]
     pub async fn form_data(&mut self) -> Result<&FormData, SilentError> {
         let content_type = self.content_type().unwrap();
@@ -113,6 +129,7 @@ impl Request {
             .await
     }
 
+    /// 转换body参数
     pub async fn body_parse<T>(&mut self, key: &str) -> Option<T>
     where
         for<'de> T: Deserialize<'de>,
@@ -124,6 +141,8 @@ impl Request {
             .and_then(|vs| from_str_multi_val(vs).ok())
     }
 
+    /// 获取上传的文件
+    #[cfg(feature = "server")]
     #[inline]
     pub async fn files<'a>(&'a mut self, key: &'a str) -> Option<&'a Vec<FilePart>> {
         self.form_data()
@@ -132,6 +151,7 @@ impl Request {
             .and_then(|ps| ps.files.get_vec(key))
     }
 
+    /// 转换body参数按Json匹配
     pub async fn json_parse<T>(&mut self) -> Result<T, SilentError>
     where
         for<'de> T: Deserialize<'de>,
@@ -165,6 +185,7 @@ impl Request {
         }
     }
 
+    /// 分割请求体与url
     pub(crate) fn split_url(self) -> (Self, String) {
         let url = self.uri().path().to_string();
         (self, url)
