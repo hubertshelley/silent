@@ -1,0 +1,37 @@
+[package]
+name = "silent_py"
+edition.workspace = true
+authors.workspace = true
+categories = ["web-programming::web", "web-programming::web-framework"]
+documentation = "https://docs.rs/silent/"
+description = """
+Silent Web Framework
+"""
+homepage.workspace = true
+keywords = ["web", "web-framework"]
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "silent_py"
+# "cdylib" is necessary to produce a shared library for Python to import from.
+crate-type = ["cdylib"]
+
+[dependencies]
+silent = { path = "../silent" }
+
+[dependencies.pyo3]
+version = "0.18.0"
+# "abi3-py37" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.7
+features = ["abi3-py37", "abi3-py38", "abi3-py39", "abi3-py310", "abi3-py311", ]
+
+[build-system]
+requires = ["maturin>=0.14,<0.15"]
+build-backend = "maturin"
+
+[tool.maturin]
+# "extension-module" tells pyo3 we want to build an extension module (skips linking against libpython.so)
+features = ["pyo3/extension-module"]
