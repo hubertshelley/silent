@@ -29,7 +29,7 @@ pub mod prelude {
     #[cfg(feature = "static")]
     pub use crate::handler::static_handler;
     pub use crate::handler::Handler;
-    pub use crate::log::{logger, Level};
+    pub use crate::log::*;
     pub use crate::middleware::MiddleWareHandler;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter, HtmlHandlerAppend};
     pub use crate::route::Route;
