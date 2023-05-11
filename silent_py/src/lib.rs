@@ -41,19 +41,7 @@ impl SilentServer {
     pub fn run(&self) {
         self.server.lock().unwrap().run();
     }
-
-    pub fn stop(&self) {
-        println!("stopping");
-        // self.server.lock().unwrap().stop();
-    }
 }
-
-// #[pyfunction]
-// fn run() {
-//     logger::fmt().with_max_level(Level::INFO).init();
-//     let route = Route::new("").get(|_req| async { Ok("hello world") });
-//     Server::new().bind_route(route).run();
-// }
 
 #[pymodule]
 fn silent_py(_py: Python, m: &PyModule) -> PyResult<()> {
