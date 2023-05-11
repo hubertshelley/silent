@@ -17,7 +17,7 @@ version.workspace = true
 [features]
 default = ["server", "test", "static"]
 full = ["server", "wasi", "static", "test"]
-server = ["tokio/fs", "tokio/net", "tokio/rt-multi-thread"]
+server = ["tokio/fs", "tokio/net", "tokio/rt-multi-thread", "tokio/signal"]
 static = []
 wasi = ["tokio/sync"]
 test = ["tokio/macros", "tokio/rt"]
@@ -42,4 +42,3 @@ tempfile = "3"
 textnonce = "1"
 multer = "2"
 futures-util = { version = "0.3", features = ["io"] }
-ctrlc = { version = "3.2.5", features = ["termination"] }

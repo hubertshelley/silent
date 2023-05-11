@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
-use tokio::sync::mpsc::unbounded_channel;
+use tokio::signal;
 use tokio::sync::RwLock;
 
 pub struct Server {
@@ -15,6 +15,7 @@ pub struct Server {
     addr: SocketAddr,
     conn: Arc<SilentConnection>,
     rt: Runtime,
+    shutdown_callback: Option<Box<dyn Fn() + Send + Sync>>,
 }
 
 impl Default for Server {
@@ -33,11 +34,20 @@ impl Server {
                 .enable_all()
                 .build()
                 .unwrap(),
+            shutdown_callback: None,
         }
     }
 
     pub fn bind(&mut self, addr: SocketAddr) -> &mut Self {
         self.addr = addr;
+        self
+    }
+
+    pub fn set_shutdown_callback<F>(&mut self, callback: F) -> &mut Self
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        self.shutdown_callback = Some(Box::new(callback));
         self
     }
 
@@ -50,15 +60,27 @@ impl Server {
         let Self { conn, routes, .. } = self;
         tracing::info!("Listening on http://{}", self.addr);
         let listener = TcpListener::bind(self.addr).await.unwrap();
-        // 捕获SIGINT信号
-        let (tx, mut rx) = unbounded_channel();
 
-        ctrlc::set_handler(move || tx.send(()).expect("Could not send signal on channel."))
-            .expect("Error setting Ctrl-C handler");
         loop {
+            #[cfg(unix)]
+            let terminate = async {
+                signal::unix::signal(signal::unix::SignalKind::terminate())
+                    .expect("failed to install signal handler")
+                    .recv()
+                    .await;
+            };
+
+            #[cfg(not(unix))]
+            let terminate = async {
+                let _ = std::future::pending::<()>();
+            };
             tokio::select! {
-                _ = rx.recv() => {
-                    tracing::info!("Received Ctrl-C, shutting down");
+                _ = signal::ctrl_c() => {
+                    if let Some(ref callback) = self.shutdown_callback { callback() };
+                    break;
+                }
+                _ = terminate => {
+                    if let Some(ref callback) = self.shutdown_callback { callback() };
                     break;
                 }
                 s = listener.accept() =>{
