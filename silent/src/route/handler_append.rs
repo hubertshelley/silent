@@ -1,5 +1,4 @@
 use super::Route;
-use crate::handler::HandlerWrapperHtml;
 use crate::{Handler, HandlerWrapper, Method, Request, SilentError};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -84,29 +83,6 @@ where
 
     fn options(mut self, handler: F) -> Self {
         self.handler_append(Method::OPTIONS, handler);
-        self
-    }
-}
-
-pub trait HtmlHandlerAppend<F, Fut>: HandlerGetter
-where
-    Fut: Future<Output = Result<&'static str, SilentError>> + Send + Sync + 'static,
-    F: Fn(Request) -> Fut + Send + Sync + 'static,
-{
-    fn get_html(self, handler: F) -> Self;
-    fn html_handler_append(&mut self, method: Method, handler: F) {
-        let handler = Arc::new(HandlerWrapperHtml::new(handler));
-        self.get_handler_mut().insert(method, handler);
-    }
-}
-
-impl<F, Fut> HtmlHandlerAppend<F, Fut> for Route
-where
-    Fut: Future<Output = Result<&'static str, SilentError>> + Send + Sync + 'static,
-    F: Fn(Request) -> Fut + Send + Sync + 'static,
-{
-    fn get_html(mut self, handler: F) -> Self {
-        self.html_handler_append(Method::GET, handler);
         self
     }
 }

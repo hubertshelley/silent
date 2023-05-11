@@ -31,7 +31,7 @@ pub mod prelude {
     pub use crate::handler::Handler;
     pub use crate::log::*;
     pub use crate::middleware::MiddleWareHandler;
-    pub use crate::route::handler_append::{HandlerAppend, HandlerGetter, HtmlHandlerAppend};
+    pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
     pub use crate::route::Route;
     #[cfg(feature = "server")]
     pub use crate::service::Server;

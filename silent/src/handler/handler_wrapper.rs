@@ -3,6 +3,7 @@ use crate::{Request, Response, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 use serde::Serialize;
+use serde_json::Value;
 use std::future::Future;
 
 /// 处理器包装结构体
@@ -28,12 +29,11 @@ where
 
     pub async fn handle(&self, req: Request) -> Result<Bytes> {
         let result = (self.handler)(req).await?;
-        let mut result = serde_json::to_vec(&result)?;
-        let latest_bit = result.len() - 1;
-        if result[0] == 34 && result[latest_bit] == 34 {
-            result = result[1..latest_bit].to_vec();
+        let result = serde_json::to_value(&result)?;
+        match result {
+            Value::String(value) => Ok(value.into_bytes().into()),
+            _ => Ok(serde_json::to_vec(&result)?.into()),
         }
-        Ok(result.into())
     }
 }
 
