@@ -1,11 +1,22 @@
 use crate::SilentError;
 use uuid::Uuid;
 
+/// 路由参数
+/// 支持类型：
+///     String(String)
+///     Int(i32),
+///     Uuid(Uuid),
+///     Path(String),
+/// 支持数据转换
 #[derive(Debug, PartialEq)]
 pub enum PathParam {
+    /// 字符串类型参数
     String(String),
+    /// 整型参数
     Int(i32),
+    /// Uuid类型参数
     Uuid(Uuid),
+    /// 路径参数
     Path(String),
 }
 

@@ -14,11 +14,18 @@ readme.workspace = true
 repository.workspace = true
 version.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["server", "test", "static"]
+full = ["server", "wasi", "static", "test"]
+server = ["tokio/fs", "tokio/net", "tokio/rt-multi-thread"]
+static = []
+wasi = ["tokio/sync"]
+test = ["tokio/macros", "tokio/rt"]
 
 [dependencies]
 thiserror = "1"
 hyper = { version = "1.0.0-rc.3", features = ["full"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", optional = true }
 bytes = "1"
 http-body-util = "0.1.0-rc.2"
 tracing = "0.1"
@@ -35,3 +42,4 @@ tempfile = "3"
 textnonce = "1"
 multer = "2"
 futures-util = { version = "0.3", features = ["io"] }
+ctrlc = { version = "3.2.5", features = ["termination"] }

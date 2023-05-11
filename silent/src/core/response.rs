@@ -3,25 +3,31 @@ use bytes::Bytes;
 use hyper::Response as HyperResponse;
 use std::ops::{Deref, DerefMut};
 
+/// 响应体
+/// ```
+/// use silent::Response;
+/// let req = Response::empty();
+/// ```
 #[derive(Debug)]
 pub struct Response {
-    pub res: HyperResponse<ResBody>,
+    pub(crate) res: HyperResponse<ResBody>,
 }
 
 impl Response {
+    /// 创建空响应体
     pub fn empty() -> Self {
         Response::from(Bytes::new())
     }
-    #[allow(dead_code)]
+    /// 设置响应状态
     pub fn set_status(&mut self, status: hyper::StatusCode) {
         *self.res.status_mut() = status;
     }
-    #[allow(dead_code)]
+    /// 设置响应body
     pub fn set_body(mut self, body: ResBody) -> Self {
         *self.res.body_mut() = body;
         self
     }
-    #[allow(dead_code)]
+    /// 设置响应header
     pub fn set_header(
         &mut self,
         key: hyper::header::HeaderName,
