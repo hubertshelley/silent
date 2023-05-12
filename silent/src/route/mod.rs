@@ -3,7 +3,8 @@ use crate::core::response::Response;
 use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
 use crate::route::handler_match::{Match, RouteMatched};
-use crate::{Method, SilentError, StatusCode};
+use crate::{header, Method, SilentError, StatusCode};
+use chrono::Utc;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
@@ -106,7 +107,11 @@ impl Routes {
     pub async fn handle(&self, req: Request) -> Result<Response, (String, StatusCode)> {
         tracing::debug!("{:?}", req);
         let (mut req, path) = req.split_url();
-        match self.handler_match(&mut req, path.as_str()) {
+        let method = req.method().clone();
+        let url = req.uri().to_string().clone();
+        let http_version = req.version();
+        let start_time = Utc::now().time();
+        let res = match self.handler_match(&mut req, path.as_str()) {
             RouteMatched::Matched(route) => match route.handler.get(req.method()) {
                 None => Err((String::from("405"), StatusCode::METHOD_NOT_ALLOWED)),
                 Some(handler) => {
@@ -128,10 +133,16 @@ impl Routes {
                             return Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR));
                         }
                     }
-                    tracing::debug!("pre_res: {:?}", pre_res);
                     match handler.call(req).await {
                         Ok(res) => {
-                            let mut pre_res = pre_res.set_body(res.res.into_body());
+                            let (parts, body) = res.res.into_parts();
+                            let mut pre_res = pre_res.set_body(body);
+                            for (header_key, header_value) in parts.headers.into_iter() {
+                                if let Some(key) = header_key {
+                                    pre_res = pre_res.set_header(key, header_value);
+                                }
+                            }
+                            *pre_res.status_mut() = parts.status;
                             for i in active_middlewares {
                                 if let Err(e) =
                                     route.middlewares[i].after_response(&mut pre_res).await
@@ -152,6 +163,36 @@ impl Routes {
                 }
             },
             RouteMatched::Unmatched => Err((String::from("404"), StatusCode::NOT_FOUND)),
+        };
+        let end_time = Utc::now().time();
+        let req_time = end_time - start_time;
+        match res {
+            Ok(res) => {
+                tracing::info!("pre_res: {:?}", res);
+                tracing::info!(
+                    "\"{} {} {:?}\" {} {:?} {}",
+                    method,
+                    url,
+                    http_version,
+                    res.status(),
+                    res.headers().get(header::CONTENT_LENGTH),
+                    req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
+                );
+                Ok(res)
+            }
+            Err((msg, code)) => {
+                tracing::error!(
+                    "\"{} {} {:?}\" {} {:?} {} {}",
+                    method,
+                    url,
+                    http_version,
+                    code,
+                    0,
+                    req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
+                    msg
+                );
+                Err((msg, code))
+            }
         }
     }
 }

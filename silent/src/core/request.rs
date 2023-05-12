@@ -57,6 +57,11 @@ impl Request {
         self.path_params.insert(key, value);
     }
 
+    /// 获取可变原请求体
+    pub fn req_mut(&mut self) -> &mut HyperRequest<ReqBody> {
+        &mut self.req
+    }
+
     /// 获取路径参数集合
     pub fn path_params(&self) -> &HashMap<String, PathParam> {
         &self.path_params

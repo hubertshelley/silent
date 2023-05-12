@@ -1,4 +1,5 @@
 use crate::StatusCode;
+use std::backtrace::Backtrace;
 use std::io;
 use thiserror::Error;
 
@@ -8,6 +9,9 @@ pub enum SilentError {
     /// IO 错误
     #[error("io error")]
     IOError(#[from] io::Error),
+    /// IO 错误
+    #[error("io error")]
+    TungsteniteError(#[from] tokio_tungstenite::tungstenite::Error),
     /// 反序列化 错误
     #[error("serde_json error `{0}`")]
     SerdeJsonError(#[from] serde_json::Error),
@@ -46,3 +50,9 @@ pub enum SilentError {
 }
 
 pub type SilentResult<T> = Result<T, SilentError>;
+
+impl SilentError {
+    pub fn trace(&self) -> Backtrace {
+        Backtrace::capture()
+    }
+}

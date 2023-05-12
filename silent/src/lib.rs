@@ -35,5 +35,5 @@ pub mod prelude {
     pub use crate::route::Route;
     #[cfg(feature = "server")]
     pub use crate::service::Server;
-    pub use hyper::{header, Method, StatusCode};
+    pub use hyper::{header, upgrade, Method, StatusCode};
 }
