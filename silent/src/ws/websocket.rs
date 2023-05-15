@@ -1,4 +1,5 @@
 use crate::ws::message::Message;
+use crate::ws::WebSocketHandler;
 use crate::{Result, SilentError};
 use async_trait::async_trait;
 use futures_util::sink::{Sink, SinkExt};
@@ -6,6 +7,7 @@ use futures_util::stream::{Stream, StreamExt};
 use futures_util::{future, ready};
 use hyper::upgrade;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio_tungstenite::tungstenite::protocol;
 use tokio_tungstenite::WebSocketStream;
@@ -13,6 +15,7 @@ use tracing::debug;
 
 pub(crate) struct WebSocket {
     upgrade: WebSocketStream<upgrade::Upgraded>,
+    pub(crate) handler: Arc<dyn WebSocketHandler>,
 }
 
 impl WebSocket {
@@ -21,9 +24,11 @@ impl WebSocket {
         upgraded: upgrade::Upgraded,
         role: protocol::Role,
         config: Option<protocol::WebSocketConfig>,
+        handler: Arc<dyn WebSocketHandler>,
     ) -> Self {
         Self {
             upgrade: WebSocketStream::from_raw_socket(upgraded, role, config).await,
+            handler,
         }
     }
 
@@ -35,6 +40,7 @@ impl WebSocket {
     }
 
     /// Send a message.
+    #[allow(dead_code)]
     pub async fn send(&mut self, msg: Message) -> Result<()> {
         self.upgrade.send(msg.inner).await.map_err(|e| e.into())
     }
@@ -92,8 +98,7 @@ impl WSHandlerTrait for WebSocket {
                 op_message = self.recv() => {
                     match op_message{
                         Some(Ok(message)) => {
-                            println!("ws recv: {:?}", message);
-                            self.send(message).await?;
+                            self.handler.on_receive(message).await?;
                         }
                         Some(Err(e)) => {
                             println!("ws recv error: {}", e);

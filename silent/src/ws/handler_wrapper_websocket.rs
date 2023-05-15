@@ -1,12 +1,16 @@
 use crate::ws::websocket::{WSHandlerTrait, WebSocket};
+use crate::ws::WebSocketHandler;
 use crate::{header, Handler, Request, Response, Result, SilentError, StatusCode};
 use async_trait::async_trait;
 use headers::{Connection, HeaderMapExt, SecWebsocketAccept, SecWebsocketKey, Upgrade};
 use hyper::upgrade;
+use std::sync::Arc;
 use tokio_tungstenite::tungstenite::protocol;
 
+#[derive(Clone)]
 pub struct HandlerWrapperWebSocket {
     pub config: Option<protocol::WebSocketConfig>,
+    pub(crate) handler: Arc<dyn WebSocketHandler>,
 }
 
 #[async_trait]
@@ -40,14 +44,20 @@ impl Handler for HandlerWrapperWebSocket {
             });
         };
         let config = self.config;
+        self.handler.on_connect(&req).await?;
+        let handler = self.handler.clone();
         tokio::task::spawn(async move {
             match upgrade::on(req.req_mut()).await {
                 Ok(upgraded) => {
-                    if let Err(e) =
-                        WebSocket::from_raw_socket(upgraded, protocol::Role::Server, config)
-                            .await
-                            .handle()
-                            .await
+                    if let Err(e) = WebSocket::from_raw_socket(
+                        upgraded,
+                        protocol::Role::Server,
+                        config,
+                        handler,
+                    )
+                    .await
+                    .handle()
+                    .await
                     {
                         eprintln!("server foobar io error: {}", e)
                     };
