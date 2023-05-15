@@ -12,6 +12,8 @@ mod route;
 mod rt;
 #[cfg(feature = "server")]
 mod service;
+#[cfg(feature = "ws")]
+mod ws;
 
 pub use crate::core::{request::Request, response::Response};
 pub use crate::middleware::MiddleWareHandler;
@@ -35,5 +37,7 @@ pub mod prelude {
     pub use crate::route::Route;
     #[cfg(feature = "server")]
     pub use crate::service::Server;
+    #[cfg(feature = "ws")]
+    pub use crate::ws::HandlerWrapperWebSocket;
     pub use hyper::{header, upgrade, Method, StatusCode};
 }

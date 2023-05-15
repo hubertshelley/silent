@@ -168,7 +168,7 @@ impl Routes {
         let req_time = end_time - start_time;
         match res {
             Ok(res) => {
-                tracing::info!("pre_res: {:?}", res);
+                // tracing::info!("pre_res: {:?}", res);
                 tracing::info!(
                     "\"{} {} {:?}\" {} {:?} {}",
                     method,

@@ -86,7 +86,7 @@ impl Server {
                 s = listener.accept() =>{
                     match s{
                         Ok((stream, _)) => {
-                            tracing::debug!("Accepting from: {}", stream.peer_addr().unwrap());
+                            tracing::info!("Accepting from: {}", stream.peer_addr().unwrap());
                             let routes = routes.read().await.clone();
                             let conn = conn.clone();
                             tokio::task::spawn(async move {

@@ -18,6 +18,7 @@ version.workspace = true
 default = ["server", "test", "static"]
 full = ["server", "wasi", "static", "test"]
 server = ["tokio/fs", "tokio/net", "tokio/rt-multi-thread", "tokio/signal"]
+ws = []
 static = []
 wasi = ["tokio/sync"]
 test = ["tokio/macros", "tokio/rt"]
@@ -44,3 +45,4 @@ multer = "2.1.0"
 futures-util = "0.3.28"
 chrono = { version = "0.4.24", default-features = false, features = ["clock"] }
 tokio-tungstenite = "0.18.0"
+headers = "0.3.8"
