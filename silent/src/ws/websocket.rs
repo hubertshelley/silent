@@ -13,10 +13,12 @@ use tokio_tungstenite::tungstenite::protocol;
 use tokio_tungstenite::WebSocketStream;
 use tracing::{debug, error};
 
-pub(crate) struct WebSocket {
+pub struct WebSocket {
     parts: WebSocketParts,
     upgrade: WebSocketStream<HyperUpgraded>,
 }
+
+unsafe impl Sync for WebSocket {}
 
 impl WebSocket {
     #[inline]

@@ -1,12 +1,10 @@
 use silent::prelude::*;
-use std::sync::Arc;
 
 fn main() {
     logger::fmt().init();
-    let ws = HandlerWrapperWebSocket::new(None);
     let route = Route::new("")
         .get(show_form)
-        .append(Route::new("ws").insert_handler(Method::GET, Arc::new(ws)));
+        .append(Route::new("ws").ws(None, |_| async {}));
     Server::new().bind_route(route).run();
 }
 

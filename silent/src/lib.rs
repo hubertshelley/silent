@@ -33,7 +33,7 @@ pub mod prelude {
     pub use crate::handler::Handler;
     pub use crate::log::*;
     pub use crate::middleware::MiddleWareHandler;
-    pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
+    pub use crate::route::handler_append::{HandlerAppend, HandlerGetter, WSHandlerAppend};
     pub use crate::route::Route;
     #[cfg(feature = "server")]
     pub use crate::service::Server;
@@ -42,6 +42,6 @@ pub mod prelude {
         FnOnClose, FnOnConnect, FnOnNoneResultFut, FnOnReceive, FnOnSend, FnOnSendFut,
     };
     #[cfg(feature = "ws")]
-    pub use crate::ws::{HandlerWrapperWebSocket, Message};
+    pub use crate::ws::{HandlerWrapperWebSocket, Message, WebSocket};
     pub use hyper::{header, upgrade, Method, StatusCode};
 }

@@ -37,7 +37,6 @@ impl Serve {
         peer_addr: SocketAddr,
     ) -> Result<HyperResponse<ResBody>, hyper::Error> {
         let (parts, body) = req.into_parts();
-        println!("{:#?}", parts);
         let req = HyperRequest::from_parts(parts, body.into()).into();
         match self.routes.handle(req, peer_addr).await {
             Ok(res) => Ok(res.res),

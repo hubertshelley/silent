@@ -39,6 +39,9 @@ pub enum SilentError {
     /// Params为空 错误
     #[error("params not found")]
     ParamsNotFound,
+    /// websocket错误
+    #[error("websocket error: {0}")]
+    WsError(String),
     /// 业务错误
     #[error("business error: {msg} ({code})")]
     BusinessError {

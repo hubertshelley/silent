@@ -1,9 +1,11 @@
 use super::Route;
-use crate::{Handler, HandlerWrapper, Method, Request, SilentError};
+use crate::ws::{HandlerWrapperWebSocket, WebSocket};
+use crate::{Handler, HandlerWrapper, Method, Request, Result};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 pub trait HandlerGetter {
     fn get_handler_mut(&mut self) -> &mut HashMap<Method, Arc<dyn Handler>>;
@@ -12,7 +14,7 @@ pub trait HandlerGetter {
 
 pub trait HandlerAppend<F, T, Fut>: HandlerGetter
 where
-    Fut: Future<Output = Result<T, SilentError>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<T>> + Send + Sync + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
     T: Serialize + Send + 'static,
 {
@@ -25,6 +27,18 @@ where
     fn handler_append(&mut self, method: Method, handler: F) {
         let handler = Arc::new(HandlerWrapper::new(handler));
         self.get_handler_mut().insert(method, handler);
+    }
+}
+
+pub trait WSHandlerAppend<F, Fut>: HandlerGetter
+where
+    Fut: Future<Output = ()> + Send + Sync + 'static,
+    F: Fn(WebSocket) -> Fut + Send + Sync + 'static,
+{
+    fn ws(self, config: Option<WebSocketConfig>, handler: F) -> Self;
+    fn ws_handler_append(&mut self, handler: HandlerWrapperWebSocket<F>) {
+        let handler = Arc::new(handler);
+        self.get_handler_mut().insert(Method::GET, handler);
     }
 }
 
@@ -52,7 +66,7 @@ impl HandlerGetter for Route {
 
 impl<F, T, Fut> HandlerAppend<F, T, Fut> for Route
 where
-    Fut: Future<Output = Result<T, SilentError>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<T>> + Send + Sync + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
     T: Serialize + Send + 'static,
 {
@@ -83,6 +97,18 @@ where
 
     fn options(mut self, handler: F) -> Self {
         self.handler_append(Method::OPTIONS, handler);
+        self
+    }
+}
+
+impl<F, Fut> WSHandlerAppend<F, Fut> for Route
+where
+    Fut: Future<Output = ()> + Send + Sync + 'static,
+    F: Fn(WebSocket) -> Fut + Send + Sync + 'static,
+{
+    fn ws(mut self, config: Option<WebSocketConfig>, handler: F) -> Self {
+        let handler = HandlerWrapperWebSocket::new(config).set_handler(handler);
+        self.ws_handler_append(handler);
         self
     }
 }
