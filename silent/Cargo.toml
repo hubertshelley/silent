@@ -46,3 +46,4 @@ futures-util = "0.3.28"
 chrono = { version = "0.4.24", default-features = false, features = ["clock"] }
 tokio-tungstenite = "0.18.0"
 headers = "0.3.8"
+tokio-stream = { version = "0.1.14", features = ["net"] }

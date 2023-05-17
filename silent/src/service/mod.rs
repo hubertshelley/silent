@@ -58,7 +58,7 @@ impl Server {
 
     pub async fn serve(&self) {
         let Self { conn, routes, .. } = self;
-        tracing::info!("Listening on http://{}", self.addr);
+        tracing::info!("Listening on {}", self.addr);
         let listener = TcpListener::bind(self.addr).await.unwrap();
 
         loop {
@@ -85,12 +85,12 @@ impl Server {
                 }
                 s = listener.accept() =>{
                     match s{
-                        Ok((stream, _)) => {
+                        Ok((stream, peer_addr)) => {
                             tracing::info!("Accepting from: {}", stream.peer_addr().unwrap());
                             let routes = routes.read().await.clone();
                             let conn = conn.clone();
                             tokio::task::spawn(async move {
-                                if let Err(err) = Serve::new(routes, conn).call(stream).await {
+                                if let Err(err) = Serve::new(routes, conn).call(stream,peer_addr).await {
                                     tracing::error!("Failed to serve connection: {:?}", err);
                                 }
                             });

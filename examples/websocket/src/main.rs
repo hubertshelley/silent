@@ -3,11 +3,10 @@ use std::sync::Arc;
 
 fn main() {
     logger::fmt().init();
-    let route = Route::new("").get(show_form);
-    // .append(Route::new("ws").insert_handler(
-    //     Method::GET,
-    //     Arc::new(HandlerWrapperWebSocket { config: None }),
-    // ));
+    let ws = HandlerWrapperWebSocket::new(None);
+    let route = Route::new("")
+        .get(show_form)
+        .append(Route::new("ws").insert_handler(Method::GET, Arc::new(ws)));
     Server::new().bind_route(route).run();
 }
 

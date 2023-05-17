@@ -1,21 +1,25 @@
-use crate::ws::websocket::{WSHandlerTrait, WebSocket};
-use crate::ws::WebSocketHandler;
+use crate::ws::upgrade;
+use crate::ws::websocket::WebSocket;
 use crate::{header, Handler, Request, Response, Result, SilentError, StatusCode};
 use async_trait::async_trait;
 use headers::{Connection, HeaderMapExt, SecWebsocketAccept, SecWebsocketKey, Upgrade};
-use hyper::upgrade;
-use std::sync::Arc;
 use tokio_tungstenite::tungstenite::protocol;
+use tracing::error;
 
 #[derive(Clone)]
 pub struct HandlerWrapperWebSocket {
     pub config: Option<protocol::WebSocketConfig>,
-    pub(crate) handler: Arc<dyn WebSocketHandler>,
+}
+
+impl HandlerWrapperWebSocket {
+    pub fn new(config: Option<protocol::WebSocketConfig>) -> Self {
+        Self { config }
+    }
 }
 
 #[async_trait]
 impl Handler for HandlerWrapperWebSocket {
-    async fn call(&self, mut req: Request) -> Result<Response> {
+    async fn call(&self, req: Request) -> Result<Response> {
         let mut res = Response::empty();
         let req_headers = req.headers();
         if !req_headers.contains_key(header::UPGRADE) {
@@ -44,25 +48,18 @@ impl Handler for HandlerWrapperWebSocket {
             });
         };
         let config = self.config;
-        self.handler.on_connect(&req).await?;
-        let handler = self.handler.clone();
         tokio::task::spawn(async move {
-            match upgrade::on(req.req_mut()).await {
-                Ok(upgraded) => {
-                    if let Err(e) = WebSocket::from_raw_socket(
-                        upgraded,
-                        protocol::Role::Server,
-                        config,
-                        handler,
-                    )
-                    .await
-                    .handle()
-                    .await
-                    {
-                        eprintln!("server foobar io error: {}", e)
+            match upgrade::on(req).await {
+                Ok(upgrade) => {
+                    let ws =
+                        WebSocket::from_raw_socket(upgrade, protocol::Role::Server, config).await;
+                    if let Err(e) = ws.handle().await {
+                        error!("upgrade handle error: {}", e)
                     };
                 }
-                Err(e) => eprintln!("upgrade error: {}", e),
+                Err(e) => {
+                    error!("upgrade error: {}", e)
+                }
             }
         });
         res.set_status(StatusCode::SWITCHING_PROTOCOLS);

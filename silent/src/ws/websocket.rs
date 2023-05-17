@@ -1,40 +1,46 @@
 use crate::ws::message::Message;
-use crate::ws::WebSocketHandler;
+use crate::ws::upgrade::{Upgraded, WebSocketParts};
 use crate::{Result, SilentError};
-use async_trait::async_trait;
 use futures_util::sink::{Sink, SinkExt};
 use futures_util::stream::{Stream, StreamExt};
 use futures_util::{future, ready};
-use hyper::upgrade;
+use hyper::upgrade::Upgraded as HyperUpgraded;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
+use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::protocol;
 use tokio_tungstenite::WebSocketStream;
-use tracing::debug;
+use tracing::{debug, error};
 
 pub(crate) struct WebSocket {
-    upgrade: WebSocketStream<upgrade::Upgraded>,
-    pub(crate) handler: Arc<dyn WebSocketHandler>,
+    parts: WebSocketParts,
+    upgrade: WebSocketStream<HyperUpgraded>,
 }
 
 impl WebSocket {
     #[inline]
     pub(crate) async fn from_raw_socket(
-        upgraded: upgrade::Upgraded,
+        upgraded: Upgraded,
         role: protocol::Role,
         config: Option<protocol::WebSocketConfig>,
-        handler: Arc<dyn WebSocketHandler>,
     ) -> Self {
+        let (parts, upgraded) = upgraded.into_parts();
         Self {
+            parts,
             upgrade: WebSocketStream::from_raw_socket(upgraded, role, config).await,
-            handler,
         }
+    }
+
+    #[inline]
+    pub fn into_parts(self) -> (WebSocketParts, Self) {
+        (self.parts.clone(), self)
     }
 
     /// Receive another message.
     ///
     /// Returns `None` if the stream has closed.
+    #[allow(dead_code)]
     pub async fn recv(&mut self) -> Option<Result<Message>> {
         self.next().await
     }
@@ -85,32 +91,43 @@ impl Sink<Message> for WebSocket {
     }
 }
 
-#[async_trait]
-pub(crate) trait WSHandlerTrait {
-    async fn handle(&mut self) -> Result<()>;
-}
-
-#[async_trait]
-impl WSHandlerTrait for WebSocket {
-    async fn handle(&mut self) -> Result<()> {
-        loop {
-            tokio::select! {
-                op_message = self.recv() => {
-                    match op_message{
-                        Some(Ok(message)) => {
-                            self.handler.on_receive(message).await?;
-                        }
-                        Some(Err(e)) => {
-                            println!("ws recv error: {}", e);
-                        }
-                        None => {
-                            println!("ws finished");
-                            break;
-                        }
+impl WebSocket {
+    pub(crate) async fn handle(self) -> Result<()> {
+        let (parts, ws) = self.into_parts();
+        let parts = Arc::new(RwLock::new(parts));
+        let (mut user_ws_tx, mut user_ws_rx) = ws.split();
+        let (_tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let sender_parts = parts.clone();
+        let receiver_parts = parts;
+        let fut = async move {
+            let _sender_parts = sender_parts.clone();
+            while let Some(message) = rx.recv().await {
+                // if let Some(on_send) = on_send {
+                //     let message = on_send(message.clone(), sender_parts).await.unwrap();
+                //     user_ws_tx.send(message).await.unwrap();
+                // } else {
+                //     user_ws_tx.send(message).await.unwrap();
+                // }
+                user_ws_tx.send(message).await.unwrap();
+            }
+        };
+        tokio::task::spawn(fut);
+        let fut = async move {
+            let _receiver_parts = receiver_parts.clone();
+            while let Some(message) = user_ws_rx.next().await {
+                match message {
+                    Ok(_message) => {
+                        // if let Some(on_receive) = on_receive {
+                        //     on_receive(message, receiver_parts).await.unwrap();
+                        // }
+                    }
+                    Err(e) => {
+                        error!("ws recv error: {}", e);
                     }
                 }
             }
-        }
+        };
+        tokio::task::spawn(fut);
         Ok(())
     }
 }

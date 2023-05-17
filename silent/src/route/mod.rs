@@ -7,6 +7,7 @@ use crate::{header, Method, SilentError, StatusCode};
 use chrono::Utc;
 use std::collections::HashMap;
 use std::fmt;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 pub(crate) mod handler_append;
@@ -104,7 +105,11 @@ impl Routes {
         self.children.push(route);
     }
 
-    pub async fn handle(&self, req: Request) -> Result<Response, (String, StatusCode)> {
+    pub async fn handle(
+        &self,
+        req: Request,
+        peer_addr: SocketAddr,
+    ) -> Result<Response, (String, StatusCode)> {
         tracing::debug!("{:?}", req);
         let (mut req, path) = req.split_url();
         let method = req.method().clone();
@@ -127,10 +132,7 @@ impl Routes {
                             .pre_request(&mut req, &mut pre_res)
                             .await
                         {
-                            if let SilentError::BusinessError { code, msg } = e {
-                                return Err((msg, code));
-                            }
-                            return Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR));
+                            return error_result_handler(e);
                         }
                     }
                     match handler.call(req).await {
@@ -147,18 +149,12 @@ impl Routes {
                                 if let Err(e) =
                                     route.middlewares[i].after_response(&mut pre_res).await
                                 {
-                                    if let SilentError::BusinessError { code, msg } = e {
-                                        return Err((msg, code));
-                                    }
-                                    return Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR));
+                                    return error_result_handler(e);
                                 }
                             }
                             Ok(pre_res)
                         }
-                        Err(e) => match e {
-                            SilentError::BusinessError { code, msg } => Err((msg, code)),
-                            _ => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
-                        },
+                        Err(e) => error_result_handler(e),
                     }
                 }
             },
@@ -168,9 +164,9 @@ impl Routes {
         let req_time = end_time - start_time;
         match res {
             Ok(res) => {
-                // tracing::info!("pre_res: {:?}", res);
                 tracing::info!(
-                    "\"{} {} {:?}\" {} {:?} {}",
+                    "{} \"{} {} {:?}\" {} {:?} {}",
+                    peer_addr,
                     method,
                     url,
                     http_version,
@@ -182,7 +178,8 @@ impl Routes {
             }
             Err((msg, code)) => {
                 tracing::error!(
-                    "\"{} {} {:?}\" {} {:?} {} {}",
+                    "{} \"{} {} {:?}\" {} {:?} {} {}",
+                    peer_addr,
                     method,
                     url,
                     http_version,
@@ -194,5 +191,13 @@ impl Routes {
                 Err((msg, code))
             }
         }
+    }
+}
+
+fn error_result_handler(e: SilentError) -> Result<Response, (String, StatusCode)> {
+    let _ = e.trace();
+    match e {
+        SilentError::BusinessError { code, msg } => Err((msg, code)),
+        _ => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
     }
 }

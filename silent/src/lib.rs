@@ -38,6 +38,10 @@ pub mod prelude {
     #[cfg(feature = "server")]
     pub use crate::service::Server;
     #[cfg(feature = "ws")]
-    pub use crate::ws::HandlerWrapperWebSocket;
+    pub use crate::ws::{
+        FnOnClose, FnOnConnect, FnOnNoneResultFut, FnOnReceive, FnOnSend, FnOnSendFut,
+    };
+    #[cfg(feature = "ws")]
+    pub use crate::ws::{HandlerWrapperWebSocket, Message};
     pub use hyper::{header, upgrade, Method, StatusCode};
 }

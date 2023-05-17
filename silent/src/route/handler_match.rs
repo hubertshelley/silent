@@ -233,7 +233,7 @@ mod tests {
         *req.uri_mut() = "/hello/world".parse().unwrap();
         assert_eq!(
             routes
-                .handle(req)
+                .handle(req, "127.0.0.1:8000".parse().unwrap())
                 .await
                 .unwrap()
                 .frame()
@@ -257,7 +257,7 @@ mod tests {
         *req.uri_mut() = "/hello/world1".parse().unwrap();
         assert_eq!(
             routes
-                .handle(req)
+                .handle(req, "127.0.0.1:8000".parse().unwrap())
                 .await
                 .unwrap()
                 .frame()
