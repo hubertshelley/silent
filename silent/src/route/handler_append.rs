@@ -1,10 +1,12 @@
 use super::Route;
+#[cfg(feature = "ws")]
 use crate::ws::{HandlerWrapperWebSocket, WebSocket};
 use crate::{Handler, HandlerWrapper, Method, Request, Result};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
+#[cfg(feature = "ws")]
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 pub trait HandlerGetter {
@@ -30,6 +32,7 @@ where
     }
 }
 
+#[cfg(feature = "ws")]
 pub trait WSHandlerAppend<F, Fut>: HandlerGetter
 where
     Fut: Future<Output = ()> + Send + Sync + 'static,
@@ -101,6 +104,7 @@ where
     }
 }
 
+#[cfg(feature = "ws")]
 impl<F, Fut> WSHandlerAppend<F, Fut> for Route
 where
     Fut: Future<Output = ()> + Send + Sync + 'static,
