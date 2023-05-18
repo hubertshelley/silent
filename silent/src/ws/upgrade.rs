@@ -5,11 +5,34 @@ use hyper::upgrade;
 use std::collections::HashMap;
 
 #[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WebSocketParts {
     path_params: HashMap<String, PathParam>,
     params: HashMap<String, String>,
     headers: HeaderMap,
+    extra: HashMap<String, String>,
+}
+
+impl WebSocketParts {
+    pub fn path_params(&self) -> &HashMap<String, PathParam> {
+        &self.path_params
+    }
+
+    pub fn params(&self) -> &HashMap<String, String> {
+        &self.params
+    }
+
+    pub fn headers(&self) -> &HeaderMap {
+        &self.headers
+    }
+
+    pub fn extra(&self) -> &HashMap<String, String> {
+        &self.extra
+    }
+
+    pub fn extra_mut(&mut self) -> &mut HashMap<String, String> {
+        &mut self.extra
+    }
 }
 
 pub(crate) struct Upgraded {
@@ -33,6 +56,7 @@ pub(crate) async fn on(mut req: Request) -> Result<Upgraded> {
             path_params,
             params,
             headers,
+            extra: Default::default(),
         },
         upgrade,
     })

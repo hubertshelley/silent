@@ -5,15 +5,16 @@
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
-use futures_util::{FutureExt, StreamExt};
+use futures_util::{FutureExt, SinkExt, StreamExt};
 use once_cell::sync::Lazy;
 use tokio::sync::{mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use silent::prelude::*;
 
-type Users = RwLock<HashMap<usize, mpsc::UnboundedSender<Result<Message>>>>;
+type Users = RwLock<HashMap<usize, mpsc::UnboundedSender<Message>>>;
 
 static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
 static ONLINE_USERS: Lazy<Users> = Lazy::new(Users::default);
@@ -26,28 +27,65 @@ fn main() {
     Server::new().bind_route(route).run();
 }
 
-async fn handle_socket(ws: WebSocket) {
-    // Use a counter to assign a new unique ID for this user.
+async fn on_connect(
+    parts: Arc<RwLock<WebSocketParts>>,
+    sender: mpsc::UnboundedSender<Message>,
+) -> Result<usize> {
+    let mut parts = parts.write().await;
+    println!("{:?}", parts);
     let my_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
-
     info!("new chat user: {}", my_id);
+    parts
+        .extra_mut()
+        .insert("uid".to_string(), my_id.to_string().parse().unwrap());
+    ONLINE_USERS.write().await.insert(my_id, sender);
+    Ok(my_id)
+}
 
-    // Split the socket into a sender and receive of messages.
-    let (user_ws_tx, mut user_ws_rx) = ws.split();
+async fn on_send(message: Message, parts: Arc<RwLock<WebSocketParts>>) -> Result<Message> {
+    let parts = parts.read().await;
+    let uid = parts.extra().get("uid").unwrap();
+    println!("on_send: {:?}", message);
+    let msg = if let Ok(s) = message.to_str() {
+        s
+    } else {
+        return Err(SilentError::BusinessError {
+            code: StatusCode::BAD_REQUEST,
+            msg: "invalid message".to_string(),
+        });
+    };
+    let message = Message::text(format!("<User#{uid}>: {msg}"));
+    Ok(message)
+}
 
-    // Use an unbounded channel to handle buffering and flushing of messages
-    // to the websocket...
-    let (tx, rx) = mpsc::unbounded_channel();
-    let rx = UnboundedReceiverStream::new(rx);
-    let fut = rx.forward(user_ws_tx).map(|result| {
-        if let Err(e) = result {
-            error!(error = ?e, "websocket send error");
+async fn handle_socket(ws: WebSocket) {
+    let (parts, ws) = ws.into_parts();
+    let parts = Arc::new(RwLock::new(parts));
+    let (mut user_ws_tx, mut user_ws_rx) = ws.split();
+    // Use a counter to assign a new unique ID for this user.
+
+    let (tx, mut rx) = mpsc::unbounded_channel();
+    let my_id = on_connect(parts.clone(), tx.clone()).await.unwrap();
+    let sender_parts = parts.clone();
+    // let receiver_parts = parts;
+
+    let fut = async move {
+        while let Some(message) = rx.recv().await {
+            // if let Some(on_send) = on_send {
+            //     let message = on_send(message.clone(), sender_parts).await.unwrap();
+            //     user_ws_tx.send(message).await.unwrap();
+            // } else {
+            //     user_ws_tx.send(message).await.unwrap();
+            // }
+            let message = on_send(message.clone(), sender_parts.clone())
+                .await
+                .unwrap();
+            println!("before: {:?}", message);
+            user_ws_tx.send(message).await.unwrap();
         }
-    });
+    };
     tokio::task::spawn(fut);
     let fut = async move {
-        ONLINE_USERS.write().await.insert(my_id, tx);
-
         while let Some(result) = user_ws_rx.next().await {
             let msg = match result {
                 Ok(msg) => msg,
@@ -76,7 +114,7 @@ async fn user_message(my_id: usize, msg: Message) {
     // New message from this user, send it to everyone else (except same uid)...
     for (&uid, tx) in ONLINE_USERS.read().await.iter() {
         if my_id != uid {
-            if let Err(_disconnected) = tx.send(Ok(Message::text(new_msg.clone()))) {
+            if let Err(_disconnected) = tx.send(Message::text(new_msg.clone())) {
                 // The tx is disconnected, our `user_disconnected` code
                 // should be happening in another task, nothing more to
                 // do here.
