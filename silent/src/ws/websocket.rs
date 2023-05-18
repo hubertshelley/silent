@@ -14,7 +14,7 @@ use tokio_tungstenite::WebSocketStream;
 use tracing::{debug, error};
 
 pub struct WebSocket {
-    parts: WebSocketParts,
+    parts: Arc<RwLock<WebSocketParts>>,
     upgrade: WebSocketStream<HyperUpgraded>,
 }
 
@@ -29,13 +29,13 @@ impl WebSocket {
     ) -> Self {
         let (parts, upgraded) = upgraded.into_parts();
         Self {
-            parts,
+            parts: Arc::new(RwLock::new(parts)),
             upgrade: WebSocketStream::from_raw_socket(upgraded, role, config).await,
         }
     }
 
     #[inline]
-    pub fn into_parts(self) -> (WebSocketParts, Self) {
+    pub fn into_parts(self) -> (Arc<RwLock<WebSocketParts>>, Self) {
         (self.parts.clone(), self)
     }
 

@@ -4,7 +4,6 @@
 // port from https://github.com/seanmonstar/warp/blob/master/examples/websocket_chat.rs
 
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -35,16 +34,17 @@ async fn on_connect(
     println!("{:?}", parts);
     let my_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
     info!("new chat user: {}", my_id);
-    parts
-        .extra_mut()
-        .insert("uid".to_string(), my_id.to_string().parse().unwrap());
+    parts.extensions_mut().insert(my_id);
+    sender
+        .send(Message::text(format!("Hello User#{my_id}")))
+        .unwrap();
     ONLINE_USERS.write().await.insert(my_id, sender);
     Ok(())
 }
 
 async fn on_send(message: Message, parts: Arc<RwLock<WebSocketParts>>) -> Result<Message> {
     let parts = parts.read().await;
-    let uid = parts.extra().get("uid").unwrap();
+    let uid = parts.extensions().get::<usize>().unwrap();
     println!("on_send: {:?}", message);
     let msg = if let Ok(s) = message.to_str() {
         s
@@ -60,10 +60,10 @@ async fn on_send(message: Message, parts: Arc<RwLock<WebSocketParts>>) -> Result
 
 async fn on_receive(message: Message, parts: Arc<RwLock<WebSocketParts>>) -> Result<()> {
     let parts = parts.read().await;
-    let my_id = parts.extra().get("uid").unwrap();
+    let my_id = parts.extensions().get::<usize>().unwrap();
     println!("on_receive: {:?}", message);
-    for (&uid, tx) in ONLINE_USERS.read().await.iter() {
-        if my_id != &uid.to_string() {
+    for (uid, tx) in ONLINE_USERS.read().await.iter() {
+        if my_id != uid {
             if let Err(_disconnected) = tx.send(message.clone()) {}
         }
     }
@@ -72,18 +72,14 @@ async fn on_receive(message: Message, parts: Arc<RwLock<WebSocketParts>>) -> Res
 
 async fn on_close(parts: Arc<RwLock<WebSocketParts>>) {
     let parts = parts.read().await;
-    let my_id = parts.extra().get("uid").unwrap();
+    let my_id = parts.extensions().get::<usize>().unwrap();
     eprintln!("good bye user: {my_id}");
     // Stream closed up, so remove from the user list
-    ONLINE_USERS
-        .write()
-        .await
-        .remove(&usize::from_str(my_id).unwrap());
+    ONLINE_USERS.write().await.remove(my_id);
 }
 
 async fn handle_socket(ws: WebSocket) {
     let (parts, ws) = ws.into_parts();
-    let parts = Arc::new(RwLock::new(parts));
     let (mut user_ws_tx, mut user_ws_rx) = ws.split();
     // Use a counter to assign a new unique ID for this user.
 
