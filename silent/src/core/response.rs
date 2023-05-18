@@ -29,10 +29,10 @@ impl Response {
     }
     /// 设置响应header
     pub fn set_header(
-        &mut self,
+        mut self,
         key: hyper::header::HeaderName,
         value: hyper::header::HeaderValue,
-    ) -> &mut Self {
+    ) -> Self {
         self.headers_mut().insert(key, value);
         self
     }

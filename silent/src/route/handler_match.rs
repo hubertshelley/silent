@@ -53,7 +53,11 @@ impl<'a> From<&'a str> for SpecialPath {
 
 impl Match for Route {
     fn handler_match(&self, req: &mut Request, path: &str) -> RouteMatched {
-        let (local_url, last_url) = Self::path_split(path);
+        let (local_url, last_url) = if self.path.is_empty() {
+            ("", path)
+        } else {
+            Self::path_split(path)
+        };
         if !self.special_match {
             if self.path == local_url {
                 self.last_matched(req, last_url)
@@ -191,7 +195,7 @@ mod tests {
         let mut routes = Routes::new();
         routes.add(route);
         let mut req = Request::empty();
-        *req.uri_mut() = "//world".parse().unwrap();
+        *req.uri_mut() = "/world".parse().unwrap();
         assert!(get_matched(&routes, req));
     }
 
@@ -229,7 +233,7 @@ mod tests {
         *req.uri_mut() = "/hello/world".parse().unwrap();
         assert_eq!(
             routes
-                .handle(req)
+                .handle(req, "127.0.0.1:8000".parse().unwrap())
                 .await
                 .unwrap()
                 .frame()
@@ -253,7 +257,7 @@ mod tests {
         *req.uri_mut() = "/hello/world1".parse().unwrap();
         assert_eq!(
             routes
-                .handle(req)
+                .handle(req, "127.0.0.1:8000".parse().unwrap())
                 .await
                 .unwrap()
                 .frame()

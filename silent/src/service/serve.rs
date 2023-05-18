@@ -5,6 +5,7 @@ use crate::route::Routes;
 use hyper::body::Incoming;
 use hyper::service::service_fn;
 use hyper::{Request as HyperRequest, Response as HyperResponse};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpStream;
 
@@ -17,8 +18,12 @@ impl Serve {
     pub(crate) fn new(routes: Routes, conn: Arc<SilentConnection>) -> Self {
         Self { routes, conn }
     }
-    pub(crate) async fn call(&self, stream: TcpStream) -> Result<(), hyper::Error> {
-        let service = service_fn(move |req| self.handle(req));
+    pub(crate) async fn call(
+        &self,
+        stream: TcpStream,
+        peer_addr: SocketAddr,
+    ) -> Result<(), hyper::Error> {
+        let service = service_fn(move |req| self.handle(req, peer_addr));
         self.conn
             .http1
             .serve_connection(stream, service)
@@ -29,10 +34,11 @@ impl Serve {
     async fn handle(
         &self,
         req: HyperRequest<Incoming>,
+        peer_addr: SocketAddr,
     ) -> Result<HyperResponse<ResBody>, hyper::Error> {
         let (parts, body) = req.into_parts();
         let req = HyperRequest::from_parts(parts, body.into()).into();
-        match self.routes.handle(req).await {
+        match self.routes.handle(req, peer_addr).await {
             Ok(res) => Ok(res.res),
             Err((mes, code)) => {
                 tracing::error!("Failed to handle request: {:?}", mes);

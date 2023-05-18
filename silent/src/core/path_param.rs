@@ -8,7 +8,7 @@ use uuid::Uuid;
 ///     Uuid(Uuid),
 ///     Path(String),
 /// 支持数据转换
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PathParam {
     /// 字符串类型参数
     String(String),
