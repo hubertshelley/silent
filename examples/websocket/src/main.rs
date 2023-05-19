@@ -2,9 +2,16 @@ use silent::prelude::*;
 
 fn main() {
     logger::fmt().init();
-    let route = Route::new("")
-        .get(show_form)
-        .append(Route::new("ws").ws(None, |_| async {}));
+    let route = Route::new("").get(show_form).append(
+        Route::new("ws").ws(
+            None,
+            WebSocketHandler::new()
+                .on_connect(|_, _| async { Ok(()) })
+                .on_send(|msg, _| async { Ok(msg) })
+                .on_receive(|_, _| async { Ok(()) })
+                .on_close(|_| async {}),
+        ),
+    );
     Server::new().bind_route(route).run();
 }
 

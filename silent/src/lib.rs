@@ -44,6 +44,6 @@ pub mod prelude {
         FnOnClose, FnOnConnect, FnOnNoneResultFut, FnOnReceive, FnOnSend, FnOnSendFut,
     };
     #[cfg(feature = "ws")]
-    pub use crate::ws::{HandlerWrapperWebSocket, Message, WebSocket, WebSocketParts};
+    pub use crate::ws::{Message, WebSocket, WebSocketHandler, WebSocketParts};
     pub use hyper::{header, upgrade, Method, StatusCode};
 }

@@ -1,42 +1,146 @@
 use crate::ws::handler::websocket_handler;
-use crate::ws::upgrade;
-use crate::ws::websocket::WebSocket;
+use crate::ws::websocket::{WebSocket, WebSocketHandlerTrait};
+use crate::ws::websocket_handler::WebSocketHandler;
+use crate::ws::{upgrade, Message, WebSocketParts};
 use crate::{Handler, Request, Response, Result};
 use async_trait::async_trait;
 use std::future::Future;
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::protocol;
 use tracing::error;
 
+#[allow(clippy::type_complexity)]
 #[derive(Clone)]
-pub struct HandlerWrapperWebSocket<F> {
+pub struct HandlerWrapperWebSocket<
+    FnOnConnect,
+    FnOnConnectFut,
+    FnOnSend,
+    FnOnSendFut,
+    FnOnReceive,
+    FnOnReceiveFut,
+    FnOnClose,
+    FnOnCloseFut,
+> where
+    FnOnConnect: Fn(Arc<RwLock<WebSocketParts>>, UnboundedSender<Message>) -> FnOnConnectFut
+        + Send
+        + Sync
+        + 'static,
+    FnOnConnectFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
+    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
+    FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
+    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
+    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
+{
     pub config: Option<protocol::WebSocketConfig>,
-    handler: Option<Arc<F>>,
+    handler: Arc<
+        WebSocketHandler<
+            FnOnConnect,
+            FnOnConnectFut,
+            FnOnSend,
+            FnOnSendFut,
+            FnOnReceive,
+            FnOnReceiveFut,
+            FnOnClose,
+            FnOnCloseFut,
+        >,
+    >,
 }
 
-impl<F, Fut> HandlerWrapperWebSocket<F>
+impl<
+        FnOnConnect,
+        FnOnConnectFut,
+        FnOnSend,
+        FnOnSendFut,
+        FnOnReceive,
+        FnOnReceiveFut,
+        FnOnClose,
+        FnOnCloseFut,
+    >
+    HandlerWrapperWebSocket<
+        FnOnConnect,
+        FnOnConnectFut,
+        FnOnSend,
+        FnOnSendFut,
+        FnOnReceive,
+        FnOnReceiveFut,
+        FnOnClose,
+        FnOnCloseFut,
+    >
 where
-    Fut: Future<Output = ()> + Send + Sync + 'static,
-    F: Fn(WebSocket) -> Fut + Send + Sync + 'static,
+    FnOnConnect: Fn(Arc<RwLock<WebSocketParts>>, UnboundedSender<Message>) -> FnOnConnectFut
+        + Send
+        + Sync
+        + 'static,
+    FnOnConnectFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
+    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
+    FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
+    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
+    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
 {
     pub fn new(config: Option<protocol::WebSocketConfig>) -> Self {
         Self {
             config,
-            handler: None,
+            handler: Arc::new(WebSocketHandler::new()),
         }
     }
 
-    pub fn set_handler(mut self, handler: F) -> Self {
-        self.handler = Some(Arc::new(handler));
+    pub fn set_handler(
+        mut self,
+        handler: WebSocketHandler<
+            FnOnConnect,
+            FnOnConnectFut,
+            FnOnSend,
+            FnOnSendFut,
+            FnOnReceive,
+            FnOnReceiveFut,
+            FnOnClose,
+            FnOnCloseFut,
+        >,
+    ) -> Self {
+        self.handler = Arc::from(handler);
         self
     }
 }
 
 #[async_trait]
-impl<F, Fut> Handler for HandlerWrapperWebSocket<F>
+impl<
+        FnOnConnect,
+        FnOnConnectFut,
+        FnOnSend,
+        FnOnSendFut,
+        FnOnReceive,
+        FnOnReceiveFut,
+        FnOnClose,
+        FnOnCloseFut,
+    > Handler
+    for HandlerWrapperWebSocket<
+        FnOnConnect,
+        FnOnConnectFut,
+        FnOnSend,
+        FnOnSendFut,
+        FnOnReceive,
+        FnOnReceiveFut,
+        FnOnClose,
+        FnOnCloseFut,
+    >
 where
-    Fut: Future<Output = ()> + Send + Sync + 'static,
-    F: Fn(WebSocket) -> Fut + Send + Sync + 'static,
+    FnOnConnect: Fn(Arc<RwLock<WebSocketParts>>, UnboundedSender<Message>) -> FnOnConnectFut
+        + Send
+        + Sync
+        + 'static,
+    FnOnConnectFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
+    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
+    FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
+    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
+    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
 {
     async fn call(&self, req: Request) -> Result<Response> {
         let res = websocket_handler(&req)?;
@@ -47,9 +151,7 @@ where
                 Ok(upgrade) => {
                     let ws =
                         WebSocket::from_raw_socket(upgrade, protocol::Role::Server, config).await;
-                    if let Some(handler) = handler {
-                        handler(ws).await;
-                    } else if let Err(e) = ws.handle().await {
+                    if let Err(e) = ws.handle(handler).await {
                         error!("upgrade handle error: {}", e)
                     }
                 }
