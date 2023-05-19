@@ -42,10 +42,15 @@ async fn on_connect(
     Ok(())
 }
 
-async fn on_send(message: Message, parts: Arc<RwLock<WebSocketParts>>) -> Result<Message> {
-    let parts = parts.read().await;
-    let uid = parts.extensions().get::<usize>().unwrap();
+async fn on_send(message: Message, _parts: Arc<RwLock<WebSocketParts>>) -> Result<Message> {
     println!("on_send: {:?}", message);
+    Ok(message)
+}
+
+async fn on_receive(message: Message, parts: Arc<RwLock<WebSocketParts>>) -> Result<()> {
+    let parts = parts.read().await;
+    let my_id = parts.extensions().get::<usize>().unwrap();
+    println!("on_receive: {:?}", message);
     let msg = if let Ok(s) = message.to_str() {
         s
     } else {
@@ -54,14 +59,7 @@ async fn on_send(message: Message, parts: Arc<RwLock<WebSocketParts>>) -> Result
             msg: "invalid message".to_string(),
         });
     };
-    let message = Message::text(format!("<User#{uid}>: {msg}"));
-    Ok(message)
-}
-
-async fn on_receive(message: Message, parts: Arc<RwLock<WebSocketParts>>) -> Result<()> {
-    let parts = parts.read().await;
-    let my_id = parts.extensions().get::<usize>().unwrap();
-    println!("on_receive: {:?}", message);
+    let message = Message::text(format!("<User#{my_id}>: {msg}"));
     for (uid, tx) in ONLINE_USERS.read().await.iter() {
         if my_id != uid {
             if let Err(_disconnected) = tx.send(message.clone()) {}
@@ -86,7 +84,7 @@ async fn handle_socket(ws: WebSocket) {
     let (tx, mut rx) = mpsc::unbounded_channel();
     on_connect(parts.clone(), tx.clone()).await.unwrap();
     let sender_parts = parts.clone();
-    // let receiver_parts = parts;
+    let receiver_parts = parts;
 
     let fut = async move {
         while let Some(message) = rx.recv().await {
@@ -101,11 +99,16 @@ async fn handle_socket(ws: WebSocket) {
     let fut = async move {
         while let Some(message) = user_ws_rx.next().await {
             if let Ok(message) = message {
-                on_receive(message, parts.clone()).await.unwrap();
+                if message.is_close() {
+                    break;
+                }
+                if on_receive(message, receiver_parts.clone()).await.is_err() {
+                    break;
+                }
             }
         }
 
-        on_close(parts).await;
+        on_close(receiver_parts).await;
     };
     tokio::task::spawn(fut);
 }
