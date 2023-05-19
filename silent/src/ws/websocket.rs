@@ -1,20 +1,24 @@
+use crate::log::debug;
 use crate::ws::message::Message;
 use crate::ws::upgrade::{Upgraded, WebSocketParts};
+use crate::ws::websocket_handler::WebSocketHandler;
 use crate::{Result, SilentError};
+use async_trait::async_trait;
 use futures_util::sink::{Sink, SinkExt};
 use futures_util::stream::{Stream, StreamExt};
 use futures_util::{future, ready};
 use hyper::upgrade::Upgraded as HyperUpgraded;
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::protocol;
 use tokio_tungstenite::WebSocketStream;
-use tracing::{debug, error};
 
 pub struct WebSocket {
-    parts: WebSocketParts,
+    parts: Arc<RwLock<WebSocketParts>>,
     upgrade: WebSocketStream<HyperUpgraded>,
 }
 
@@ -29,13 +33,13 @@ impl WebSocket {
     ) -> Self {
         let (parts, upgraded) = upgraded.into_parts();
         Self {
-            parts,
+            parts: Arc::new(RwLock::new(parts)),
             upgrade: WebSocketStream::from_raw_socket(upgraded, role, config).await,
         }
     }
 
     #[inline]
-    pub fn into_parts(self) -> (WebSocketParts, Self) {
+    pub fn into_parts(self) -> (Arc<RwLock<WebSocketParts>>, Self) {
         (self.parts.clone(), self)
     }
 
@@ -93,40 +97,144 @@ impl Sink<Message> for WebSocket {
     }
 }
 
-impl WebSocket {
-    pub(crate) async fn handle(self) -> Result<()> {
+#[async_trait]
+pub trait WebSocketHandlerTrait<
+    FnOnConnect,
+    FnOnConnectFut,
+    FnOnSend,
+    FnOnSendFut,
+    FnOnReceive,
+    FnOnReceiveFut,
+    FnOnClose,
+    FnOnCloseFut,
+> where
+    FnOnConnect: Fn(Arc<RwLock<WebSocketParts>>, UnboundedSender<Message>) -> FnOnConnectFut
+        + Send
+        + Sync
+        + 'static,
+    FnOnConnectFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
+    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
+    FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
+    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
+    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
+{
+    async fn handle(
+        self,
+        handler: Arc<
+            WebSocketHandler<
+                FnOnConnect,
+                FnOnConnectFut,
+                FnOnSend,
+                FnOnSendFut,
+                FnOnReceive,
+                FnOnReceiveFut,
+                FnOnClose,
+                FnOnCloseFut,
+            >,
+        >,
+    ) -> Result<()>;
+}
+
+#[async_trait]
+impl<
+        FnOnConnect,
+        FnOnConnectFut,
+        FnOnSend,
+        FnOnSendFut,
+        FnOnReceive,
+        FnOnReceiveFut,
+        FnOnClose,
+        FnOnCloseFut,
+    >
+    WebSocketHandlerTrait<
+        FnOnConnect,
+        FnOnConnectFut,
+        FnOnSend,
+        FnOnSendFut,
+        FnOnReceive,
+        FnOnReceiveFut,
+        FnOnClose,
+        FnOnCloseFut,
+    > for WebSocket
+where
+    FnOnConnect: Fn(Arc<RwLock<WebSocketParts>>, UnboundedSender<Message>) -> FnOnConnectFut
+        + Send
+        + Sync
+        + 'static,
+    FnOnConnectFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
+    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
+    FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
+    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
+    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
+{
+    async fn handle(
+        self,
+        handler: Arc<
+            WebSocketHandler<
+                FnOnConnect,
+                FnOnConnectFut,
+                FnOnSend,
+                FnOnSendFut,
+                FnOnReceive,
+                FnOnReceiveFut,
+                FnOnClose,
+                FnOnCloseFut,
+            >,
+        >,
+    ) -> Result<()> {
+        // let WebSocketHandler { on_connect, on_send, on_receive, on_close, } = handler;
+        let on_connect = handler.on_connect.clone();
+        let on_send = handler.on_send.clone();
+        let on_receive = handler.on_receive.clone();
+        let on_close = handler.on_close.clone();
+
         let (parts, ws) = self.into_parts();
-        let parts = Arc::new(RwLock::new(parts));
-        let (mut user_ws_tx, mut user_ws_rx) = ws.split();
-        let (_tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let (mut ws_tx, mut ws_rx) = ws.split();
+
+        let (tx, mut rx) = unbounded_channel();
+        debug!("on_connect: {:?}", parts);
+        if let Some(on_connect) = on_connect {
+            on_connect(parts.clone(), tx.clone()).await.unwrap();
+        }
         let sender_parts = parts.clone();
         let receiver_parts = parts;
+
         let fut = async move {
-            let _sender_parts = sender_parts.clone();
             while let Some(message) = rx.recv().await {
-                // if let Some(on_send) = on_send {
-                //     let message = on_send(message.clone(), sender_parts).await.unwrap();
-                //     user_ws_tx.send(message).await.unwrap();
-                // } else {
-                //     user_ws_tx.send(message).await.unwrap();
-                // }
-                user_ws_tx.send(message).await.unwrap();
+                let message = if let Some(on_send) = on_send.clone() {
+                    on_send(message.clone(), sender_parts.clone())
+                        .await
+                        .unwrap()
+                } else {
+                    message
+                };
+
+                debug!("send message: {:?}", message);
+                ws_tx.send(message).await.unwrap();
             }
         };
         tokio::task::spawn(fut);
         let fut = async move {
-            let _receiver_parts = receiver_parts.clone();
-            while let Some(message) = user_ws_rx.next().await {
-                match message {
-                    Ok(_message) => {
-                        // if let Some(on_receive) = on_receive {
-                        //     on_receive(message, receiver_parts).await.unwrap();
-                        // }
+            while let Some(message) = ws_rx.next().await {
+                if let Ok(message) = message {
+                    if message.is_close() {
+                        break;
                     }
-                    Err(e) => {
-                        error!("ws recv error: {}", e);
+                    debug!("receive message: {:?}", message);
+                    if let Some(on_receive) = on_receive.clone() {
+                        if on_receive(message, receiver_parts.clone()).await.is_err() {
+                            break;
+                        }
                     }
                 }
+            }
+
+            if let Some(on_close) = on_close {
+                on_close(receiver_parts).await;
             }
         };
         tokio::task::spawn(fut);

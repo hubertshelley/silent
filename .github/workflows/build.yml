@@ -27,8 +27,8 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - name: Check code format
         run: cargo fmt -- --check
-      - name: Check the package for errors
-        run: cargo check --all
+      #      - name: Check the package for errors
+      #        run: cargo check --all
       - name: Lint rust sources
         run: cargo clippy --all-targets --all-features --tests --benches -- -D warnings
       - name: Execute rust tests

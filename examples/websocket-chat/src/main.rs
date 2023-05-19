@@ -5,90 +5,81 @@
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 
-use futures_util::{FutureExt, StreamExt};
 use once_cell::sync::Lazy;
 use tokio::sync::{mpsc, RwLock};
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use silent::prelude::*;
 
-type Users = RwLock<HashMap<usize, mpsc::UnboundedSender<Result<Message>>>>;
+type Users = RwLock<HashMap<usize, mpsc::UnboundedSender<Message>>>;
 
 static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
 static ONLINE_USERS: Lazy<Users> = Lazy::new(Users::default);
 
 fn main() {
     logger::fmt().init();
-    let route = Route::new("")
-        .get(index)
-        .append(Route::new("chat").ws(None, handle_socket));
+    let route = Route::new("").get(index).append(
+        Route::new("chat").ws(
+            None,
+            WebSocketHandler::new()
+                .on_connect(on_connect)
+                .on_send(on_send)
+                .on_receive(on_receive)
+                .on_close(on_close),
+        ),
+    );
     Server::new().bind_route(route).run();
 }
 
-async fn handle_socket(ws: WebSocket) {
-    // Use a counter to assign a new unique ID for this user.
+async fn on_connect(
+    parts: Arc<RwLock<WebSocketParts>>,
+    sender: mpsc::UnboundedSender<Message>,
+) -> Result<()> {
+    let mut parts = parts.write().await;
+    info!("{:?}", parts);
     let my_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
-
     info!("new chat user: {}", my_id);
-
-    // Split the socket into a sender and receive of messages.
-    let (user_ws_tx, mut user_ws_rx) = ws.split();
-
-    // Use an unbounded channel to handle buffering and flushing of messages
-    // to the websocket...
-    let (tx, rx) = mpsc::unbounded_channel();
-    let rx = UnboundedReceiverStream::new(rx);
-    let fut = rx.forward(user_ws_tx).map(|result| {
-        if let Err(e) = result {
-            error!(error = ?e, "websocket send error");
-        }
-    });
-    tokio::task::spawn(fut);
-    let fut = async move {
-        ONLINE_USERS.write().await.insert(my_id, tx);
-
-        while let Some(result) = user_ws_rx.next().await {
-            let msg = match result {
-                Ok(msg) => msg,
-                Err(e) => {
-                    eprintln!("websocket error(uid={my_id}): {e}");
-                    break;
-                }
-            };
-            user_message(my_id, msg).await;
-        }
-
-        user_disconnected(my_id).await;
-    };
-    tokio::task::spawn(fut);
+    parts.extensions_mut().insert(my_id);
+    sender
+        .send(Message::text(format!("Hello User#{my_id}")))
+        .unwrap();
+    ONLINE_USERS.write().await.insert(my_id, sender);
+    Ok(())
 }
 
-async fn user_message(my_id: usize, msg: Message) {
-    let msg = if let Ok(s) = msg.to_str() {
+async fn on_send(message: Message, _parts: Arc<RwLock<WebSocketParts>>) -> Result<Message> {
+    info!("on_send: {:?}", message);
+    Ok(message)
+}
+
+async fn on_receive(message: Message, parts: Arc<RwLock<WebSocketParts>>) -> Result<()> {
+    let parts = parts.read().await;
+    let my_id = parts.extensions().get::<usize>().unwrap();
+    info!("on_receive: {:?}", message);
+    let msg = if let Ok(s) = message.to_str() {
         s
     } else {
-        return;
+        return Err(SilentError::BusinessError {
+            code: StatusCode::BAD_REQUEST,
+            msg: "invalid message".to_string(),
+        });
     };
-
-    let new_msg = format!("<User#{my_id}>: {msg}");
-
-    // New message from this user, send it to everyone else (except same uid)...
-    for (&uid, tx) in ONLINE_USERS.read().await.iter() {
+    let message = Message::text(format!("<User#{my_id}>: {msg}"));
+    for (uid, tx) in ONLINE_USERS.read().await.iter() {
         if my_id != uid {
-            if let Err(_disconnected) = tx.send(Ok(Message::text(new_msg.clone()))) {
-                // The tx is disconnected, our `user_disconnected` code
-                // should be happening in another task, nothing more to
-                // do here.
-            }
+            if let Err(_disconnected) = tx.send(message.clone()) {}
         }
     }
+    Ok(())
 }
 
-async fn user_disconnected(my_id: usize) {
-    eprintln!("good bye user: {my_id}");
+async fn on_close(parts: Arc<RwLock<WebSocketParts>>) {
+    let parts = parts.read().await;
+    let my_id = parts.extensions().get::<usize>().unwrap();
+    info!("good bye user: {my_id}");
     // Stream closed up, so remove from the user list
-    ONLINE_USERS.write().await.remove(&my_id);
+    ONLINE_USERS.write().await.remove(my_id);
 }
 
 async fn index<'a>(_res: Request) -> Result<&'a str> {
