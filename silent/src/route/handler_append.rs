@@ -1,7 +1,6 @@
 use super::Route;
-use crate::ws::WebSocketHandler;
 #[cfg(feature = "ws")]
-use crate::ws::{HandlerWrapperWebSocket, Message, WebSocketParts};
+use crate::ws::{HandlerWrapperWebSocket, Message, WebSocketHandler, WebSocketParts};
 use crate::{Handler, HandlerWrapper, Method, Request, Result};
 use serde::Serialize;
 use std::collections::HashMap;
