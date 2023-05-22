@@ -17,6 +17,26 @@ pub struct HandlerWrapper<F> {
     handler: F,
 }
 
+enum ResponseType<T> {
+    Serialize(T),
+    Response(Response),
+}
+
+impl<T> From<Response> for ResponseType<T> {
+    fn from(res: Response) -> Self {
+        ResponseType::Response(res)
+    }
+}
+
+impl<T> From<T> for ResponseType<T>
+where
+    T: Serialize + Send,
+{
+    fn from(value: T) -> Self {
+        ResponseType::Serialize(value)
+    }
+}
+
 impl<F, T, Fut> HandlerWrapper<F>
 where
     Fut: Future<Output = Result<T>> + Send + Sync + 'static,
@@ -27,13 +47,42 @@ where
         HandlerWrapper { handler }
     }
 
-    pub async fn handle(&self, req: Request) -> Result<Bytes> {
+    pub async fn handle(&self, req: Request) -> Result<HandlerResult> {
         let result = (self.handler)(req).await?;
-        let result = serde_json::to_value(&result)?;
+        let result: ResponseType<T> = result.into();
         match result {
-            Value::String(value) => Ok(value.into_bytes().into()),
-            _ => Ok(serde_json::to_vec(&result)?.into()),
+            ResponseType::Serialize(result) => {
+                let result = serde_json::to_value(&result)?;
+                match result {
+                    Value::String(value) => {
+                        let bts: Bytes = value.into_bytes().into();
+                        Ok(bts.into())
+                    }
+                    _ => {
+                        let bts: Bytes = serde_json::to_vec(&result)?.into();
+                        Ok(bts.into())
+                    }
+                }
+            }
+            ResponseType::Response(res) => Ok(res.into()),
         }
+    }
+}
+
+pub enum HandlerResult {
+    Bytes(Bytes),
+    Response(Response),
+}
+
+impl From<Bytes> for HandlerResult {
+    fn from(bytes: Bytes) -> Self {
+        HandlerResult::Bytes(bytes)
+    }
+}
+
+impl From<Response> for HandlerResult {
+    fn from(res: Response) -> Self {
+        HandlerResult::Response(res)
     }
 }
 
@@ -43,11 +92,14 @@ impl<F, T, Fut> Handler for HandlerWrapper<F>
 where
     Fut: Future<Output = Result<T>> + Send + Sync + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
-    T: Serialize + Send + 'static,
+    T: Serialize + Send,
 {
     async fn call(&self, req: Request) -> Result<Response> {
         let res = self.handle(req).await?;
-        Ok(Response::from(res))
+        match res {
+            HandlerResult::Bytes(result) => Ok(Response::from(result)),
+            HandlerResult::Response(res) => Ok(res),
+        }
     }
 }
 
@@ -82,11 +134,15 @@ mod tests {
     #[tokio::test]
     async fn handler_wrapper_works() {
         let handler_wrapper = HandlerWrapper::new(hello_world);
-
-        assert_eq!(
-            handler_wrapper.handle(Request::empty()).await.unwrap(),
-            "Hello World".to_string()
-        );
+        let result = handler_wrapper.handle(Request::empty()).await.unwrap();
+        match result {
+            HandlerResult::Bytes(result) => {
+                assert_eq!(result, "Hello World".to_string().into_bytes());
+            }
+            HandlerResult::Response(_) => {
+                panic!("should be bytes")
+            }
+        }
     }
 
     #[tokio::test]
@@ -95,9 +151,28 @@ mod tests {
         let hello = HelloHandler {
             name: "Hello World".to_string(),
         };
-        assert_eq!(
-            handler_wrapper.handle(Request::empty()).await.unwrap(),
-            serde_json::to_string(&hello).unwrap()
-        );
+        let result = handler_wrapper.handle(Request::empty()).await.unwrap();
+        match result {
+            HandlerResult::Bytes(result) => {
+                assert_eq!(result, serde_json::to_string(&hello).unwrap());
+            }
+            HandlerResult::Response(_) => {
+                panic!("should be bytes")
+            }
+        }
     }
+
+    // #[tokio::test]
+    // async fn handler_wrapper_response_works() {
+    //     let handler_wrapper = HandlerWrapper::new(|res| async {
+    //         Ok(Response::empty())
+    //     });
+    //     let result = handler_wrapper.handle(Request::empty()).await.unwrap();
+    //     match result {
+    //         HandlerResult::Bytes(result) => {
+    //             panic!("should be bytes")
+    //         }
+    //         HandlerResult::Response(_) => { panic!("should be bytes") }
+    //     }
+    // }
 }
