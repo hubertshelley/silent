@@ -7,7 +7,5 @@ pub trait Handler: Send + Sync + 'static {
         true
     }
 
-    async fn call(&self, _req: Request) -> Result<Response> {
-        Ok(Response::empty())
-    }
+    async fn call(&self, _req: Request) -> Result<Response>;
 }
