@@ -5,6 +5,7 @@ use bytes::Bytes;
 use serde::Serialize;
 use serde_json::Value;
 use std::future::Future;
+use std::sync::Arc;
 
 /// 处理器包装结构体
 /// 包含
@@ -34,6 +35,10 @@ where
             Value::String(value) => Ok(value.into_bytes().into()),
             _ => Ok(serde_json::to_vec(&result)?.into()),
         }
+    }
+
+    pub fn arc(self) -> Arc<Self> {
+        Arc::new(self)
     }
 }
 

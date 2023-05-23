@@ -16,6 +16,7 @@ use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 pub trait HandlerGetter {
     fn get_handler_mut(&mut self) -> &mut HashMap<Method, Arc<dyn Handler>>;
     fn insert_handler(self, method: Method, handler: Arc<dyn Handler>) -> Self;
+    fn handler(self, method: Method, handler: Arc<dyn Handler>) -> Self;
 }
 
 pub trait HandlerAppend<F, T, Fut>: HandlerGetter
@@ -109,6 +110,11 @@ impl HandlerGetter for Route {
     }
     fn insert_handler(mut self, method: Method, handler: Arc<dyn Handler>) -> Self {
         self.handler.insert(method, handler);
+        self
+    }
+
+    fn handler(mut self, method: Method, handler: Arc<dyn Handler>) -> Self {
+        self.get_handler_mut().insert(method, handler);
         self
     }
 }

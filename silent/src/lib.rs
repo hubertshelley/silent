@@ -20,7 +20,7 @@ pub use crate::middleware::MiddleWareHandler;
 pub use error::SilentError;
 pub use error::SilentResult as Result;
 pub use handler::Handler;
-pub(crate) use handler::HandlerWrapper;
+pub use handler::{HandlerWrapper, HandlerWrapperResponse};
 pub use hyper::{header, Method, StatusCode};
 
 pub mod prelude {
@@ -31,6 +31,7 @@ pub mod prelude {
     #[cfg(feature = "static")]
     pub use crate::handler::static_handler;
     pub use crate::handler::Handler;
+    pub use crate::handler::{HandlerWrapper, HandlerWrapperResponse};
     pub use crate::log::*;
     pub use crate::middleware::MiddleWareHandler;
     #[cfg(feature = "ws")]
