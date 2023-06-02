@@ -15,10 +15,11 @@ repos:
     rev: 23.3.0
     hooks:
       - id: black
-  - repo: https://github.com/crate-ci/typos
-    rev: v1.8.1
-    hooks:
-      - id: typos
+# Apple Silicon 需要 rosetta2 支持
+#  - repo: https://github.com/crate-ci/typos
+#    rev: v1.8.1
+#    hooks:
+#      - id: typos
   - repo: local
     hooks:
       - id: cargo-fmt

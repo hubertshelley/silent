@@ -7,6 +7,7 @@ use crate::core::serde::from_str_multi_val;
 use crate::header::CONTENT_TYPE;
 use crate::SilentError;
 use http_body_util::BodyExt;
+use hyper::http::Extensions;
 use hyper::Request as HyperRequest;
 use mime::Mime;
 use serde::Deserialize;
@@ -188,6 +189,18 @@ impl Request {
             }
             ReqBody::Empty => Err(SilentError::BodyEmpty),
         }
+    }
+
+    /// 获取请求body
+    #[inline]
+    pub fn replace_extensions(&mut self, extensions: Extensions) -> Extensions {
+        std::mem::replace(self.extensions_mut(), extensions)
+    }
+
+    /// 获取请求body
+    #[inline]
+    pub fn take_extensions(&mut self) -> Extensions {
+        self.replace_extensions(Extensions::default())
     }
 
     /// 分割请求体与url

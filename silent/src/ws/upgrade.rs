@@ -1,8 +1,9 @@
 use crate::header::{HeaderMap, HeaderValue};
 use crate::prelude::PathParam;
-use crate::{Request, Result};
+use crate::{Request, Result, SilentError};
 use hyper::http::Extensions;
 use hyper::upgrade;
+use hyper::upgrade::OnUpgrade;
 use std::collections::HashMap;
 
 #[allow(dead_code)]
@@ -18,6 +19,11 @@ impl WebSocketParts {
     #[inline]
     pub fn path_params(&self) -> &HashMap<String, PathParam> {
         &self.path_params
+    }
+
+    #[inline]
+    pub fn params_mut(&mut self) -> &mut HashMap<String, String> {
+        &mut self.params
     }
 
     #[inline]
@@ -82,13 +88,20 @@ pub(crate) async fn on(mut req: Request) -> Result<Upgraded> {
     let headers = req.headers().clone();
     let path_params = req.path_params().clone();
     let params = req.params().clone();
+    let mut extensions = req.take_extensions();
+    let on_upgrade = extensions
+        .remove::<OnUpgrade>()
+        .ok_or(SilentError::WsError(
+            "No OnUpgrade in Extensions".to_string(),
+        ))?;
+    req.extensions_mut().insert(on_upgrade);
     let upgrade = upgrade::on(req.req_mut()).await?;
     Ok(Upgraded {
         head: WebSocketParts {
             path_params,
             params,
             headers,
-            extensions: Default::default(),
+            extensions,
         },
         upgrade,
     })
