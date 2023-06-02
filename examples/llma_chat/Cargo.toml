@@ -1,0 +1,15 @@
+[package]
+name = "llma_chat"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1.68"
+llm = "0.1.1"
+once_cell = "1.17.1"
+rand = "0.8.5"
+serde = { version = "1.0.163", features = ["derive"] }
+silent = { path = "../../silent", features = ["ws"] }
+tokio = { version = "1.28.2", features = ["full"] }
