@@ -21,6 +21,7 @@ pub use error::SilentError;
 pub use error::SilentResult as Result;
 pub use handler::Handler;
 pub use handler::{HandlerWrapper, HandlerWrapperResponse};
+pub use headers::*;
 pub use hyper::{header, Method, StatusCode};
 
 pub mod prelude {
@@ -46,5 +47,6 @@ pub mod prelude {
     };
     #[cfg(feature = "ws")]
     pub use crate::ws::{Message, WebSocket, WebSocketHandler, WebSocketParts};
+    pub use headers::*;
     pub use hyper::{header, upgrade, Method, StatusCode};
 }

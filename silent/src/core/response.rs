@@ -1,5 +1,6 @@
 use crate::core::res_body::{full, ResBody};
 use bytes::Bytes;
+use headers::{Header, HeaderMapExt};
 use hyper::Response as HyperResponse;
 use std::ops::{Deref, DerefMut};
 
@@ -35,6 +36,13 @@ impl Response {
     ) -> Self {
         self.headers_mut().insert(key, value);
         self
+    }
+    /// 设置响应header
+    pub fn set_typed_header<H>(&mut self, header: H)
+    where
+        H: Header,
+    {
+        self.headers_mut().typed_insert(header);
     }
 }
 
