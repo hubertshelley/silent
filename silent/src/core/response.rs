@@ -2,6 +2,8 @@ use crate::core::res_body::{full, ResBody};
 use bytes::Bytes;
 use headers::{Header, HeaderMapExt};
 use hyper::Response as HyperResponse;
+use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::ops::{Deref, DerefMut};
 
 /// 响应体
@@ -9,9 +11,22 @@ use std::ops::{Deref, DerefMut};
 /// use silent::Response;
 /// let req = Response::empty();
 /// ```
-#[derive(Debug)]
 pub struct Response {
     pub(crate) res: HyperResponse<ResBody>,
+}
+
+impl fmt::Debug for Response {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        writeln!(f, "HTTP/1.1 {}\n{:?}", self.status(), self.headers())
+    }
+}
+
+impl Display for Response {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
 }
 
 impl Response {

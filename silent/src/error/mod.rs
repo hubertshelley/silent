@@ -3,6 +3,9 @@ use std::backtrace::Backtrace;
 use std::io;
 use thiserror::Error;
 
+/// BoxedError
+pub type BoxedError = Box<dyn std::error::Error + Send + Sync>;
+
 /// SilentError is the error type for the `silent` library.
 #[derive(Error, Debug)]
 pub enum SilentError {
@@ -55,6 +58,26 @@ pub enum SilentError {
 pub type SilentResult<T> = Result<T, SilentError>;
 
 impl SilentError {
+    pub fn business_error(code: StatusCode, msg: String) -> Self {
+        Self::BusinessError { code, msg }
+    }
+    pub fn status_code(&self) -> StatusCode {
+        match self {
+            Self::IOError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::TungsteniteError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::SerdeJsonError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::SerdeDeError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::HyperError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::FileEmpty(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::BodyEmpty => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::JsonEmpty => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::ContentTypeError => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::ParamsEmpty => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::ParamsNotFound => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::WsError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::BusinessError { code, .. } => *code,
+        }
+    }
     pub fn trace(&self) -> Backtrace {
         Backtrace::capture()
     }
