@@ -1,10 +1,9 @@
 use crate::core::res_body::{full, ResBody};
+use crate::{HeaderMap, StatusCode};
 use bytes::Bytes;
 use headers::{Header, HeaderMapExt};
-use hyper::Response as HyperResponse;
 use std::fmt;
 use std::fmt::{Display, Formatter};
-use std::ops::{Deref, DerefMut};
 
 /// 响应体
 /// ```
@@ -12,13 +11,17 @@ use std::ops::{Deref, DerefMut};
 /// let req = Response::empty();
 /// ```
 pub struct Response {
-    pub(crate) res: HyperResponse<ResBody>,
+    /// The HTTP status code.
+    pub(crate) status_code: StatusCode,
+    /// The HTTP headers.
+    pub(crate) headers: HeaderMap,
+    pub(crate) body: ResBody,
 }
 
 impl fmt::Debug for Response {
     #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        writeln!(f, "HTTP/1.1 {}\n{:?}", self.status(), self.headers())
+        writeln!(f, "HTTP/1.1 {}\n{:?}", self.status_code, self.headers)
     }
 }
 
@@ -32,16 +35,19 @@ impl Display for Response {
 impl Response {
     /// 创建空响应体
     pub fn empty() -> Self {
-        Response::from(Bytes::new())
+        Self {
+            status_code: StatusCode::OK,
+            headers: HeaderMap::new(),
+            body: ResBody::None,
+        }
     }
     /// 设置响应状态
-    pub fn set_status(&mut self, status: hyper::StatusCode) {
-        *self.res.status_mut() = status;
+    pub fn set_status(&mut self, status: StatusCode) {
+        self.status_code = status;
     }
     /// 设置响应body
-    pub fn set_body(mut self, body: ResBody) -> Self {
-        *self.res.body_mut() = body;
-        self
+    pub fn set_body(&mut self, body: ResBody) {
+        self.body = body;
     }
     /// 设置响应header
     pub fn set_header(
@@ -49,7 +55,7 @@ impl Response {
         key: hyper::header::HeaderName,
         value: hyper::header::HeaderValue,
     ) -> Self {
-        self.headers_mut().insert(key, value);
+        self.headers.insert(key, value);
         self
     }
     /// 设置响应header
@@ -57,28 +63,30 @@ impl Response {
     where
         H: Header,
     {
-        self.headers_mut().typed_insert(header);
+        self.headers.typed_insert(header);
+    }
+
+    #[inline]
+    pub(crate) fn into_hyper(self) -> hyper::Response<ResBody> {
+        let Self {
+            status_code,
+            headers,
+            body,
+        } = self;
+
+        let mut res = hyper::Response::new(body);
+        *res.headers_mut() = headers;
+        // Default to a 404 if no response code was set
+        *res.status_mut() = status_code;
+
+        res
     }
 }
 
 impl<T: Into<Bytes>> From<T> for Response {
     fn from(chunk: T) -> Self {
-        Self {
-            res: HyperResponse::new(full(chunk)),
-        }
-    }
-}
-
-impl Deref for Response {
-    type Target = HyperResponse<ResBody>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.res
-    }
-}
-
-impl DerefMut for Response {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.res
+        let mut res = Response::empty();
+        res.set_body(full(chunk.into()));
+        res
     }
 }

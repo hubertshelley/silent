@@ -30,9 +30,9 @@ pub fn websocket_handler(req: &Request) -> Result<Response> {
         });
     };
     res.set_status(StatusCode::SWITCHING_PROTOCOLS);
-    res.headers_mut().typed_insert(Connection::upgrade());
-    res.headers_mut().typed_insert(Upgrade::websocket());
-    res.headers_mut()
+    res.headers.typed_insert(Connection::upgrade());
+    res.headers.typed_insert(Upgrade::websocket());
+    res.headers
         .typed_insert(SecWebsocketAccept::from(sec_ws_key));
     Ok(res)
 }

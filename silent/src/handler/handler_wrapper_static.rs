@@ -98,9 +98,9 @@ mod tests {
         req.set_path_params("path".to_owned(), PathParam::Path("index.html".to_string()));
         let mut res = handler.call(req).await.unwrap();
         clean_static(path);
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status_code, StatusCode::OK);
         assert_eq!(
-            res.frame().await.unwrap().unwrap().data_ref().unwrap(),
+            res.body.frame().await.unwrap().unwrap().data_ref().unwrap(),
             &Bytes::from(CONTENT)
         );
     }
@@ -114,9 +114,9 @@ mod tests {
         req.set_path_params("path".to_owned(), PathParam::Path("".to_string()));
         let mut res = handler.call(req).await.unwrap();
         clean_static(path);
-        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status_code, StatusCode::OK);
         assert_eq!(
-            res.frame().await.unwrap().unwrap().data_ref().unwrap(),
+            res.body.frame().await.unwrap().unwrap().data_ref().unwrap(),
             &Bytes::from(CONTENT)
         );
     }

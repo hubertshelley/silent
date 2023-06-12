@@ -71,6 +71,6 @@ mod tests {
         assert!(handler_wrapper.match_req(&req).await);
         let res = handler_wrapper.call(req).await;
         assert!(res.is_ok());
-        assert_eq!(res.unwrap().status(), StatusCode::OK);
+        assert_eq!(res.unwrap().status_code, StatusCode::OK);
     }
 }

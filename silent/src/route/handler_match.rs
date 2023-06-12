@@ -236,6 +236,7 @@ mod tests {
                 .handle(req, "127.0.0.1:8000".parse().unwrap())
                 .await
                 .unwrap()
+                .body
                 .frame()
                 .await
                 .unwrap()
@@ -260,6 +261,7 @@ mod tests {
                 .handle(req, "127.0.0.1:8000".parse().unwrap())
                 .await
                 .unwrap()
+                .body
                 .frame()
                 .await
                 .unwrap()

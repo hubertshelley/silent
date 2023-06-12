@@ -1,3 +1,4 @@
+mod hyper_service;
 mod serve;
 
 use crate::conn::SilentConnection;

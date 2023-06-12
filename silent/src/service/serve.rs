@@ -1,10 +1,6 @@
 use crate::conn::SilentConnection;
-use crate::core::res_body::ResBody;
-use crate::core::response::Response;
 use crate::route::Routes;
-use hyper::body::Incoming;
-use hyper::service::service_fn;
-use hyper::{Request as HyperRequest, Response as HyperResponse};
+use crate::service::hyper_service::HyperHandler;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpStream;
@@ -23,29 +19,10 @@ impl Serve {
         stream: TcpStream,
         peer_addr: SocketAddr,
     ) -> Result<(), hyper::Error> {
-        let service = service_fn(move |req| self.handle(req, peer_addr));
         self.conn
             .http1
-            .serve_connection(stream, service)
+            .serve_connection(stream, HyperHandler::new(peer_addr, self.routes.clone()))
             .with_upgrades()
             .await
-    }
-
-    async fn handle(
-        &self,
-        req: HyperRequest<Incoming>,
-        peer_addr: SocketAddr,
-    ) -> Result<HyperResponse<ResBody>, hyper::Error> {
-        let (parts, body) = req.into_parts();
-        let req = HyperRequest::from_parts(parts, body.into()).into();
-        match self.routes.handle(req, peer_addr).await {
-            Ok(res) => Ok(res.res),
-            Err((mes, code)) => {
-                tracing::error!("Failed to handle request: {:?}", mes);
-                let mut res = Response::from(mes);
-                res.set_status(code);
-                Ok(res.res)
-            }
-        }
     }
 }

@@ -137,14 +137,13 @@ impl Routes {
                     }
                     match handler.call(req).await {
                         Ok(res) => {
-                            let (parts, body) = res.res.into_parts();
-                            let mut pre_res = pre_res.set_body(body);
-                            for (header_key, header_value) in parts.headers.into_iter() {
+                            for (header_key, header_value) in res.headers.clone().into_iter() {
                                 if let Some(key) = header_key {
                                     pre_res = pre_res.set_header(key, header_value);
                                 }
                             }
-                            *pre_res.status_mut() = parts.status;
+                            pre_res.status_code = res.status_code;
+                            pre_res.set_body(res.body);
                             for i in active_middlewares {
                                 if let Err(e) =
                                     route.middlewares[i].after_response(&mut pre_res).await
@@ -170,8 +169,8 @@ impl Routes {
                     method,
                     url,
                     http_version,
-                    res.status(),
-                    res.headers().get(header::CONTENT_LENGTH),
+                    res.status_code,
+                    res.headers.get(header::CONTENT_LENGTH),
                     req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
                 );
                 Ok(res)
