@@ -12,6 +12,7 @@ mod route;
 mod rt;
 #[cfg(feature = "server")]
 mod service;
+pub mod sse;
 #[cfg(feature = "ws")]
 mod ws;
 

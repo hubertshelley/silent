@@ -1,0 +1,13 @@
+[package]
+name = "example-sse-chat"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+futures-util = "0.3"
+silent = { path = "../../silent" }
+once_cell = "1"
+parking_lot = "0.12"
+tokio = { version = "1", features = ["macros"] }
+tokio-stream = { version = "0.1", features = ["net"] }
