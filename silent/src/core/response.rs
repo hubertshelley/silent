@@ -58,6 +58,16 @@ impl Response {
         self.headers.insert(key, value);
         self
     }
+    #[inline]
+    /// 设置响应header
+    pub fn headers(&self) -> &HeaderMap {
+        &self.headers
+    }
+    #[inline]
+    /// 设置响应header
+    pub fn headers_mut(&mut self) -> &mut HeaderMap {
+        &mut self.headers
+    }
     /// 设置响应header
     pub fn set_typed_header<H>(&mut self, header: H)
     where
