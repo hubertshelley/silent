@@ -12,7 +12,8 @@ mod route;
 mod rt;
 #[cfg(feature = "server")]
 mod service;
-pub mod sse;
+#[cfg(feature = "sse")]
+mod sse;
 #[cfg(feature = "ws")]
 mod ws;
 
@@ -43,6 +44,8 @@ pub mod prelude {
     pub use crate::route::Route;
     #[cfg(feature = "server")]
     pub use crate::service::Server;
+    #[cfg(feature = "sse")]
+    pub use crate::sse::{sse_reply, SSEEvent};
     #[cfg(feature = "ws")]
     pub use crate::ws::{
         FnOnClose, FnOnConnect, FnOnNoneResultFut, FnOnReceive, FnOnSend, FnOnSendFut,

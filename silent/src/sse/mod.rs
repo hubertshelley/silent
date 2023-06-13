@@ -6,19 +6,19 @@
 //!
 //! use std::time::Duration;
 //! use std::convert::Infallible;
-//! use silent::{HandlerWrapperResponse, Method, prelude::Route, Response, sse::Event};
+//! use silent::{HandlerWrapperResponse, Method, prelude::Route, Response, sse::SSEEvent};
 //! use futures_util::{stream::iter, Stream};
-//! use silent::prelude::HandlerGetter;
+//! use silent::prelude::{HandlerGetter, sse_reply};
 //!
-//! fn sse_events() -> impl Stream<Item = Result<Event, Infallible>> {
+//! fn sse_events() -> impl Stream<Item = Result<SSEEvent, Infallible>> {
 //!     iter(vec![
-//!         Ok(Event::default().data("unnamed event")),
+//!         Ok(SSEEvent::default().data("unnamed event")),
 //!         Ok(
-//!             Event::default().event("chat")
+//!             SSEEvent::default().event("chat")
 //!             .data("chat message")
 //!         ),
 //!         Ok(
-//!             Event::default().id(13.to_string())
+//!             SSEEvent::default().id(13.to_string())
 //!             .event("chat")
 //!             .data("other chat message\nwith next line")
 //!             .retry(Duration::from_millis(5000))
@@ -28,8 +28,7 @@
 //!
 //! let route = Route::new("push-notifications")
 //!     .handler(Method::GET, HandlerWrapperResponse::new(|req| async {
-//!         let res = Response::empty();
-//!         res.set_body(warp::sse::keep_alive().stream(sse_events()));
+//!         let mut res = sse_reply(sse_events());
 //!         res
 //!     }).arc());
 //! ```
@@ -43,6 +42,8 @@
 
 mod event;
 mod keep_alive;
+mod reply;
 
-pub use event::Event;
+pub use event::SSEEvent;
 pub use keep_alive::{keep_alive, KeepAlive};
+pub use reply::sse_reply;

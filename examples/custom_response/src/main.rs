@@ -1,3 +1,4 @@
+use silent::header::CONTENT_TYPE;
 use silent::prelude::*;
 
 fn main() {
@@ -15,7 +16,9 @@ fn main() {
 }
 
 async fn custom_response(_req: Request) -> Result<Response> {
-    let res = Response::empty();
+    let mut res = Response::empty();
+    res.headers_mut()
+        .insert(CONTENT_TYPE, HeaderValue::from_static("text"));
     let html = r#"
     <!DOCTYPE html>
     <html lang="en">
@@ -27,7 +30,7 @@ async fn custom_response(_req: Request) -> Result<Response> {
         <h1>custom response</h1>
     </body>
     </html>"#;
-    let res = res.set_body(full(html));
+    res.set_body(full(html));
     Ok(res)
 }
 

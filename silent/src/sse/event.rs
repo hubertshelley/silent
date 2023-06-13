@@ -13,7 +13,7 @@ enum DataType {
 
 /// Server-sent event
 #[derive(Default, Debug)]
-pub struct Event {
+pub struct SSEEvent {
     id: Option<String>,
     data: Option<DataType>,
     event: Option<String>,
@@ -21,51 +21,51 @@ pub struct Event {
     retry: Option<Duration>,
 }
 
-impl Event {
+impl SSEEvent {
     /// Set Server-sent event data
     /// data field(s) ("data:<content>")
-    pub fn data<T: Into<String>>(mut self, data: T) -> Event {
+    pub fn data<T: Into<String>>(mut self, data: T) -> SSEEvent {
         self.data = Some(DataType::Text(data.into()));
         self
     }
 
     /// Set Server-sent event data
     /// data field(s) ("data:<content>")
-    pub fn json_data<T: Serialize>(mut self, data: T) -> Result<Event, Error> {
+    pub fn json_data<T: Serialize>(mut self, data: T) -> Result<SSEEvent, Error> {
         self.data = Some(DataType::Json(serde_json::to_string(&data)?));
         Ok(self)
     }
 
     /// Set Server-sent event comment
     /// Comment field (":<comment-text>")
-    pub fn comment<T: Into<String>>(mut self, comment: T) -> Event {
+    pub fn comment<T: Into<String>>(mut self, comment: T) -> SSEEvent {
         self.comment = Some(comment.into());
         self
     }
 
     /// Set Server-sent event event
-    /// Event name field ("event:<event-name>")
-    pub fn event<T: Into<String>>(mut self, event: T) -> Event {
+    /// SSEEvent name field ("event:<event-name>")
+    pub fn event<T: Into<String>>(mut self, event: T) -> SSEEvent {
         self.event = Some(event.into());
         self
     }
 
     /// Set Server-sent event retry
     /// Retry timeout field ("retry:<timeout>")
-    pub fn retry(mut self, duration: Duration) -> Event {
+    pub fn retry(mut self, duration: Duration) -> SSEEvent {
         self.retry = Some(duration);
         self
     }
 
     /// Set Server-sent event id
     /// Identifier field ("id:<identifier>")
-    pub fn id<T: Into<String>>(mut self, id: T) -> Event {
+    pub fn id<T: Into<String>>(mut self, id: T) -> SSEEvent {
         self.id = Some(id.into());
         self
     }
 }
 
-impl fmt::Display for Event {
+impl fmt::Display for SSEEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ref comment) = &self.comment {
             ":".fmt(f)?;

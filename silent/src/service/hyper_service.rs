@@ -34,8 +34,7 @@ impl HyperHandler {
         async move {
             match routes.clone().handle(req, remote_addr).await {
                 Ok(res) => {
-                    response.set_status(res.status_code);
-                    response.set_body(res.body);
+                    response = res;
                 }
                 Err((mes, code)) => {
                     tracing::error!("Failed to handle request: {:?}", mes);
