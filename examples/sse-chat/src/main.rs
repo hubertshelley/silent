@@ -6,9 +6,10 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use futures_util::{Stream, StreamExt, TryFutureExt, TryStreamExt};
+use futures_util::StreamExt;
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
+use serde::Deserialize;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -46,10 +47,16 @@ enum Message {
     Reply(String),
 }
 
-async fn chat_send(req: Request) -> Result<Response> {
+#[derive(Debug, Clone, Deserialize)]
+struct Msg {
+    msg: String,
+}
+
+async fn chat_send(mut req: Request) -> Result<Response> {
     let my_id = req.get_path_params::<i32>("id")?;
-    let msg = "hello";
-    user_message(my_id as usize, msg);
+    let msg = req.json_parse::<Msg>().await?;
+    println!("chat_send: my_id: {}, msg: {:?}", my_id, msg);
+    user_message(my_id as usize, msg.msg.as_str());
     Ok(Response::empty())
 }
 
@@ -143,7 +150,8 @@ static INDEX_HTML: &str = r#"
             var msg = text.value;
             var xhr = new XMLHttpRequest();
             xhr.open("POST", uri + '/' + user_id, true);
-            xhr.send(msg);
+            xhr.setRequestHeader('Content-Type','application/json');
+            xhr.send(`{"msg":"${msg}"}`);
             text.value = '';
             message('<You>: ' + msg);
         };
