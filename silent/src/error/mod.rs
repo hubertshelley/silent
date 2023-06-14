@@ -1,4 +1,4 @@
-use crate::StatusCode;
+use crate::{Response, StatusCode};
 use std::backtrace::Backtrace;
 use std::io;
 use thiserror::Error;
@@ -80,5 +80,14 @@ impl SilentError {
     }
     pub fn trace(&self) -> Backtrace {
         Backtrace::capture()
+    }
+}
+
+impl From<SilentError> for Response {
+    fn from(value: SilentError) -> Self {
+        let mut res = Response::empty();
+        res.set_status(value.status_code());
+        res.set_body(value.to_string().into());
+        res
     }
 }

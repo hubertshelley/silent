@@ -109,7 +109,7 @@ impl Routes {
         &self,
         req: Request,
         peer_addr: SocketAddr,
-    ) -> Result<Response, (String, StatusCode)> {
+    ) -> Result<Response, SilentError> {
         tracing::debug!("{:?}", req);
         let (mut req, path) = req.split_url();
         let method = req.method().clone();
@@ -118,7 +118,10 @@ impl Routes {
         let start_time = Utc::now().time();
         let res = match self.handler_match(&mut req, path.as_str()) {
             RouteMatched::Matched(route) => match route.handler.get(req.method()) {
-                None => Err((String::from("405"), StatusCode::METHOD_NOT_ALLOWED)),
+                None => Err(SilentError::business_error(
+                    StatusCode::METHOD_NOT_ALLOWED,
+                    "method not allowed".to_string(),
+                )),
                 Some(handler) => {
                     let mut pre_res = Response::empty();
                     let mut active_middlewares = vec![];
@@ -128,12 +131,9 @@ impl Routes {
                         }
                     }
                     for i in active_middlewares.clone() {
-                        if let Err(e) = route.middlewares[i]
+                        route.middlewares[i]
                             .pre_request(&mut req, &mut pre_res)
-                            .await
-                        {
-                            return error_result_handler(e);
-                        }
+                            .await?
                     }
                     match handler.call(req).await {
                         Ok(res) => {
@@ -145,19 +145,18 @@ impl Routes {
                             pre_res.status_code = res.status_code;
                             pre_res.set_body(res.body);
                             for i in active_middlewares {
-                                if let Err(e) =
-                                    route.middlewares[i].after_response(&mut pre_res).await
-                                {
-                                    return error_result_handler(e);
-                                }
+                                route.middlewares[i].after_response(&mut pre_res).await?
                             }
                             Ok(pre_res)
                         }
-                        Err(e) => error_result_handler(e),
+                        Err(e) => Err(e),
                     }
                 }
             },
-            RouteMatched::Unmatched => Err((String::from("404"), StatusCode::NOT_FOUND)),
+            RouteMatched::Unmatched => Err(SilentError::business_error(
+                StatusCode::NOT_FOUND,
+                "Server not found".to_string(),
+            )),
         };
         let end_time = Utc::now().time();
         let req_time = end_time - start_time;
@@ -175,28 +174,20 @@ impl Routes {
                 );
                 Ok(res)
             }
-            Err((msg, code)) => {
+            Err(e) => {
                 tracing::error!(
                     "{} \"{} {} {:?}\" {} {:?} {} {}",
                     peer_addr,
                     method,
                     url,
                     http_version,
-                    code,
+                    e.status_code(),
                     0,
                     req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
-                    msg
+                    e.to_string()
                 );
-                Err((msg, code))
+                Err(e)
             }
         }
-    }
-}
-
-fn error_result_handler(e: SilentError) -> Result<Response, (String, StatusCode)> {
-    let _ = e.trace();
-    match e {
-        SilentError::BusinessError { code, msg } => Err((msg, code)),
-        _ => Err((e.to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
     }
 }

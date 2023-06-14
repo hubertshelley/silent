@@ -26,23 +26,18 @@ impl HyperHandler {
     /// Handle [`Request`] and returns [`Response`].
     #[inline]
     pub fn handle(&self, req: Request) -> impl Future<Output = Response> {
-        let mut response = Response::empty();
         let Self {
             remote_addr,
             routes,
         } = self.clone();
         async move {
             match routes.clone().handle(req, remote_addr).await {
-                Ok(res) => {
-                    response = res;
-                }
-                Err((mes, code)) => {
-                    tracing::error!("Failed to handle request: {:?}", mes);
-                    response.set_body(mes.into());
-                    response.set_status(code);
+                Ok(res) => res,
+                Err(err) => {
+                    tracing::error!("Failed to handle request: {:?}", err);
+                    err.into()
                 }
             }
-            response
         }
     }
 }
