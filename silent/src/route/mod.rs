@@ -69,13 +69,22 @@ impl Route {
         }
     }
     pub fn append(mut self, mut route: Route) -> Self {
-        route.middlewares.append(&mut self.middlewares.clone());
+        self.middlewares
+            .iter()
+            .cloned()
+            .for_each(|m| route.middleware_hook(m.clone()));
         self.children.push(route);
         self
     }
     pub fn hook(mut self, handler: impl MiddleWareHandler + 'static) -> Self {
-        self.middlewares.push(Arc::new(handler));
+        self.middleware_hook(Arc::new(handler));
         self
+    }
+    fn middleware_hook(&mut self, handler: Arc<dyn MiddleWareHandler>) {
+        self.middlewares.push(handler.clone());
+        self.children
+            .iter_mut()
+            .for_each(|r| r.middleware_hook(handler.clone()));
     }
 }
 
@@ -189,5 +198,21 @@ impl Routes {
                 Err(e)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct MiddlewareTest;
+
+    impl MiddleWareHandler for MiddlewareTest {}
+    #[test]
+    fn middleware_tree_test() {
+        let route = Route::new("api")
+            .hook(MiddlewareTest {})
+            .append(Route::new("test"));
+        assert_eq!(route.children[0].middlewares.len(), 1)
     }
 }
