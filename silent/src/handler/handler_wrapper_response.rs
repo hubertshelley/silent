@@ -17,7 +17,7 @@ pub struct HandlerWrapperResponse<F> {
 
 impl<F, Fut> HandlerWrapperResponse<F>
 where
-    Fut: Future<Output = Result<Response>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<Response>> + Send + 'static,
     F: Fn(Request) -> Fut,
 {
     pub fn new(handler: F) -> Self {
@@ -37,7 +37,7 @@ where
 #[async_trait]
 impl<F, Fut> Handler for HandlerWrapperResponse<F>
 where
-    Fut: Future<Output = Result<Response>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<Response>> + Send + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
 {
     async fn call(&self, req: Request) -> Result<Response> {
@@ -47,7 +47,7 @@ where
 
 impl<F, Fut> From<F> for HandlerWrapperResponse<F>
 where
-    Fut: Future<Output = Result<Response>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<Response>> + Send + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
 {
     fn from(handler: F) -> Self {

@@ -1,6 +1,7 @@
 [workspace]
 members = ["silent*", "examples/*"]
 default-members = ["silent", ]
+exclude = ["examples/database_sqlx_sqlite"]
 
 [workspace.package]
 edition = "2021"

@@ -21,7 +21,7 @@ pub trait HandlerGetter {
 
 pub trait HandlerAppend<F, T, Fut>: HandlerGetter
 where
-    Fut: Future<Output = Result<T>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<T>> + Send + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
     T: Serialize + Send + 'static,
 {
@@ -121,7 +121,7 @@ impl HandlerGetter for Route {
 
 impl<F, T, Fut> HandlerAppend<F, T, Fut> for Route
 where
-    Fut: Future<Output = Result<T>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<T>> + Send + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
     T: Serialize + Send + 'static,
 {

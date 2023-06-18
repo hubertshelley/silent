@@ -20,7 +20,7 @@ pub struct HandlerWrapper<F> {
 
 impl<F, T, Fut> HandlerWrapper<F>
 where
-    Fut: Future<Output = Result<T>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<T>> + Send + 'static,
     F: Fn(Request) -> Fut,
     T: Serialize + Send,
 {
@@ -46,7 +46,7 @@ where
 #[async_trait]
 impl<F, T, Fut> Handler for HandlerWrapper<F>
 where
-    Fut: Future<Output = Result<T>> + Send + Sync + 'static,
+    Fut: Future<Output = Result<T>> + Send + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
     T: Serialize + Send + 'static,
 {

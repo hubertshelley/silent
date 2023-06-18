@@ -112,13 +112,13 @@ pub trait WebSocketHandlerTrait<
         + Send
         + Sync
         + 'static,
-    FnOnConnectFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnConnectFut: Future<Output = Result<()>> + Send + 'static,
     FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
-    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
+    FnOnSendFut: Future<Output = Result<Message>> + Send + 'static,
     FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
-    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnReceiveFut: Future<Output = Result<()>> + Send + 'static,
     FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
-    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
+    FnOnCloseFut: Future<Output = ()> + Send + 'static,
 {
     async fn handle(
         self,
@@ -163,13 +163,13 @@ where
         + Send
         + Sync
         + 'static,
-    FnOnConnectFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnConnectFut: Future<Output = Result<()>> + Send + 'static,
     FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
-    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
+    FnOnSendFut: Future<Output = Result<Message>> + Send + 'static,
     FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
-    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnReceiveFut: Future<Output = Result<()>> + Send + 'static,
     FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
-    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
+    FnOnCloseFut: Future<Output = ()> + Send + 'static,
 {
     async fn handle(
         self,

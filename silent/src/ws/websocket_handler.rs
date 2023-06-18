@@ -21,13 +21,13 @@ pub struct WebSocketHandler<
         + Send
         + Sync
         + 'static,
-    FnOnConnectFut: Future<Output = Result<()>>,
+    FnOnConnectFut: Future<Output = Result<()>> + Send + 'static,
     FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
-    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
+    FnOnSendFut: Future<Output = Result<Message>> + Send + 'static,
     FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
-    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnReceiveFut: Future<Output = Result<()>> + Send + 'static,
     FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
-    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
+    FnOnCloseFut: Future<Output = ()> + Send + 'static,
 {
     pub(crate) on_connect: Option<Arc<FnOnConnect>>,
     pub(crate) on_send: Option<Arc<FnOnSend>>,
@@ -60,13 +60,13 @@ where
         + Send
         + Sync
         + 'static,
-    FnOnConnectFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnConnectFut: Future<Output = Result<()>> + Send + 'static,
     FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
-    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
+    FnOnSendFut: Future<Output = Result<Message>> + Send + 'static,
     FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
-    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
+    FnOnReceiveFut: Future<Output = Result<()>> + Send + 'static,
     FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
-    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
+    FnOnCloseFut: Future<Output = ()> + Send + 'static,
 {
     pub fn new() -> WebSocketHandler<
         FnOnConnect,
