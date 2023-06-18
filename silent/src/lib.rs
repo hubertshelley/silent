@@ -10,6 +10,8 @@ mod middleware;
 mod route;
 #[cfg(feature = "server")]
 mod rt;
+#[cfg(feature = "security")]
+mod security;
 #[cfg(feature = "server")]
 mod service;
 #[cfg(feature = "sse")]
@@ -42,6 +44,8 @@ pub mod prelude {
     pub use crate::route::handler_append::WSHandlerAppend;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
     pub use crate::route::Route;
+    #[cfg(feature = "security")]
+    pub use crate::security::{make_password, verify_password};
     #[cfg(feature = "server")]
     pub use crate::service::Server;
     #[cfg(feature = "sse")]
