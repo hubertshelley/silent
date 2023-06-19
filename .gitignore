@@ -3,3 +3,4 @@
 .idea/
 static/
 py_env/
+.DS_Store
