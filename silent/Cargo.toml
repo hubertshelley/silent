@@ -51,3 +51,4 @@ headers = "0.3.8"
 tokio-stream = { version = "0.1.14", features = ["net"] }
 pin-project = "1.0"
 argon2 = "0.5.0"
+pbkdf2 = { version = "0.12", features = ["simple"] }

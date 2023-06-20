@@ -45,7 +45,7 @@ pub mod prelude {
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
     pub use crate::route::Route;
     #[cfg(feature = "security")]
-    pub use crate::security::{make_password, verify_password};
+    pub use crate::security::{argon2, pbkdf2};
     #[cfg(feature = "server")]
     pub use crate::service::Server;
     #[cfg(feature = "sse")]

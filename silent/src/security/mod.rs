@@ -1,3 +1,2 @@
-mod hash;
-
-pub use hash::{make_password, verify_password};
+pub mod argon2;
+pub mod pbkdf2;
