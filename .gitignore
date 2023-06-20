@@ -1,6 +1,7 @@
 /target
 /Cargo.lock
 .idea/
+.vscode/
 static/
 py_env/
 .DS_Store
