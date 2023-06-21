@@ -7,8 +7,8 @@
 
 ### 对称加密
 
-- [ ] aes
+- [x] aes 仅引用aes/aes_gcm
 
 ### 非对称加密
 
-- [ ] rsa
+- [x] rsa 仅引用rsa
