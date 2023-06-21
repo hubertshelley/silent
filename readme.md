@@ -15,6 +15,24 @@ Silent 是一个简单的基于Hyper的Web框架，它的目标是提供一个�
 - [x] 日志 (使用了tracing)
 - [ ] 配置
 - [ ] 会话
-- [ ] 安全
+- [x] 安全
 - [ ] 测试
 - [ ] 文档
+
+## security
+
+### argon2
+
+add make_password and verify_password function
+
+### pbkdf2
+
+add make_password and verify_password function
+
+### aes
+
+re-export aes/aes_gcm
+
+### rsa
+
+re-export rsa
