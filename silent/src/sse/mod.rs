@@ -6,11 +6,11 @@
 //!
 //! use std::time::Duration;
 //! use std::convert::Infallible;
-//! use silent::{HandlerWrapperResponse, Method, prelude::Route, Response, sse::SSEEvent};
+//! use silent::{HandlerWrapperResponse, Method, prelude::Route, Response};
 //! use futures_util::{stream::iter, Stream};
-//! use silent::prelude::{HandlerGetter, sse_reply};
+//! use silent::prelude::{HandlerGetter, sse_reply, SSEEvent, Result};
 //!
-//! fn sse_events() -> impl Stream<Item = Result<SSEEvent, Infallible>> {
+//! fn sse_events() -> impl Stream<Item = Result<SSEEvent>> + Send + 'static {
 //!     iter(vec![
 //!         Ok(SSEEvent::default().data("unnamed event")),
 //!         Ok(
@@ -29,7 +29,7 @@
 //! let route = Route::new("push-notifications")
 //!     .handler(Method::GET, HandlerWrapperResponse::new(|req| async {
 //!         let mut res = sse_reply(sse_events());
-//!         res
+//!         Ok(res)
 //!     }).arc());
 //! ```
 //!
