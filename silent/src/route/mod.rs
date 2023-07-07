@@ -151,6 +151,7 @@ impl Routes {
                                     pre_res = pre_res.set_header(key, header_value);
                                 }
                             }
+                            pre_res.cookies = res.cookies;
                             pre_res.status_code = res.status_code;
                             pre_res.set_body(res.body);
                             for i in active_middlewares {
@@ -208,6 +209,7 @@ mod tests {
     struct MiddlewareTest;
 
     impl MiddleWareHandler for MiddlewareTest {}
+
     #[test]
     fn middleware_tree_test() {
         let route = Route::new("api")

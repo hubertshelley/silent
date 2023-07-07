@@ -1,6 +1,7 @@
 use crate::core::res_body::{full, ResBody};
-use crate::{HeaderMap, StatusCode};
+use crate::{header, HeaderMap, StatusCode};
 use bytes::Bytes;
+use cookie::{Cookie, CookieJar};
 use headers::{Header, HeaderMapExt};
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -16,6 +17,8 @@ pub struct Response {
     /// The HTTP headers.
     pub(crate) headers: HeaderMap,
     pub(crate) body: ResBody,
+    #[cfg(feature = "cookie")]
+    pub(crate) cookies: CookieJar,
 }
 
 impl fmt::Debug for Response {
@@ -39,6 +42,8 @@ impl Response {
             status_code: StatusCode::OK,
             headers: HeaderMap::new(),
             body: ResBody::None,
+            #[cfg(feature = "cookie")]
+            cookies: CookieJar::default(),
         }
     }
     /// 设置响应状态
@@ -78,6 +83,14 @@ impl Response {
 
     #[inline]
     pub(crate) fn into_hyper(self) -> hyper::Response<ResBody> {
+        #[cfg(feature = "cookie")]
+        let Self {
+            status_code,
+            headers,
+            body,
+            cookies,
+        } = self;
+        #[cfg(not(feature = "cookie"))]
         let Self {
             status_code,
             headers,
@@ -86,10 +99,38 @@ impl Response {
 
         let mut res = hyper::Response::new(body);
         *res.headers_mut() = headers;
+        #[cfg(feature = "cookie")]
+        for cookie in cookies.delta() {
+            if let Ok(hv) = cookie.encoded().to_string().parse() {
+                res.headers_mut().append(header::SET_COOKIE, hv);
+            }
+        }
         // Default to a 404 if no response code was set
         *res.status_mut() = status_code;
 
         res
+    }
+
+    #[cfg(feature = "cookie")]
+    /// Get `CookieJar` reference.
+    #[inline]
+    pub fn cookies(&self) -> &CookieJar {
+        &self.cookies
+    }
+    #[cfg(feature = "cookie")]
+    /// Get `CookieJar` mutable reference.
+    #[inline]
+    pub fn cookies_mut(&mut self) -> &mut CookieJar {
+        &mut self.cookies
+    }
+    #[cfg(feature = "cookie")]
+    /// Get `Cookie` from cookies.
+    #[inline]
+    pub fn cookie<T>(&self, name: T) -> Option<&Cookie<'static>>
+    where
+        T: AsRef<str>,
+    {
+        self.cookies.get(name.as_ref())
     }
 }
 
