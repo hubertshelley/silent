@@ -56,6 +56,8 @@ pub mod prelude {
     };
     #[cfg(feature = "ws")]
     pub use crate::ws::{Message, WebSocket, WebSocketHandler, WebSocketParts};
+    #[cfg(feature = "cookie")]
+    pub use cookie::{time as CookieTime, Cookie};
     pub use headers::*;
     pub use hyper::{header, upgrade, Method, StatusCode};
 }
