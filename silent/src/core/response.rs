@@ -144,6 +144,7 @@ impl Response {
     }
 
     #[cfg(not(feature = "cookie"))]
+    /// move response to from another response
     pub fn from_response(&mut self, res: Response) {
         for (header_key, header_value) in res.headers.clone().into_iter() {
             if let Some(key) = header_key {
