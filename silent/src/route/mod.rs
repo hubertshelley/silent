@@ -146,14 +146,7 @@ impl Routes {
                     }
                     match handler.call(req).await {
                         Ok(res) => {
-                            for (header_key, header_value) in res.headers.clone().into_iter() {
-                                if let Some(key) = header_key {
-                                    pre_res = pre_res.set_header(key, header_value);
-                                }
-                            }
-                            pre_res.cookies = res.cookies;
-                            pre_res.status_code = res.status_code;
-                            pre_res.set_body(res.body);
+                            pre_res.from_response(res);
                             for i in active_middlewares {
                                 route.middlewares[i].after_response(&mut pre_res).await?
                             }

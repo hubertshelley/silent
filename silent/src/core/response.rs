@@ -129,6 +129,30 @@ impl Response {
     {
         self.cookies.get(name.as_ref())
     }
+
+    #[cfg(feature = "cookie")]
+    /// move response to from another response
+    pub fn from_response(&mut self, res: Response) {
+        for (header_key, header_value) in res.headers.clone().into_iter() {
+            if let Some(key) = header_key {
+                self.headers_mut().insert(key, header_value);
+            }
+        }
+        self.cookies = res.cookies;
+        self.status_code = res.status_code;
+        self.set_body(res.body);
+    }
+
+    #[cfg(not(feature = "cookie"))]
+    pub fn from_response(&mut self, res: Response) {
+        for (header_key, header_value) in res.headers.clone().into_iter() {
+            if let Some(key) = header_key {
+                self.headers_mut().insert(key, header_value);
+            }
+        }
+        self.status_code = res.status_code;
+        self.set_body(res.body);
+    }
 }
 
 impl<T: Into<Bytes>> From<T> for Response {
