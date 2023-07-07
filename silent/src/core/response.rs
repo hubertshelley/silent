@@ -1,6 +1,7 @@
 use crate::core::res_body::{full, ResBody};
 use crate::{header, HeaderMap, StatusCode};
 use bytes::Bytes;
+#[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use headers::{Header, HeaderMapExt};
 use std::fmt;
@@ -55,11 +56,7 @@ impl Response {
         self.body = body;
     }
     /// 设置响应header
-    pub fn set_header(
-        mut self,
-        key: hyper::header::HeaderName,
-        value: hyper::header::HeaderValue,
-    ) -> Self {
+    pub fn set_header(mut self, key: header::HeaderName, value: header::HeaderValue) -> Self {
         self.headers.insert(key, value);
         self
     }
