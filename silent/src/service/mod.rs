@@ -90,7 +90,7 @@ impl Server {
                             tracing::info!("Accepting from: {}", stream.peer_addr().unwrap());
                             let routes = routes.read().await.clone();
                             let conn = conn.clone();
-                            tokio::task::spawn(async move {
+                            self.rt.spawn(async move {
                                 if let Err(err) = Serve::new(routes, conn).call(stream,peer_addr).await {
                                     tracing::error!("Failed to serve connection: {:?}", err);
                                 }
@@ -103,6 +103,15 @@ impl Server {
                 }
             }
         }
+    }
+
+    pub fn runtime(&self) -> &Runtime {
+        &self.rt
+    }
+
+    pub fn set_runtime(mut self, rt: Runtime) -> Self {
+        self.rt = rt;
+        self
     }
 
     pub fn run(&self) {
