@@ -1,3 +1,4 @@
+use crate::conn::support::TokioIo;
 use crate::conn::SilentConnection;
 use crate::route::Routes;
 use crate::service::hyper_service::HyperHandler;
@@ -19,9 +20,10 @@ impl Serve {
         stream: TcpStream,
         peer_addr: SocketAddr,
     ) -> Result<(), hyper::Error> {
+        let io = TokioIo::new(stream);
         self.conn
             .http1
-            .serve_connection(stream, HyperHandler::new(peer_addr, self.routes.clone()))
+            .serve_connection(io, HyperHandler::new(peer_addr, self.routes.clone()))
             .with_upgrades()
             .await
     }

@@ -1,3 +1,5 @@
+pub mod support;
+
 use crate::rt::RtExecutor;
 use hyper::server::conn::{http1, http2};
 
