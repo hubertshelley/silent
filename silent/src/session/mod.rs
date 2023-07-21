@@ -1,0 +1,96 @@
+use crate::{MiddleWareHandler, Request, Response, Result, SilentError, StatusCode};
+use async_session::{MemoryStore, Session, SessionStore};
+use async_trait::async_trait;
+use cookie::Cookie;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
+pub struct SessionMiddleware<T>
+where
+    T: SessionStore,
+{
+    pub session_store: Arc<RwLock<T>>,
+}
+
+impl Default for SessionMiddleware<MemoryStore> {
+    fn default() -> SessionMiddleware<MemoryStore> {
+        let session = MemoryStore::new();
+        Self::new(session)
+    }
+}
+
+impl<T> SessionMiddleware<T>
+where
+    T: SessionStore,
+{
+    pub fn new(session: T) -> Self {
+        let session_store = Arc::new(RwLock::new(session));
+        SessionMiddleware { session_store }
+    }
+}
+
+#[async_trait]
+impl<T> MiddleWareHandler for SessionMiddleware<T>
+where
+    T: SessionStore,
+{
+    async fn pre_request(&self, req: &mut Request, _res: &mut Response) -> Result<()> {
+        let cookies = req.cookies().clone();
+        let cookie = cookies.get("noice-web-session");
+        if cookie.is_none() {
+            req.extensions_mut().insert(Session::new());
+            return Ok(());
+        }
+        let cookie = cookie.unwrap();
+        let session = self
+            .session_store
+            .read()
+            .await
+            .load_session(cookie.value().to_string())
+            .await
+            .map_err(|e| {
+                SilentError::business_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to load session: {}", e),
+                )
+            })?;
+        if let Some(session) = session {
+            req.extensions_mut().insert(session);
+        } else {
+            req.extensions_mut().insert(Session::new());
+        }
+        Ok(())
+    }
+    async fn after_response(&self, res: &mut Response) -> Result<()> {
+        let session_store = self.session_store.read().await;
+        let session = res.extensions().get::<Session>();
+        println!("session: {:?}", session);
+        if let Some(session) = session {
+            let cookie_value = session_store
+                .store_session(session.clone())
+                .await
+                .map_err(|e| {
+                    SilentError::business_error(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to store session: {}", e),
+                    )
+                })?;
+            let cookie = res.cookies().get("noice-web-session");
+            if cookie.is_none() {
+                if let Some(cookie_value) = cookie_value {
+                    res.cookies_mut().add(
+                        Cookie::build("noice-web-session", cookie_value)
+                            .max_age(cookie::time::Duration::hours(2))
+                            .finish(),
+                    );
+                } else {
+                    return Err(SilentError::business_error(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed to store session".to_string(),
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+}

@@ -4,6 +4,7 @@ use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
 use crate::route::handler_match::{Match, RouteMatched};
 use crate::{header, Method, SilentError, StatusCode};
+use async_session::Session;
 use chrono::Utc;
 use std::collections::HashMap;
 use std::fmt;
@@ -80,7 +81,7 @@ impl Route {
         self.middleware_hook(Arc::new(handler));
         self
     }
-    fn middleware_hook(&mut self, handler: Arc<dyn MiddleWareHandler>) {
+    pub(crate) fn middleware_hook(&mut self, handler: Arc<dyn MiddleWareHandler>) {
         self.middlewares.push(handler.clone());
         self.children
             .iter_mut()
@@ -91,6 +92,7 @@ impl Route {
 #[derive(Clone, Default)]
 pub struct Routes {
     pub children: Vec<Route>,
+    middlewares: Vec<Arc<dyn MiddleWareHandler>>,
 }
 
 impl fmt::Debug for Routes {
@@ -107,11 +109,25 @@ impl fmt::Debug for Routes {
 
 impl Routes {
     pub fn new() -> Self {
-        Self { children: vec![] }
+        Self {
+            children: vec![],
+            middlewares: vec![],
+        }
     }
 
-    pub fn add(&mut self, route: Route) {
+    pub fn add(&mut self, mut route: Route) {
+        self.middlewares
+            .iter()
+            .cloned()
+            .for_each(|m| route.middleware_hook(m.clone()));
         self.children.push(route);
+    }
+
+    pub fn hook(&mut self, handler: impl MiddleWareHandler + 'static) {
+        let handler = Arc::new(handler);
+        self.children
+            .iter_mut()
+            .for_each(|r| r.middleware_hook(handler.clone()));
     }
 
     pub async fn handle(
@@ -144,6 +160,9 @@ impl Routes {
                             .pre_request(&mut req, &mut pre_res)
                             .await?
                     }
+                    println!("handl 1 {:?}", req.extensions().get::<Session>());
+                    req.extensions().clone_into(&mut pre_res.extensions());
+                    println!("handl 2 {:?}", pre_res.extensions().get::<Session>());
                     match handler.call(req).await {
                         Ok(res) => {
                             pre_res.from_response(res);

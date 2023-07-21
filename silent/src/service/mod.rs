@@ -4,6 +4,10 @@ mod serve;
 use crate::conn::SilentConnection;
 use crate::route::{Route, Routes};
 use crate::service::serve::Serve;
+#[cfg(feature = "session")]
+use crate::session::SessionMiddleware;
+#[cfg(feature = "session")]
+use async_session::SessionStore;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -17,6 +21,8 @@ pub struct Server {
     conn: Arc<SilentConnection>,
     rt: Runtime,
     shutdown_callback: Option<Box<dyn Fn() + Send + Sync>>,
+    #[cfg(feature = "session")]
+    session_set: bool,
 }
 
 impl Default for Server {
@@ -36,11 +42,22 @@ impl Server {
                 .build()
                 .unwrap(),
             shutdown_callback: None,
+            #[cfg(feature = "session")]
+            session_set: false,
         }
     }
 
     pub fn bind(&mut self, addr: SocketAddr) -> &mut Self {
         self.addr = addr;
+        self
+    }
+
+    #[cfg(feature = "session")]
+    pub fn set_session_store<S: SessionStore>(&mut self, session: S) -> &mut Self {
+        self.rt
+            .block_on(self.routes.write())
+            .hook(SessionMiddleware::new(session));
+        self.session_set = true;
         self
     }
 
@@ -58,7 +75,19 @@ impl Server {
     }
 
     pub async fn serve(&self) {
+        #[cfg(feature = "session")]
+        let session_set = self.session_set;
         let Self { conn, routes, .. } = self;
+        #[cfg(feature = "session")]
+        if !session_set {
+            let session_store = Arc::new(SessionMiddleware::default());
+            routes
+                .write()
+                .await
+                .children
+                .iter_mut()
+                .for_each(|r| r.middleware_hook(session_store.clone()));
+        }
         tracing::info!("Listening on {}", self.addr);
         let listener = TcpListener::bind(self.addr).await.unwrap();
 

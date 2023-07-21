@@ -14,6 +14,8 @@ mod rt;
 mod security;
 #[cfg(feature = "server")]
 mod service;
+#[cfg(feature = "session")]
+mod session;
 #[cfg(feature = "sse")]
 mod sse;
 #[cfg(feature = "ws")]
@@ -56,6 +58,8 @@ pub mod prelude {
     };
     #[cfg(feature = "ws")]
     pub use crate::ws::{Message, WebSocket, WebSocketHandler, WebSocketParts};
+    #[cfg(feature = "session")]
+    pub use async_session::{Session, SessionStore};
     #[cfg(feature = "cookie")]
     pub use cookie::{time as CookieTime, Cookie};
     pub use headers::*;
