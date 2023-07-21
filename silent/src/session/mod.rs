@@ -63,32 +63,24 @@ where
     }
     async fn after_response(&self, res: &mut Response) -> Result<()> {
         let session_store = self.session_store.read().await;
-        let session = res.extensions().get::<Session>();
-        println!("session: {:?}", session);
-        if let Some(session) = session {
-            let cookie_value = session_store
-                .store_session(session.clone())
-                .await
-                .map_err(|e| {
-                    SilentError::business_error(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to store session: {}", e),
-                    )
-                })?;
-            let cookie = res.cookies().get("noice-web-session");
+        let session = res.extensions.remove::<Session>();
+        let cookie = res.cookies().get("noice-web-session");
+        if let Some(mut session) = session {
             if cookie.is_none() {
-                if let Some(cookie_value) = cookie_value {
-                    res.cookies_mut().add(
-                        Cookie::build("noice-web-session", cookie_value)
-                            .max_age(cookie::time::Duration::hours(2))
-                            .finish(),
-                    );
-                } else {
-                    return Err(SilentError::business_error(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Failed to store session".to_string(),
-                    ));
-                }
+                session.regenerate()
+            }
+            let cookie_value = session_store.store_session(session).await.map_err(|e| {
+                SilentError::business_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to store session: {}", e),
+                )
+            })?;
+            if let Some(cookie_value) = cookie_value {
+                res.cookies_mut().add(
+                    Cookie::build("noice-web-session", cookie_value)
+                        .max_age(cookie::time::Duration::hours(2))
+                        .finish(),
+                );
             }
         }
         Ok(())

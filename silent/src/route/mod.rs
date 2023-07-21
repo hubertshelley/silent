@@ -160,9 +160,16 @@ impl Routes {
                             .pre_request(&mut req, &mut pre_res)
                             .await?
                     }
-                    println!("handl 1 {:?}", req.extensions().get::<Session>());
-                    req.extensions().clone_into(&mut pre_res.extensions());
-                    println!("handl 2 {:?}", pre_res.extensions().get::<Session>());
+                    #[cfg(feature = "cookie")]
+                    {
+                        *pre_res.cookies_mut() = req.cookies().clone();
+                    }
+                    #[cfg(feature = "session")]
+                    let session = req.extensions().get::<Session>().cloned();
+                    #[cfg(feature = "session")]
+                    if let Some(session) = session {
+                        pre_res.extensions.insert(session);
+                    }
                     match handler.call(req).await {
                         Ok(res) => {
                             pre_res.from_response(res);

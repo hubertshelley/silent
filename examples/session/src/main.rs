@@ -4,7 +4,6 @@ fn main() {
     logger::fmt().with_max_level(Level::INFO).init();
     let route = Route::new("").get(|mut req: Request| async move {
         let session = req.extensions_mut().get_mut::<Session>();
-        println!("{:?}", session);
         match session {
             None => {}
             Some(session) => {

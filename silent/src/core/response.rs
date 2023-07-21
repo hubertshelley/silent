@@ -50,9 +50,6 @@ impl Response {
             extensions: Extensions::default(),
         }
     }
-    pub(crate) fn extensions(&self) -> &Extensions {
-        &self.extensions
-    }
     /// 设置响应状态
     pub fn set_status(&mut self, status: StatusCode) {
         self.status_code = status;
@@ -146,9 +143,11 @@ impl Response {
                 self.headers_mut().insert(key, header_value);
             }
         }
-        self.cookies = res.cookies;
+        res.cookies.delta().for_each(|cookie| {
+            self.cookies.add(cookie.clone());
+        });
         self.status_code = res.status_code;
-        self.extensions = res.extensions;
+        self.extensions.extend(res.extensions);
         self.set_body(res.body);
     }
 
@@ -161,7 +160,7 @@ impl Response {
             }
         }
         self.status_code = res.status_code;
-        self.extensions = res.extensions;
+        self.extensions.extend(res.extensions);
         self.set_body(res.body);
     }
 }
