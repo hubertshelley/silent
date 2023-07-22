@@ -4,6 +4,7 @@ use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
 use crate::route::handler_match::{Match, RouteMatched};
 use crate::{header, Method, SilentError, StatusCode};
+use async_session::Session;
 use chrono::Utc;
 use std::collections::HashMap;
 use std::fmt;
@@ -80,7 +81,7 @@ impl Route {
         self.middleware_hook(Arc::new(handler));
         self
     }
-    fn middleware_hook(&mut self, handler: Arc<dyn MiddleWareHandler>) {
+    pub(crate) fn middleware_hook(&mut self, handler: Arc<dyn MiddleWareHandler>) {
         self.middlewares.push(handler.clone());
         self.children
             .iter_mut()
@@ -91,6 +92,7 @@ impl Route {
 #[derive(Clone, Default)]
 pub struct Routes {
     pub children: Vec<Route>,
+    middlewares: Vec<Arc<dyn MiddleWareHandler>>,
 }
 
 impl fmt::Debug for Routes {
@@ -107,11 +109,25 @@ impl fmt::Debug for Routes {
 
 impl Routes {
     pub fn new() -> Self {
-        Self { children: vec![] }
+        Self {
+            children: vec![],
+            middlewares: vec![],
+        }
     }
 
-    pub fn add(&mut self, route: Route) {
+    pub fn add(&mut self, mut route: Route) {
+        self.middlewares
+            .iter()
+            .cloned()
+            .for_each(|m| route.middleware_hook(m.clone()));
         self.children.push(route);
+    }
+
+    pub fn hook(&mut self, handler: impl MiddleWareHandler + 'static) {
+        let handler = Arc::new(handler);
+        self.children
+            .iter_mut()
+            .for_each(|r| r.middleware_hook(handler.clone()));
     }
 
     pub async fn handle(
@@ -143,6 +159,16 @@ impl Routes {
                         route.middlewares[i]
                             .pre_request(&mut req, &mut pre_res)
                             .await?
+                    }
+                    #[cfg(feature = "cookie")]
+                    {
+                        *pre_res.cookies_mut() = req.cookies().clone();
+                    }
+                    #[cfg(feature = "session")]
+                    let session = req.extensions().get::<Session>().cloned();
+                    #[cfg(feature = "session")]
+                    if let Some(session) = session {
+                        pre_res.extensions.insert(session);
                     }
                     match handler.call(req).await {
                         Ok(res) => {

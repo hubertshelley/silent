@@ -4,6 +4,7 @@ use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use headers::{Header, HeaderMapExt};
+use hyper::http::Extensions;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -20,6 +21,7 @@ pub struct Response {
     pub(crate) body: ResBody,
     #[cfg(feature = "cookie")]
     pub(crate) cookies: CookieJar,
+    pub(crate) extensions: Extensions,
 }
 
 impl fmt::Debug for Response {
@@ -45,6 +47,7 @@ impl Response {
             body: ResBody::None,
             #[cfg(feature = "cookie")]
             cookies: CookieJar::default(),
+            extensions: Extensions::default(),
         }
     }
     /// 设置响应状态
@@ -86,12 +89,14 @@ impl Response {
             headers,
             body,
             cookies,
+            ..
         } = self;
         #[cfg(not(feature = "cookie"))]
         let Self {
             status_code,
             headers,
             body,
+            ..
         } = self;
 
         let mut res = hyper::Response::new(body);
@@ -138,8 +143,11 @@ impl Response {
                 self.headers_mut().insert(key, header_value);
             }
         }
-        self.cookies = res.cookies;
+        res.cookies.delta().for_each(|cookie| {
+            self.cookies.add(cookie.clone());
+        });
         self.status_code = res.status_code;
+        self.extensions.extend(res.extensions);
         self.set_body(res.body);
     }
 
@@ -152,6 +160,7 @@ impl Response {
             }
         }
         self.status_code = res.status_code;
+        self.extensions.extend(res.extensions);
         self.set_body(res.body);
     }
 }
