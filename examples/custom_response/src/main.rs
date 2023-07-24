@@ -4,14 +4,8 @@ use silent::prelude::*;
 fn main() {
     logger::fmt().with_max_level(Level::INFO).init();
     let route = Route::new("")
-        .handler(
-            Method::GET,
-            HandlerWrapperResponse::new(custom_response).arc(),
-        )
-        .append(Route::new("2").handler(
-            Method::GET,
-            HandlerWrapperResponse::new(custom_response2).arc(),
-        ));
+        .get(custom_response)
+        .append(Route::new("2").get(custom_response2));
     Server::new().bind_route(route).run();
 }
 

@@ -4,6 +4,7 @@ use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
 use crate::route::handler_match::{Match, RouteMatched};
 use crate::{header, Method, SilentError, StatusCode};
+#[cfg(feature = "session")]
 use async_session::Session;
 use chrono::Utc;
 use std::collections::HashMap;

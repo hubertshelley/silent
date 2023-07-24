@@ -1,8 +1,7 @@
 use super::Route;
 #[cfg(feature = "ws")]
 use crate::ws::{HandlerWrapperWebSocket, Message, WebSocketHandler, WebSocketParts};
-use crate::{Handler, HandlerWrapper, Method, Request, Result};
-use serde::Serialize;
+use crate::{Handler, HandlerWrapper, Method, Request, Response, Result};
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
@@ -23,7 +22,7 @@ pub trait HandlerAppend<F, T, Fut>: HandlerGetter
 where
     Fut: Future<Output = Result<T>> + Send + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
-    T: Serialize + Send + 'static,
+    T: Into<Response>,
 {
     fn get(self, handler: F) -> Self;
     fn post(self, handler: F) -> Self;
@@ -123,7 +122,7 @@ impl<F, T, Fut> HandlerAppend<F, T, Fut> for Route
 where
     Fut: Future<Output = Result<T>> + Send + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
-    T: Serialize + Send + 'static,
+    T: Into<Response>,
 {
     fn get(mut self, handler: F) -> Self {
         self.handler_append(Method::GET, handler);

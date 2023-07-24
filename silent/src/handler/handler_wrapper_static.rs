@@ -1,3 +1,4 @@
+use crate::prelude::full;
 use crate::{Handler, Request, Response, SilentError, StatusCode};
 use async_trait::async_trait;
 
@@ -35,7 +36,9 @@ impl Handler for HandlerWrapperStatic {
                 path.push_str("index.html");
             }
             if let Ok(contents) = tokio::fs::read(path).await {
-                return Ok(contents.into());
+                let mut res = Response::empty();
+                res.set_body(full(contents));
+                return Ok(res);
             }
         }
         Err(SilentError::BusinessError {

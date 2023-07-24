@@ -5,6 +5,8 @@ use bytes::Bytes;
 use cookie::{Cookie, CookieJar};
 use headers::{Header, HeaderMapExt};
 use hyper::http::Extensions;
+use serde::Serialize;
+use serde_json::Value;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -165,10 +167,14 @@ impl Response {
     }
 }
 
-impl<T: Into<Bytes>> From<T> for Response {
-    fn from(chunk: T) -> Self {
+impl<S: Serialize> From<S> for Response {
+    fn from(value: S) -> Self {
+        let result: Bytes = match serde_json::to_value(&value).unwrap() {
+            Value::String(value) => value.into_bytes().into(),
+            _ => serde_json::to_vec(&value).unwrap().into(),
+        };
         let mut res = Response::empty();
-        res.set_body(full(chunk.into()));
+        res.set_body(full(result));
         res
     }
 }
