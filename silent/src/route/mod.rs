@@ -88,6 +88,12 @@ impl Route {
             .iter_mut()
             .for_each(|r| r.middleware_hook(handler.clone()));
     }
+    pub(crate) fn middleware_hook_first(&mut self, handler: Arc<dyn MiddleWareHandler>) {
+        self.middlewares.insert(0, handler.clone());
+        self.children
+            .iter_mut()
+            .for_each(|r| r.middleware_hook_first(handler.clone()));
+    }
 }
 
 #[derive(Clone, Default)]

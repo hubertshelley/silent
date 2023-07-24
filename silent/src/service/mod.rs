@@ -86,7 +86,7 @@ impl Server {
                 .await
                 .children
                 .iter_mut()
-                .for_each(|r| r.middleware_hook(session_store.clone()));
+                .for_each(|r| r.middleware_hook_first(session_store.clone()));
         }
         tracing::info!("Listening on {}", self.addr);
         let listener = TcpListener::bind(self.addr).await.unwrap();
