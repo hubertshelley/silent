@@ -2,7 +2,7 @@
 name = "silent"
 edition.workspace = true
 authors.workspace = true
-categories = ["web-programming::web", "web-programming::web-framework"]
+categories = ["web-programming::http-server", "web-programming::websocket", "network-programming", "asynchronous"]
 documentation = "https://docs.rs/silent/"
 description = """
 Silent Web Framework
