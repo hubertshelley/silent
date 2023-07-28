@@ -1,4 +1,9 @@
+mod exception_handler_trait;
+mod exception_handler_wrapper;
+
 use crate::{Response, StatusCode};
+pub(crate) use exception_handler_trait::ExceptionHandler;
+pub(crate) use exception_handler_wrapper::ExceptionHandlerWrapper;
 use std::backtrace::Backtrace;
 use std::io;
 use thiserror::Error;

@@ -1,5 +1,6 @@
 use crate::core::request::Request;
 use crate::core::response::Response;
+use crate::error::ExceptionHandler;
 use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
 use crate::route::handler_match::{Match, RouteMatched};
@@ -101,6 +102,7 @@ impl Route {
 pub struct Routes {
     pub children: Vec<Route>,
     middlewares: Vec<Arc<dyn MiddleWareHandler>>,
+    exception_handler: Option<Arc<dyn ExceptionHandler>>,
 }
 
 impl fmt::Debug for Routes {
@@ -120,6 +122,7 @@ impl Routes {
         Self {
             children: vec![],
             middlewares: vec![],
+            exception_handler: None,
         }
     }
 
@@ -138,12 +141,17 @@ impl Routes {
             .for_each(|r| r.middleware_hook(handler.clone()));
     }
 
+    pub(crate) fn set_exception_handler(&mut self, handler: Arc<dyn ExceptionHandler>) {
+        self.exception_handler = Some(handler);
+    }
+
     pub async fn handle(
         &self,
         req: Request,
         peer_addr: SocketAddr,
     ) -> Result<Response, SilentError> {
         tracing::debug!("{:?}", req);
+        let exception_handler = self.exception_handler.clone();
         let (mut req, path) = req.split_url();
         let method = req.method().clone();
         let url = req.uri().to_string().clone();
@@ -223,7 +231,10 @@ impl Routes {
                     req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
                     e.to_string()
                 );
-                Err(e)
+                match exception_handler {
+                    Some(handler) => Ok(handler.call(e).await),
+                    None => Err(e),
+                }
             }
         }
     }

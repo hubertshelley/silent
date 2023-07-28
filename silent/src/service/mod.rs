@@ -2,12 +2,15 @@ mod hyper_service;
 mod serve;
 
 use crate::conn::SilentConnection;
+use crate::error::ExceptionHandlerWrapper;
 use crate::route::{Route, Routes};
 use crate::service::serve::Serve;
 #[cfg(feature = "session")]
 use crate::session::SessionMiddleware;
+use crate::{Response, SilentError};
 #[cfg(feature = "session")]
 use async_session::SessionStore;
+use std::future::Future;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -66,6 +69,18 @@ impl Server {
         F: Fn() + Send + Sync + 'static,
     {
         self.shutdown_callback = Some(Box::new(callback));
+        self
+    }
+
+    pub fn set_exception_handler<F, T, Fut>(&mut self, handler: F) -> &mut Self
+    where
+        Fut: Future<Output = T> + Send + 'static,
+        F: Fn(SilentError) -> Fut + Send + Sync + 'static,
+        T: Into<Response>,
+    {
+        self.rt
+            .block_on(self.routes.write())
+            .set_exception_handler(ExceptionHandlerWrapper::new(handler).arc());
         self
     }
 
