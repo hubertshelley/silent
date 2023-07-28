@@ -3,7 +3,7 @@ use crate::core::response::Response;
 use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
 use crate::route::handler_match::{Match, RouteMatched};
-use crate::{header, Method, SilentError, StatusCode};
+use crate::{Method, SilentError, StatusCode};
 #[cfg(feature = "session")]
 use async_session::Session;
 use chrono::Utc;
@@ -200,25 +200,25 @@ impl Routes {
         match res {
             Ok(res) => {
                 tracing::info!(
-                    "{} \"{} {} {:?}\" {} {:?} {}",
+                    "{} {} {} {:?} {} {:?} {}",
                     peer_addr,
                     method,
                     url,
                     http_version,
-                    res.status_code,
-                    res.headers.get(header::CONTENT_LENGTH),
+                    res.status_code.as_u16(),
+                    res.content_length().lower(),
                     req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
                 );
                 Ok(res)
             }
             Err(e) => {
                 tracing::error!(
-                    "{} \"{} {} {:?}\" {} {:?} {} {}",
+                    "{} {} {} {:?} {} {:?} {} {}",
                     peer_addr,
                     method,
                     url,
                     http_version,
-                    e.status_code(),
+                    e.status_code().as_u16(),
                     0,
                     req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
                     e.to_string()

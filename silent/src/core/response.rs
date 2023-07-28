@@ -4,6 +4,7 @@ use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use headers::{Header, HeaderMapExt};
+use hyper::body::{Body, SizeHint};
 use hyper::http::Extensions;
 use serde::Serialize;
 use serde_json::Value;
@@ -75,6 +76,12 @@ impl Response {
     pub fn headers_mut(&mut self) -> &mut HeaderMap {
         &mut self.headers
     }
+    #[inline]
+    /// 获取响应体长度
+    pub fn content_length(&self) -> SizeHint {
+        self.body.size_hint()
+    }
+    #[inline]
     /// 设置响应header
     pub fn set_typed_header<H>(&mut self, header: H)
     where
