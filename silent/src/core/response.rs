@@ -1,5 +1,5 @@
 use crate::core::res_body::{full, ResBody};
-use crate::{header, HeaderMap, StatusCode};
+use crate::{header, HeaderMap, Result, SilentError, StatusCode};
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
@@ -65,6 +65,22 @@ impl Response {
     pub fn set_header(mut self, key: header::HeaderName, value: header::HeaderValue) -> Self {
         self.headers.insert(key, value);
         self
+    }
+    #[inline]
+    /// 设置响应重定向
+    pub fn redirect(url: &str) -> Result<Self> {
+        let mut res = Self::empty();
+        res.status_code = StatusCode::MOVED_PERMANENTLY;
+        res.headers.insert(
+            header::LOCATION,
+            url.parse().map_err(|e| {
+                SilentError::business_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("redirect error: {}", e),
+                )
+            })?,
+        );
+        Ok(res)
     }
     #[inline]
     /// 设置响应header
