@@ -5,6 +5,10 @@ use uuid::Uuid;
 /// 支持类型：
 ///     String(String)
 ///     Int(i32),
+///     Int64(i64),
+///     Int32(i32),
+///     UInt64(u64),
+///     UInt32(u32),
 ///     Uuid(Uuid),
 ///     Path(String),
 /// 支持数据转换
@@ -14,6 +18,14 @@ pub enum PathParam {
     String(String),
     /// 整型参数
     Int(i32),
+    /// 整型参数
+    Int64(i64),
+    /// 整型参数
+    Int32(i32),
+    /// 整型参数
+    UInt64(u64),
+    /// 整型参数
+    UInt32(u32),
     /// Uuid类型参数
     Uuid(Uuid),
     /// 路径参数
@@ -29,6 +41,24 @@ impl From<String> for PathParam {
 impl From<i32> for PathParam {
     fn from(i: i32) -> Self {
         PathParam::Int(i)
+    }
+}
+
+impl From<i64> for PathParam {
+    fn from(i: i64) -> Self {
+        PathParam::Int64(i)
+    }
+}
+
+impl From<u64> for PathParam {
+    fn from(i: u64) -> Self {
+        PathParam::UInt64(i)
+    }
+}
+
+impl From<u32> for PathParam {
+    fn from(i: u32) -> Self {
+        PathParam::UInt32(i)
     }
 }
 

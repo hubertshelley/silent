@@ -26,6 +26,10 @@ pub(crate) trait RouteMatch: Match {
 enum SpecialPath {
     String(String),
     Int(String),
+    I64(String),
+    I32(String),
+    U64(String),
+    U32(String),
     UUid(String),
     Path(String),
     FullPath(String),
@@ -41,6 +45,10 @@ impl<'a> From<&'a str> for SpecialPath {
         match path_type {
             "str" => SpecialPath::String(key.to_string()),
             "int" => SpecialPath::Int(key.to_string()),
+            "i64" => SpecialPath::I64(key.to_string()),
+            "i32" => SpecialPath::I32(key.to_string()),
+            "u64" => SpecialPath::U64(key.to_string()),
+            "u32" => SpecialPath::U32(key.to_string()),
             "uuid" => SpecialPath::UUid(key.to_string()),
             "path" => SpecialPath::Path(key.to_string()),
             "full_path" => SpecialPath::FullPath(key.to_string()),
@@ -74,6 +82,34 @@ impl Match for Route {
                     RouteMatched::Unmatched => RouteMatched::Unmatched,
                 },
                 SpecialPath::Int(key) => match local_url.parse::<i32>() {
+                    Ok(value) => {
+                        req.set_path_params(key, value.into());
+                        self.last_matched(req, last_url)
+                    }
+                    Err(_) => RouteMatched::Unmatched,
+                },
+                SpecialPath::I64(key) => match local_url.parse::<i64>() {
+                    Ok(value) => {
+                        req.set_path_params(key, value.into());
+                        self.last_matched(req, last_url)
+                    }
+                    Err(_) => RouteMatched::Unmatched,
+                },
+                SpecialPath::I32(key) => match local_url.parse::<i32>() {
+                    Ok(value) => {
+                        req.set_path_params(key, value.into());
+                        self.last_matched(req, last_url)
+                    }
+                    Err(_) => RouteMatched::Unmatched,
+                },
+                SpecialPath::U64(key) => match local_url.parse::<u64>() {
+                    Ok(value) => {
+                        req.set_path_params(key, value.into());
+                        self.last_matched(req, last_url)
+                    }
+                    Err(_) => RouteMatched::Unmatched,
+                },
+                SpecialPath::U32(key) => match local_url.parse::<u32>() {
                     Ok(value) => {
                         req.set_path_params(key, value.into());
                         self.last_matched(req, last_url)
@@ -196,6 +232,18 @@ mod tests {
         routes.add(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/world".parse().unwrap();
+        assert!(get_matched(&routes, req));
+    }
+
+    #[test]
+    fn multi_route_match_test_3() {
+        let route = Route::new("")
+            .get(hello)
+            .append(Route::new("<i64:**>").get(hello));
+        let mut routes = Routes::new();
+        routes.add(route);
+        let mut req = Request::empty();
+        *req.uri_mut() = "/12345678909876543".parse().unwrap();
         assert!(get_matched(&routes, req));
     }
 
