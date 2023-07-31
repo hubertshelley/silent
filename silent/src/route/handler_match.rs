@@ -239,12 +239,23 @@ mod tests {
     fn multi_route_match_test_3() {
         let route = Route::new("")
             .get(hello)
-            .append(Route::new("<i64:**>").get(hello));
+            .append(Route::new("<id:i64>").get(hello));
         let mut routes = Routes::new();
         routes.add(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/12345678909876543".parse().unwrap();
-        assert!(get_matched(&routes, req));
+        let (mut req, path) = req.split_url();
+        let matched = match routes.handler_match(&mut req, path.as_str()) {
+            RouteMatched::Matched(_) => {
+                assert_eq!(
+                    req.get_path_params::<i64>("id").unwrap(),
+                    12345678909876543i64
+                );
+                true
+            }
+            RouteMatched::Unmatched => false,
+        };
+        assert!(matched)
     }
 
     #[test]
