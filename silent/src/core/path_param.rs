@@ -74,6 +74,40 @@ impl<'a> TryFrom<&'a PathParam> for i32 {
     fn try_from(value: &'a PathParam) -> Result<Self, Self::Error> {
         match value {
             PathParam::Int(value) => Ok(*value),
+            PathParam::Int32(value) => Ok(*value),
+            _ => Err(SilentError::ParamsNotFound),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a PathParam> for i64 {
+    type Error = SilentError;
+
+    fn try_from(value: &'a PathParam) -> Result<Self, Self::Error> {
+        match value {
+            PathParam::Int64(value) => Ok(*value),
+            _ => Err(SilentError::ParamsNotFound),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a PathParam> for u64 {
+    type Error = SilentError;
+
+    fn try_from(value: &'a PathParam) -> Result<Self, Self::Error> {
+        match value {
+            PathParam::UInt64(value) => Ok(*value),
+            _ => Err(SilentError::ParamsNotFound),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a PathParam> for u32 {
+    type Error = SilentError;
+
+    fn try_from(value: &'a PathParam) -> Result<Self, Self::Error> {
+        match value {
+            PathParam::UInt32(value) => Ok(*value),
             _ => Err(SilentError::ParamsNotFound),
         }
     }
