@@ -1,9 +1,12 @@
 use crate::core::request::Request;
 use crate::core::response::Response;
+use crate::error::ExceptionHandler;
 use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
 use crate::route::handler_match::{Match, RouteMatched};
-use crate::{header, Method, SilentError, StatusCode};
+use crate::{Method, SilentError, StatusCode};
+#[cfg(feature = "session")]
+use async_session::Session;
 use chrono::Utc;
 use std::collections::HashMap;
 use std::fmt;
@@ -80,17 +83,26 @@ impl Route {
         self.middleware_hook(Arc::new(handler));
         self
     }
-    fn middleware_hook(&mut self, handler: Arc<dyn MiddleWareHandler>) {
+    pub(crate) fn middleware_hook(&mut self, handler: Arc<dyn MiddleWareHandler>) {
         self.middlewares.push(handler.clone());
         self.children
             .iter_mut()
             .for_each(|r| r.middleware_hook(handler.clone()));
+    }
+    #[allow(dead_code)]
+    pub(crate) fn middleware_hook_first(&mut self, handler: Arc<dyn MiddleWareHandler>) {
+        self.middlewares.insert(0, handler.clone());
+        self.children
+            .iter_mut()
+            .for_each(|r| r.middleware_hook_first(handler.clone()));
     }
 }
 
 #[derive(Clone, Default)]
 pub struct Routes {
     pub children: Vec<Route>,
+    middlewares: Vec<Arc<dyn MiddleWareHandler>>,
+    exception_handler: Option<Arc<dyn ExceptionHandler>>,
 }
 
 impl fmt::Debug for Routes {
@@ -107,11 +119,30 @@ impl fmt::Debug for Routes {
 
 impl Routes {
     pub fn new() -> Self {
-        Self { children: vec![] }
+        Self {
+            children: vec![],
+            middlewares: vec![],
+            exception_handler: None,
+        }
     }
 
-    pub fn add(&mut self, route: Route) {
+    pub fn add(&mut self, mut route: Route) {
+        self.middlewares
+            .iter()
+            .cloned()
+            .for_each(|m| route.middleware_hook(m.clone()));
         self.children.push(route);
+    }
+
+    pub fn hook(&mut self, handler: impl MiddleWareHandler + 'static) {
+        let handler = Arc::new(handler);
+        self.children
+            .iter_mut()
+            .for_each(|r| r.middleware_hook(handler.clone()));
+    }
+
+    pub(crate) fn set_exception_handler(&mut self, handler: Arc<dyn ExceptionHandler>) {
+        self.exception_handler = Some(handler);
     }
 
     pub async fn handle(
@@ -120,6 +151,7 @@ impl Routes {
         peer_addr: SocketAddr,
     ) -> Result<Response, SilentError> {
         tracing::debug!("{:?}", req);
+        let exception_handler = self.exception_handler.clone();
         let (mut req, path) = req.split_url();
         let method = req.method().clone();
         let url = req.uri().to_string().clone();
@@ -144,15 +176,19 @@ impl Routes {
                             .pre_request(&mut req, &mut pre_res)
                             .await?
                     }
+                    #[cfg(feature = "cookie")]
+                    {
+                        *pre_res.cookies_mut() = req.cookies().clone();
+                    }
+                    #[cfg(feature = "session")]
+                    let session = req.extensions().get::<Session>().cloned();
+                    #[cfg(feature = "session")]
+                    if let Some(session) = session {
+                        pre_res.extensions.insert(session);
+                    }
                     match handler.call(req).await {
                         Ok(res) => {
-                            for (header_key, header_value) in res.headers.clone().into_iter() {
-                                if let Some(key) = header_key {
-                                    pre_res = pre_res.set_header(key, header_value);
-                                }
-                            }
-                            pre_res.status_code = res.status_code;
-                            pre_res.set_body(res.body);
+                            pre_res.from_response(res);
                             for i in active_middlewares {
                                 route.middlewares[i].after_response(&mut pre_res).await?
                             }
@@ -172,30 +208,33 @@ impl Routes {
         match res {
             Ok(res) => {
                 tracing::info!(
-                    "{} \"{} {} {:?}\" {} {:?} {}",
+                    "{} {} {} {:?} {} {:?} {}",
                     peer_addr,
                     method,
                     url,
                     http_version,
-                    res.status_code,
-                    res.headers.get(header::CONTENT_LENGTH),
+                    res.status_code.as_u16(),
+                    res.content_length().lower(),
                     req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
                 );
                 Ok(res)
             }
             Err(e) => {
                 tracing::error!(
-                    "{} \"{} {} {:?}\" {} {:?} {} {}",
+                    "{} {} {} {:?} {} {:?} {} {}",
                     peer_addr,
                     method,
                     url,
                     http_version,
-                    e.status_code(),
+                    e.status_code().as_u16(),
                     0,
                     req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
                     e.to_string()
                 );
-                Err(e)
+                match exception_handler {
+                    Some(handler) => Ok(handler.call(e).await),
+                    None => Err(e),
+                }
             }
         }
     }
@@ -208,6 +247,7 @@ mod tests {
     struct MiddlewareTest;
 
     impl MiddleWareHandler for MiddlewareTest {}
+
     #[test]
     fn middleware_tree_test() {
         let route = Route::new("api")

@@ -48,7 +48,7 @@ impl HyperService<HyperRequest<Incoming>> for HyperHandler {
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     #[inline]
-    fn call(&mut self, req: HyperRequest<Incoming>) -> Self::Future {
+    fn call(&self, req: HyperRequest<Incoming>) -> Self::Future {
         let (parts, body) = req.into_parts();
         let req = HyperRequest::from_parts(parts, body.into()).into();
         let response = self.handle(req);

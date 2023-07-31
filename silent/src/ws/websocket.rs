@@ -1,3 +1,4 @@
+use crate::conn::support::TokioIo;
 use crate::log::debug;
 use crate::ws::message::Message;
 use crate::ws::upgrade::{Upgraded, WebSocketParts};
@@ -19,7 +20,7 @@ use tokio_tungstenite::WebSocketStream;
 
 pub struct WebSocket {
     parts: Arc<RwLock<WebSocketParts>>,
-    upgrade: WebSocketStream<HyperUpgraded>,
+    upgrade: WebSocketStream<TokioIo<HyperUpgraded>>,
 }
 
 unsafe impl Sync for WebSocket {}
@@ -32,6 +33,7 @@ impl WebSocket {
         config: Option<protocol::WebSocketConfig>,
     ) -> Self {
         let (parts, upgraded) = upgraded.into_parts();
+        let upgraded = TokioIo::new(upgraded);
         Self {
             parts: Arc::new(RwLock::new(parts)),
             upgrade: WebSocketStream::from_raw_socket(upgraded, role, config).await,

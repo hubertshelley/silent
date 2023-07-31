@@ -6,7 +6,7 @@
 //!
 //! use std::time::Duration;
 //! use std::convert::Infallible;
-//! use silent::{HandlerWrapperResponse, Method, prelude::Route, Response};
+//! use silent::{Method, prelude::Route, prelude::HandlerAppend, Response};
 //! use futures_util::{stream::iter, Stream};
 //! use silent::prelude::{HandlerGetter, sse_reply, SSEEvent, Result};
 //!
@@ -27,10 +27,10 @@
 //! }
 //!
 //! let route = Route::new("push-notifications")
-//!     .handler(Method::GET, HandlerWrapperResponse::new(|req| async {
+//!     .get(|req| async {
 //!         let mut res = sse_reply(sse_events());
 //!         Ok(res)
-//!     }).arc());
+//!     });
 //! ```
 //!
 //! Each field already is event which can be sent to client.

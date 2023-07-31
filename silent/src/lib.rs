@@ -14,6 +14,8 @@ mod rt;
 mod security;
 #[cfg(feature = "server")]
 mod service;
+#[cfg(feature = "session")]
+mod session;
 #[cfg(feature = "sse")]
 mod sse;
 #[cfg(feature = "ws")]
@@ -24,7 +26,7 @@ pub use crate::middleware::MiddleWareHandler;
 pub use error::SilentError;
 pub use error::SilentResult as Result;
 pub use handler::Handler;
-pub use handler::{HandlerWrapper, HandlerWrapperResponse};
+pub use handler::HandlerWrapper;
 pub use headers::*;
 pub use hyper::{header, Method, StatusCode};
 
@@ -37,7 +39,7 @@ pub mod prelude {
     #[cfg(feature = "static")]
     pub use crate::handler::static_handler;
     pub use crate::handler::Handler;
-    pub use crate::handler::{HandlerWrapper, HandlerWrapperResponse};
+    pub use crate::handler::HandlerWrapper;
     pub use crate::log::*;
     pub use crate::middleware::MiddleWareHandler;
     #[cfg(feature = "ws")]
@@ -56,6 +58,10 @@ pub mod prelude {
     };
     #[cfg(feature = "ws")]
     pub use crate::ws::{Message, WebSocket, WebSocketHandler, WebSocketParts};
+    #[cfg(feature = "session")]
+    pub use async_session::{Session, SessionStore};
+    #[cfg(feature = "cookie")]
+    pub use cookie::{time as CookieTime, Cookie};
     pub use headers::*;
     pub use hyper::{header, upgrade, Method, StatusCode};
 }

@@ -2,8 +2,15 @@ mod hyper_service;
 mod serve;
 
 use crate::conn::SilentConnection;
+use crate::error::ExceptionHandlerWrapper;
 use crate::route::{Route, Routes};
 use crate::service::serve::Serve;
+#[cfg(feature = "session")]
+use crate::session::SessionMiddleware;
+use crate::{Response, SilentError};
+#[cfg(feature = "session")]
+use async_session::SessionStore;
+use std::future::Future;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -17,6 +24,8 @@ pub struct Server {
     conn: Arc<SilentConnection>,
     rt: Runtime,
     shutdown_callback: Option<Box<dyn Fn() + Send + Sync>>,
+    #[cfg(feature = "session")]
+    session_set: bool,
 }
 
 impl Default for Server {
@@ -36,11 +45,22 @@ impl Server {
                 .build()
                 .unwrap(),
             shutdown_callback: None,
+            #[cfg(feature = "session")]
+            session_set: false,
         }
     }
 
     pub fn bind(&mut self, addr: SocketAddr) -> &mut Self {
         self.addr = addr;
+        self
+    }
+
+    #[cfg(feature = "session")]
+    pub fn set_session_store<S: SessionStore>(&mut self, session: S) -> &mut Self {
+        self.rt
+            .block_on(self.routes.write())
+            .hook(SessionMiddleware::new(session));
+        self.session_set = true;
         self
     }
 
@@ -52,13 +72,37 @@ impl Server {
         self
     }
 
+    pub fn set_exception_handler<F, T, Fut>(&mut self, handler: F) -> &mut Self
+    where
+        Fut: Future<Output = T> + Send + 'static,
+        F: Fn(SilentError) -> Fut + Send + Sync + 'static,
+        T: Into<Response>,
+    {
+        self.rt
+            .block_on(self.routes.write())
+            .set_exception_handler(ExceptionHandlerWrapper::new(handler).arc());
+        self
+    }
+
     pub fn bind_route(&mut self, route: Route) -> &mut Self {
         self.rt.block_on(self.routes.write()).add(route);
         self
     }
 
     pub async fn serve(&self) {
+        #[cfg(feature = "session")]
+        let session_set = self.session_set;
         let Self { conn, routes, .. } = self;
+        #[cfg(feature = "session")]
+        if !session_set {
+            let session_store = Arc::new(SessionMiddleware::default());
+            routes
+                .write()
+                .await
+                .children
+                .iter_mut()
+                .for_each(|r| r.middleware_hook_first(session_store.clone()));
+        }
         tracing::info!("Listening on {}", self.addr);
         let listener = TcpListener::bind(self.addr).await.unwrap();
 
@@ -90,7 +134,7 @@ impl Server {
                             tracing::info!("Accepting from: {}", stream.peer_addr().unwrap());
                             let routes = routes.read().await.clone();
                             let conn = conn.clone();
-                            tokio::task::spawn(async move {
+                            self.rt.spawn(async move {
                                 if let Err(err) = Serve::new(routes, conn).call(stream,peer_addr).await {
                                     tracing::error!("Failed to serve connection: {:?}", err);
                                 }
@@ -103,6 +147,15 @@ impl Server {
                 }
             }
         }
+    }
+
+    pub fn runtime(&self) -> &Runtime {
+        &self.rt
+    }
+
+    pub fn set_runtime(mut self, rt: Runtime) -> Self {
+        self.rt = rt;
+        self
     }
 
     pub fn run(&self) {

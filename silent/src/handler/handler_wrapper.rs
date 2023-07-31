@@ -1,9 +1,6 @@
 use crate::handler::handler_trait::Handler;
 use crate::{Request, Response, Result};
 use async_trait::async_trait;
-use bytes::Bytes;
-use serde::Serialize;
-use serde_json::Value;
 use std::future::Future;
 use std::sync::Arc;
 
@@ -22,19 +19,14 @@ impl<F, T, Fut> HandlerWrapper<F>
 where
     Fut: Future<Output = Result<T>> + Send + 'static,
     F: Fn(Request) -> Fut,
-    T: Serialize + Send,
+    T: Into<Response>,
 {
     pub fn new(handler: F) -> Self {
         HandlerWrapper { handler }
     }
 
-    pub async fn handle(&self, req: Request) -> Result<Bytes> {
-        let result = (self.handler)(req).await?;
-        let result = serde_json::to_value(&result)?;
-        match result {
-            Value::String(value) => Ok(value.into_bytes().into()),
-            _ => Ok(serde_json::to_vec(&result)?.into()),
-        }
+    pub async fn handle(&self, req: Request) -> Result<Response> {
+        Ok((self.handler)(req).await?.into())
     }
 
     pub fn arc(self) -> Arc<Self> {
@@ -48,11 +40,10 @@ impl<F, T, Fut> Handler for HandlerWrapper<F>
 where
     Fut: Future<Output = Result<T>> + Send + 'static,
     F: Fn(Request) -> Fut + Send + Sync + 'static,
-    T: Serialize + Send + 'static,
+    T: Into<Response>,
 {
     async fn call(&self, req: Request) -> Result<Response> {
-        let res = self.handle(req).await?;
-        Ok(Response::from(res))
+        self.handle(req).await
     }
 }
 
@@ -60,6 +51,7 @@ where
 mod tests {
     use super::*;
     use crate::{Request, Result};
+    use http_body_util::BodyExt;
     use serde::{Deserialize, Serialize};
 
     async fn hello_world(_req: Request) -> Result<String> {
@@ -87,11 +79,18 @@ mod tests {
     #[tokio::test]
     async fn handler_wrapper_works() {
         let handler_wrapper = HandlerWrapper::new(hello_world);
-
-        assert_eq!(
-            handler_wrapper.handle(Request::empty()).await.unwrap(),
-            "Hello World".to_string()
-        );
+        let res_l = handler_wrapper
+            .handle(Request::empty())
+            .await
+            .unwrap()
+            .body
+            .frame()
+            .await
+            .unwrap()
+            .unwrap()
+            .into_data()
+            .unwrap();
+        assert_eq!(res_l, "Hello World");
     }
 
     #[tokio::test]
@@ -100,9 +99,17 @@ mod tests {
         let hello = HelloHandler {
             name: "Hello World".to_string(),
         };
-        assert_eq!(
-            handler_wrapper.handle(Request::empty()).await.unwrap(),
-            serde_json::to_string(&hello).unwrap()
-        );
+        let res_l = handler_wrapper
+            .handle(Request::empty())
+            .await
+            .unwrap()
+            .body
+            .frame()
+            .await
+            .unwrap()
+            .unwrap()
+            .into_data()
+            .unwrap();
+        assert_eq!(res_l, serde_json::to_string(&hello).unwrap());
     }
 }
