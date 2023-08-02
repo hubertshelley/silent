@@ -18,8 +18,8 @@ mod service;
 mod session;
 #[cfg(feature = "sse")]
 mod sse;
-// #[cfg(feature = "template")]
-// mod templates;
+#[cfg(feature = "template")]
+mod templates;
 #[cfg(feature = "ws")]
 mod ws;
 
@@ -54,8 +54,8 @@ pub mod prelude {
     pub use crate::service::Server;
     #[cfg(feature = "sse")]
     pub use crate::sse::{sse_reply, SSEEvent};
-    // #[cfg(feature = "template")]
-    // pub use crate::templates::*;
+    #[cfg(feature = "template")]
+    pub use crate::templates::*;
     #[cfg(feature = "ws")]
     pub use crate::ws::{
         FnOnClose, FnOnConnect, FnOnNoneResultFut, FnOnReceive, FnOnSend, FnOnSendFut,

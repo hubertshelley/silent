@@ -7,6 +7,8 @@ use crate::route::{Route, Routes};
 use crate::service::serve::Serve;
 #[cfg(feature = "session")]
 use crate::session::SessionMiddleware;
+#[cfg(feature = "template")]
+use crate::templates::TemplateMiddleware;
 use crate::{Response, SilentError};
 #[cfg(feature = "session")]
 use async_session::SessionStore;
@@ -59,8 +61,16 @@ impl Server {
     pub fn set_session_store<S: SessionStore>(&mut self, session: S) -> &mut Self {
         self.rt
             .block_on(self.routes.write())
-            .hook(SessionMiddleware::new(session));
+            .hook_first(SessionMiddleware::new(session));
         self.session_set = true;
+        self
+    }
+
+    #[cfg(feature = "template")]
+    pub fn set_template_dir(&mut self, dir: impl Into<String>) -> &mut Self {
+        self.rt
+            .block_on(self.routes.write())
+            .hook(TemplateMiddleware::new(dir.into().as_str()));
         self
     }
 
@@ -95,14 +105,11 @@ impl Server {
         let Self { conn, routes, .. } = self;
         #[cfg(feature = "session")]
         if !session_set {
-            let session_store = Arc::new(SessionMiddleware::default());
             routes
                 .write()
                 .await
-                .children
-                .iter_mut()
-                .for_each(|r| r.middleware_hook_first(session_store.clone()));
-        }
+                .hook_first(SessionMiddleware::default());
+        };
         tracing::info!("Listening on {}", self.addr);
         let listener = TcpListener::bind(self.addr).await.unwrap();
 

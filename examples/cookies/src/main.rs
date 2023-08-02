@@ -3,10 +3,7 @@ use silent::prelude::*;
 
 fn main() {
     logger::fmt().with_max_level(Level::INFO).init();
-    let route = Route::new("").handler(
-        Method::GET,
-        HandlerWrapperResponse::new(custom_response).arc(),
-    );
+    let route = Route::new("").get(custom_response);
     Server::new().bind_route(route).run();
 }
 

@@ -36,7 +36,7 @@ where
 {
     async fn pre_request(&self, req: &mut Request, _res: &mut Response) -> Result<()> {
         let cookies = req.cookies().clone();
-        let cookie = cookies.get("noice-web-session");
+        let cookie = cookies.get("silent-web-session");
         if cookie.is_none() {
             req.extensions_mut().insert(Session::new());
             return Ok(());
@@ -64,7 +64,7 @@ where
     async fn after_response(&self, res: &mut Response) -> Result<()> {
         let session_store = self.session_store.read().await;
         let session = res.extensions.remove::<Session>();
-        let cookie = res.cookies().get("noice-web-session");
+        let cookie = res.cookies().get("silent-web-session");
         if let Some(mut session) = session {
             if cookie.is_none() {
                 session.regenerate()
@@ -77,7 +77,7 @@ where
             })?;
             if let Some(cookie_value) = cookie_value {
                 res.cookies_mut().add(
-                    Cookie::build("noice-web-session", cookie_value)
+                    Cookie::build("silent-web-session", cookie_value)
                         .max_age(cookie::time::Duration::hours(2))
                         .finish(),
                 );

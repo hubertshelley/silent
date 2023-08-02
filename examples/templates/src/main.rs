@@ -1,5 +1,7 @@
+use serde::Serialize;
 use silent::prelude::*;
 
+#[derive(Serialize)]
 struct Temp {
     name: String,
 }
@@ -10,7 +12,10 @@ fn main() {
         let temp = Temp {
             name: "world".to_string(),
         };
-        Ok(temp)
+        Ok(TemplateResponse::from(("index.html".to_string(), temp)))
     });
-    Server::new().bind_route(route).run();
+    Server::new()
+        .set_template_dir("./templates/**/*.html")
+        .bind_route(route)
+        .run();
 }
