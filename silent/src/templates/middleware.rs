@@ -1,26 +1,26 @@
-use crate::{MiddleWareHandler, Request, Response, Result, SilentError, StatusCode};
+use crate::{MiddleWareHandler, Response, Result, SilentError, StatusCode};
 use async_trait::async_trait;
 use serde::Serialize;
+use serde_json::Value;
 use std::sync::Arc;
 use tera::{Context, Tera};
 
 #[derive(Debug, Clone)]
-pub struct TemplateResponse<T>
-where
-    T: Serialize,
-{
+pub struct TemplateResponse {
     template: String,
-    data: T,
+    data: Value,
 }
 
-impl<T: Serialize> From<(String, T)> for TemplateResponse<T> {
+impl<T: Serialize> From<(String, T)> for TemplateResponse {
     fn from((template, data): (String, T)) -> Self {
-        TemplateResponse { template, data }
+        serde_json::to_value(data)
+            .map(|data| TemplateResponse { template, data })
+            .unwrap()
     }
 }
 
-impl<T: Serialize + Send + Sync + 'static> From<TemplateResponse<T>> for Response {
-    fn from(value: TemplateResponse<T>) -> Self {
+impl From<TemplateResponse> for Response {
+    fn from(value: TemplateResponse) -> Self {
         let mut res = Response::empty();
         res.extensions.insert(value);
         res
@@ -33,7 +33,6 @@ pub struct TemplateMiddleware {
 
 impl TemplateMiddleware {
     pub fn new(template_path: &str) -> Self {
-        println!("template middleware new");
         let template = Arc::new(Tera::new(template_path).expect("Failed to load templates"));
         TemplateMiddleware { template }
     }
@@ -41,23 +40,13 @@ impl TemplateMiddleware {
 
 #[async_trait]
 impl MiddleWareHandler for TemplateMiddleware {
-    async fn pre_request(&self, _req: &mut Request, _res: &mut Response) -> Result<()> {
-        println!("template middleware pre request");
-        Ok(())
-    }
     async fn after_response(&self, res: &mut Response) -> Result<()> {
-        println!("template middleware after response");
-        let template = res.extensions.get::<TemplateResponse<()>>().unwrap();
+        let template = res.extensions.get::<TemplateResponse>().unwrap();
         res.set_body(
             self.template
                 .render(
                     &template.template,
-                    &{
-                        #[allow(clippy::no_effect)]
-                        template.data;
-                        Context::from_serialize(())
-                    }
-                    .map_err(|e| {
+                    &Context::from_serialize(&template.data).map_err(|e| {
                         SilentError::business_error(
                             StatusCode::INTERNAL_SERVER_ERROR,
                             format!("Failed to render template: {}", e),
@@ -73,5 +62,55 @@ impl MiddleWareHandler for TemplateMiddleware {
                 .into(),
         );
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prelude::{HandlerAppend, Route};
+    use crate::route::Routes;
+    use crate::Request;
+    use bytes::Bytes;
+    use http_body_util::BodyExt;
+
+    #[derive(Serialize)]
+    struct Temp {
+        name: String,
+    }
+
+    #[tokio::test]
+    async fn templates_test() {
+        let mut tera = Tera::default();
+        tera.add_raw_template("index.html", "<h1>{{ name }}</h1>")
+            .unwrap();
+        let temp_middleware = TemplateMiddleware {
+            template: Arc::new(tera),
+        };
+        let route = Route::new("")
+            .get(|_req| async {
+                let temp = Temp {
+                    name: "templates".to_string(),
+                };
+                Ok(TemplateResponse::from(("index.html".to_string(), temp)))
+            })
+            .hook(temp_middleware);
+        let mut routes = Routes::new();
+        routes.add(route);
+        let req = Request::empty();
+        assert_eq!(
+            routes
+                .handle(req, "127.0.0.1:8000".parse().unwrap())
+                .await
+                .unwrap()
+                .body
+                .frame()
+                .await
+                .unwrap()
+                .unwrap()
+                .data_ref()
+                .unwrap(),
+            &Bytes::from("<h1>templates</h1>")
+        );
     }
 }

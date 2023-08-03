@@ -10,12 +10,12 @@ fn main() {
     logger::fmt().with_max_level(Level::INFO).init();
     let route = Route::new("").get(|_req| async {
         let temp = Temp {
-            name: "world".to_string(),
+            name: "templates".to_string(),
         };
         Ok(TemplateResponse::from(("index.html".to_string(), temp)))
     });
     Server::new()
-        .set_template_dir("./templates/**/*.html")
+        .set_template_dir("examples/templates/templates/**/*")
         .bind_route(route)
         .run();
 }

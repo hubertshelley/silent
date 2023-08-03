@@ -8,7 +8,6 @@ use crate::{Method, SilentError, StatusCode};
 #[cfg(feature = "session")]
 use async_session::Session;
 use chrono::Utc;
-use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
 use std::net::SocketAddr;
@@ -85,14 +84,13 @@ impl Route {
         self
     }
     pub(crate) fn middleware_hook(&mut self, handler: Arc<dyn MiddleWareHandler>) {
-        println!("middleware_hook: {:?}", handler.type_id());
         self.middlewares.push(handler.clone());
         self.children
             .iter_mut()
             .for_each(|r| r.middleware_hook(handler.clone()));
     }
+    #[allow(dead_code)]
     pub(crate) fn middleware_hook_first(&mut self, handler: Arc<dyn MiddleWareHandler>) {
-        println!("middleware_hook_first: {:?}", handler.type_id());
         self.middlewares.insert(0, handler.clone());
         self.children
             .iter_mut()
@@ -138,14 +136,15 @@ impl Routes {
 
     pub fn hook(&mut self, handler: impl MiddleWareHandler + 'static) {
         let handler = Arc::new(handler);
-        println!("hook: {:?}", handler.type_id());
+        self.middlewares.push(handler.clone());
         self.children
             .iter_mut()
             .for_each(|r| r.middleware_hook(handler.clone()));
     }
+    #[allow(dead_code)]
     pub(crate) fn hook_first(&mut self, handler: impl MiddleWareHandler + 'static) {
         let handler = Arc::new(handler);
-        println!("hook_first: {:?}", handler.type_id());
+        self.middlewares.insert(0, handler.clone());
         self.children
             .iter_mut()
             .for_each(|r| r.middleware_hook_first(handler.clone()));
