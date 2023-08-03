@@ -1,4 +1,19 @@
-# Silent
+<div align="center">
+<h1>Silent</h1>
+<p>
+<a href="https://github.com/hubertshelley/silent/actions">
+    <img alt="build status" src="https://github.com/hubertshelley/silent/actions/workflows/build.yml/badge.svg" />
+</a>
+<br/>
+<a href="https://crates.io/crates/silent"><img alt="crates.io" src="https://img.shields.io/crates/v/silent" /></a>
+<a href="https://docs.rs/silent"><img alt="Documentation" src="https://docs.rs/silent/badge.svg" /></a>
+<a href="https://github.com/rust-secure-code/safety-dance/"><img alt="unsafe forbidden" src="https://img.shields.io/badge/unsafe-forbidden-success.svg" /></a>
+<a href="https://blog.rust-lang.org/2022/09/22/Rust-1.71.0.html"><img alt="Rust Version" src="https://img.shields.io/badge/rust-1.74%2B-blue" /></a>
+<br/>
+<a href="https://crates.io/crates/silent"><img alt="Download" src="https://img.shields.io/crates/d/silent.svg" /></a>
+<img alt="License" src="https://img.shields.io/crates/l/silent.svg" />
+</p>
+</div>
 
 ### 概要
 
