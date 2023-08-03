@@ -136,9 +136,18 @@ impl Routes {
 
     pub fn hook(&mut self, handler: impl MiddleWareHandler + 'static) {
         let handler = Arc::new(handler);
+        self.middlewares.push(handler.clone());
         self.children
             .iter_mut()
             .for_each(|r| r.middleware_hook(handler.clone()));
+    }
+    #[allow(dead_code)]
+    pub(crate) fn hook_first(&mut self, handler: impl MiddleWareHandler + 'static) {
+        let handler = Arc::new(handler);
+        self.middlewares.insert(0, handler.clone());
+        self.children
+            .iter_mut()
+            .for_each(|r| r.middleware_hook_first(handler.clone()));
     }
 
     pub(crate) fn set_exception_handler(&mut self, handler: Arc<dyn ExceptionHandler>) {

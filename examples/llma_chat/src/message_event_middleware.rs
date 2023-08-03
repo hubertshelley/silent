@@ -1,6 +1,4 @@
 use once_cell::sync::Lazy;
-use silent::prelude::info;
-use silent::{MiddleWareHandler, Request, Response, Result};
 use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;

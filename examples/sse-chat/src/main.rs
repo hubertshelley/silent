@@ -25,14 +25,8 @@ fn main() {
 
     let route = Route::new("").get(index).append(
         Route::new("chat")
-            .handler(
-                Method::GET,
-                HandlerWrapperResponse::new(user_connected).arc(),
-            )
-            .append(
-                Route::new("<id:int>")
-                    .handler(Method::POST, HandlerWrapperResponse::new(chat_send).arc()),
-            ),
+            .get(user_connected)
+            .append(Route::new("<id:int>").post(chat_send)),
     );
 
     Server::new()
