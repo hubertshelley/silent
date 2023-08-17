@@ -67,6 +67,16 @@ impl Response {
         self
     }
     #[inline]
+    /// 获取extensions
+    pub fn extensions(&self) -> &Extensions {
+        &self.extensions
+    }
+    #[inline]
+    /// 获取extensions_mut
+    pub fn extensions_mut(&mut self) -> &mut Extensions {
+        &mut self.extensions
+    }
+    #[inline]
     /// 设置响应重定向
     pub fn redirect(url: &str) -> Result<Self> {
         let mut res = Self::empty();
