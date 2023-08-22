@@ -26,5 +26,5 @@ fn main() {
     }
     let route =
         Route::new("<path:**>").insert_handler(Method::GET, Arc::new(static_handler("static")));
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }

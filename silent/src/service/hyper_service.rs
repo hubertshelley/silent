@@ -1,5 +1,5 @@
 use crate::core::res_body::ResBody;
-use crate::route::Routes;
+use crate::route::RootRoute;
 use crate::{Request, Response};
 use hyper::body::Incoming;
 use hyper::service::Service as HyperService;
@@ -12,12 +12,12 @@ use std::pin::Pin;
 #[derive(Clone)]
 pub struct HyperHandler {
     pub(crate) remote_addr: SocketAddr,
-    pub(crate) routes: Routes,
+    pub(crate) routes: RootRoute,
 }
 
 impl HyperHandler {
     #[inline]
-    pub fn new(remote_addr: SocketAddr, routes: Routes) -> Self {
+    pub fn new(remote_addr: SocketAddr, routes: RootRoute) -> Self {
         Self {
             remote_addr,
             routes,

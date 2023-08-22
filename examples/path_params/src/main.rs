@@ -14,7 +14,7 @@ fn main() {
         .append(Route::new("<key>").get(hello_world))
         .append(Route::new("<key:other>/other").get(hello_world));
     println!("{:?}", route);
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }
 
 // 定义处理方法

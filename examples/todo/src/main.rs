@@ -19,7 +19,7 @@ fn main() {
                 .patch(todos_update)
                 .delete(todos_delete),
         );
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }
 
 struct MiddleWare {

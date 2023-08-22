@@ -10,7 +10,7 @@ fn main() {
     let route = Route::new("")
         .hook(middle_ware)
         .get(|_req| async { Ok("Hello World") });
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }
 
 struct MiddleWare {

@@ -69,7 +69,7 @@ impl MiddleWareHandler for TemplateMiddleware {
 mod tests {
     use super::*;
     use crate::prelude::{HandlerAppend, Route};
-    use crate::route::Routes;
+    use crate::route::RootRoute;
     use crate::Request;
     use bytes::Bytes;
     use http_body_util::BodyExt;
@@ -95,8 +95,8 @@ mod tests {
                 Ok(TemplateResponse::from(("index.html".to_string(), temp)))
             })
             .hook(temp_middleware);
-        let mut routes = Routes::new();
-        routes.add(route);
+        let mut routes = RootRoute::new();
+        routes.push(route);
         let req = Request::empty();
         assert_eq!(
             routes

@@ -17,5 +17,5 @@ fn main() {
         }
         Ok("hello world".to_string())
     });
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }

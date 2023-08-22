@@ -133,5 +133,5 @@ fn main() {
             Method::GET,
             Arc::new(static_handler("examples/llma_chat/static")),
         ));
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }

@@ -6,7 +6,7 @@ fn main() {
     let route = Route::new("")
         .get(custom_response)
         .append(Route::new("2").get(custom_response2));
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }
 
 async fn custom_response(_req: Request) -> Result<Response> {

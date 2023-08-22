@@ -12,7 +12,7 @@ fn main() {
                 .on_close(|_| async {}),
         ),
     );
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }
 
 async fn show_form(_req: Request) -> Result<&'static str> {

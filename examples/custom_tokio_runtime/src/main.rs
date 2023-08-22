@@ -12,7 +12,7 @@ async fn main() {
             count: AtomicUsize::new(0),
         }),
     );
-    Server::new().bind_route_async(route).await.serve().await;
+    Server::new().serve(route).await;
 }
 
 struct CustomHandler {

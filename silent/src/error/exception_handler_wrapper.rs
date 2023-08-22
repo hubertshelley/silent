@@ -15,6 +15,7 @@ pub struct ExceptionHandlerWrapper<F> {
     handler: F,
 }
 
+#[allow(dead_code)]
 impl<F, T, Fut> ExceptionHandlerWrapper<F>
 where
     Fut: Future<Output = T> + Send + 'static,

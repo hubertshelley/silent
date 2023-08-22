@@ -29,7 +29,7 @@ fn main() {
                 .on_close(on_close),
         ),
     );
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }
 
 async fn on_connect(

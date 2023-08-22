@@ -11,7 +11,7 @@ fn main() {
             count: AtomicUsize::new(0),
         }),
     );
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }
 
 struct CustomHandler {

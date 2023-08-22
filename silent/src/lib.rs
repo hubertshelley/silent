@@ -47,7 +47,7 @@ pub mod prelude {
     #[cfg(feature = "ws")]
     pub use crate::route::handler_append::WSHandlerAppend;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
-    pub use crate::route::Route;
+    pub use crate::route::{Route, RouteService};
     #[cfg(feature = "security")]
     pub use crate::security::{argon2, pbkdf2};
     #[cfg(feature = "server")]

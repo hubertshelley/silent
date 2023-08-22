@@ -1,4 +1,4 @@
-use super::{Route, Routes};
+use super::{RootRoute, Route};
 use crate::core::path_param::PathParam;
 use crate::Request;
 
@@ -162,7 +162,7 @@ impl RouteMatch for Route {
     }
 }
 
-impl Match for Routes {
+impl Match for RootRoute {
     fn handler_match(&self, req: &mut Request, path: &str) -> RouteMatched {
         tracing::debug!("path: {}", path);
         let mut path = path;
@@ -195,7 +195,7 @@ mod tests {
         Ok("world")
     }
 
-    fn get_matched(routes: &Routes, req: Request) -> bool {
+    fn get_matched(routes: &RootRoute, req: Request) -> bool {
         let (mut req, path) = req.split_url();
         match routes.handler_match(&mut req, path.as_str()) {
             RouteMatched::Matched(_) => true,
@@ -206,8 +206,8 @@ mod tests {
     #[test]
     fn route_match_test() {
         let route = Route::new("hello").get(hello);
-        let mut routes = Routes::new();
-        routes.add(route);
+        let mut routes = RootRoute::new();
+        routes.push(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/hello".parse().unwrap();
         assert!(get_matched(&routes, req));
@@ -216,8 +216,8 @@ mod tests {
     #[test]
     fn multi_route_match_test() {
         let route = Route::new("hello/world").get(hello);
-        let mut routes = Routes::new();
-        routes.add(route);
+        let mut routes = RootRoute::new();
+        routes.push(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/hello/world".parse().unwrap();
         assert!(get_matched(&routes, req));
@@ -228,8 +228,8 @@ mod tests {
         let route = Route::new("")
             .get(hello)
             .append(Route::new("world").get(hello));
-        let mut routes = Routes::new();
-        routes.add(route);
+        let mut routes = RootRoute::new();
+        routes.push(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/world".parse().unwrap();
         assert!(get_matched(&routes, req));
@@ -240,8 +240,8 @@ mod tests {
         let route = Route::new("")
             .get(hello)
             .append(Route::new("<id:i64>").get(hello));
-        let mut routes = Routes::new();
-        routes.add(route);
+        let mut routes = RootRoute::new();
+        routes.push(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/12345678909876543".parse().unwrap();
         let (mut req, path) = req.split_url();
@@ -263,8 +263,8 @@ mod tests {
         let route = Route::new("<path:**>")
             .get(hello)
             .append(Route::new("world").get(hello));
-        let mut routes = Routes::new();
-        routes.add(route);
+        let mut routes = RootRoute::new();
+        routes.push(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/hello/world".parse().unwrap();
         let (mut req, path) = req.split_url();
@@ -286,8 +286,8 @@ mod tests {
         let route = Route::new("<path:**>")
             .get(hello)
             .append(Route::new("world").get(world));
-        let mut routes = Routes::new();
-        routes.add(route);
+        let mut routes = RootRoute::new();
+        routes.push(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/hello/world".parse().unwrap();
         assert_eq!(
@@ -311,8 +311,8 @@ mod tests {
         let route = Route::new("<path:**>")
             .get(hello)
             .append(Route::new("world").get(world));
-        let mut routes = Routes::new();
-        routes.add(route);
+        let mut routes = RootRoute::new();
+        routes.push(route);
         let mut req = Request::empty();
         *req.uri_mut() = "/hello/world1".parse().unwrap();
         assert_eq!(

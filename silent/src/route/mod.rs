@@ -1,20 +1,18 @@
-use crate::core::request::Request;
-use crate::core::response::Response;
-use crate::error::ExceptionHandler;
 use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
-use crate::route::handler_match::{Match, RouteMatched};
-use crate::{Method, SilentError, StatusCode};
-#[cfg(feature = "session")]
-use async_session::Session;
-use chrono::Utc;
+use crate::Method;
 use std::collections::HashMap;
 use std::fmt;
-use std::net::SocketAddr;
 use std::sync::Arc;
 
 pub(crate) mod handler_append;
 mod handler_match;
+mod root;
+mod route_service;
+
+pub use root::RootRoute;
+
+pub use route_service::RouteService;
 
 #[derive(Clone)]
 pub struct Route {
@@ -95,157 +93,6 @@ impl Route {
         self.children
             .iter_mut()
             .for_each(|r| r.middleware_hook_first(handler.clone()));
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct Routes {
-    pub children: Vec<Route>,
-    middlewares: Vec<Arc<dyn MiddleWareHandler>>,
-    exception_handler: Option<Arc<dyn ExceptionHandler>>,
-}
-
-impl fmt::Debug for Routes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let path = self
-            .children
-            .iter()
-            .map(|route| format!("{:?}", route))
-            .collect::<Vec<String>>()
-            .join("\n");
-        write!(f, "{}", path)
-    }
-}
-
-impl Routes {
-    pub fn new() -> Self {
-        Self {
-            children: vec![],
-            middlewares: vec![],
-            exception_handler: None,
-        }
-    }
-
-    pub fn add(&mut self, mut route: Route) {
-        self.middlewares
-            .iter()
-            .cloned()
-            .for_each(|m| route.middleware_hook(m.clone()));
-        self.children.push(route);
-    }
-
-    pub fn hook(&mut self, handler: impl MiddleWareHandler + 'static) {
-        let handler = Arc::new(handler);
-        self.middlewares.push(handler.clone());
-        self.children
-            .iter_mut()
-            .for_each(|r| r.middleware_hook(handler.clone()));
-    }
-    #[allow(dead_code)]
-    pub(crate) fn hook_first(&mut self, handler: impl MiddleWareHandler + 'static) {
-        let handler = Arc::new(handler);
-        self.middlewares.insert(0, handler.clone());
-        self.children
-            .iter_mut()
-            .for_each(|r| r.middleware_hook_first(handler.clone()));
-    }
-
-    pub(crate) fn set_exception_handler(&mut self, handler: Arc<dyn ExceptionHandler>) {
-        self.exception_handler = Some(handler);
-    }
-
-    pub async fn handle(
-        &self,
-        req: Request,
-        peer_addr: SocketAddr,
-    ) -> Result<Response, SilentError> {
-        tracing::debug!("{:?}", req);
-        let exception_handler = self.exception_handler.clone();
-        let (mut req, path) = req.split_url();
-        let method = req.method().clone();
-        let url = req.uri().to_string().clone();
-        let http_version = req.version();
-        let start_time = Utc::now().time();
-        let res = match self.handler_match(&mut req, path.as_str()) {
-            RouteMatched::Matched(route) => match route.handler.get(req.method()) {
-                None => Err(SilentError::business_error(
-                    StatusCode::METHOD_NOT_ALLOWED,
-                    "method not allowed".to_string(),
-                )),
-                Some(handler) => {
-                    let mut pre_res = Response::empty();
-                    let mut active_middlewares = vec![];
-                    for (i, middleware) in route.middlewares.iter().enumerate() {
-                        if middleware.match_req(&req).await {
-                            active_middlewares.push(i);
-                        }
-                    }
-                    for i in active_middlewares.clone() {
-                        route.middlewares[i]
-                            .pre_request(&mut req, &mut pre_res)
-                            .await?
-                    }
-                    #[cfg(feature = "cookie")]
-                    {
-                        *pre_res.cookies_mut() = req.cookies().clone();
-                    }
-                    #[cfg(feature = "session")]
-                    let session = req.extensions().get::<Session>().cloned();
-                    #[cfg(feature = "session")]
-                    if let Some(session) = session {
-                        pre_res.extensions.insert(session);
-                    }
-                    match handler.call(req).await {
-                        Ok(res) => {
-                            pre_res.from_response(res);
-                            for i in active_middlewares {
-                                route.middlewares[i].after_response(&mut pre_res).await?
-                            }
-                            Ok(pre_res)
-                        }
-                        Err(e) => Err(e),
-                    }
-                }
-            },
-            RouteMatched::Unmatched => Err(SilentError::business_error(
-                StatusCode::NOT_FOUND,
-                "Server not found".to_string(),
-            )),
-        };
-        let end_time = Utc::now().time();
-        let req_time = end_time - start_time;
-        match res {
-            Ok(res) => {
-                tracing::info!(
-                    "{} {} {} {:?} {} {:?} {}",
-                    peer_addr,
-                    method,
-                    url,
-                    http_version,
-                    res.status_code.as_u16(),
-                    res.content_length().lower(),
-                    req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
-                );
-                Ok(res)
-            }
-            Err(e) => {
-                tracing::error!(
-                    "{} {} {} {:?} {} {:?} {} {}",
-                    peer_addr,
-                    method,
-                    url,
-                    http_version,
-                    e.status_code().as_u16(),
-                    0,
-                    req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
-                    e.to_string()
-                );
-                match exception_handler {
-                    Some(handler) => Ok(handler.call(e).await),
-                    None => Err(e),
-                }
-            }
-        }
     }
 }
 

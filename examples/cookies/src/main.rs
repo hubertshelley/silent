@@ -4,7 +4,7 @@ use silent::prelude::*;
 fn main() {
     logger::fmt().with_max_level(Level::INFO).init();
     let route = Route::new("").get(custom_response);
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }
 
 async fn custom_response(_req: Request) -> Result<Response> {

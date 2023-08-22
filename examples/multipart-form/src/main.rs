@@ -4,7 +4,7 @@ use silent::prelude::*;
 fn main() {
     logger::fmt().init();
     let route = Route::new("").get(show_form).post(accept_form);
-    Server::new().bind_route(route).run();
+    Server::new().run(route);
 }
 
 async fn show_form(_req: Request) -> Result<&'static str> {
