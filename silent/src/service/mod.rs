@@ -99,6 +99,11 @@ impl Server {
         self
     }
 
+    pub async fn bind_route_async(&mut self, route: Route) -> &mut Self {
+        self.routes.write().await.add(route);
+        self
+    }
+
     pub async fn serve(&self) {
         #[cfg(feature = "session")]
         let session_set = self.session_set;
