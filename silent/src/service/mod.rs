@@ -12,6 +12,7 @@ use crate::templates::TemplateMiddleware;
 use crate::{Response, SilentError};
 #[cfg(feature = "session")]
 use async_session::SessionStore;
+use std::cell::OnceCell;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -24,7 +25,7 @@ pub struct Server {
     pub routes: Arc<RwLock<Routes>>,
     addr: SocketAddr,
     conn: Arc<SilentConnection>,
-    rt: Runtime,
+    rt: OnceCell<Runtime>,
     shutdown_callback: Option<Box<dyn Fn() + Send + Sync>>,
     #[cfg(feature = "session")]
     session_set: bool,
@@ -42,10 +43,7 @@ impl Server {
             routes: Arc::new(RwLock::new(Routes::new())),
             addr: ([127, 0, 0, 1], 8000).into(),
             conn: Arc::new(SilentConnection::default()),
-            rt: tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap(),
+            rt: OnceCell::new(),
             shutdown_callback: None,
             #[cfg(feature = "session")]
             session_set: false,
@@ -60,6 +58,12 @@ impl Server {
     #[cfg(feature = "session")]
     pub fn set_session_store<S: SessionStore>(&mut self, session: S) -> &mut Self {
         self.rt
+            .get_or_init(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+            })
             .block_on(self.routes.write())
             .hook_first(SessionMiddleware::new(session));
         self.session_set = true;
@@ -69,6 +73,12 @@ impl Server {
     #[cfg(feature = "template")]
     pub fn set_template_dir(&mut self, dir: impl Into<String>) -> &mut Self {
         self.rt
+            .get_or_init(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+            })
             .block_on(self.routes.write())
             .hook(TemplateMiddleware::new(dir.into().as_str()));
         self
@@ -89,13 +99,27 @@ impl Server {
         T: Into<Response>,
     {
         self.rt
+            .get_or_init(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+            })
             .block_on(self.routes.write())
             .set_exception_handler(ExceptionHandlerWrapper::new(handler).arc());
         self
     }
 
     pub fn bind_route(&mut self, route: Route) -> &mut Self {
-        self.rt.block_on(self.routes.write()).add(route);
+        self.rt
+            .get_or_init(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+            })
+            .block_on(self.routes.write())
+            .add(route);
         self
     }
 
@@ -132,45 +156,61 @@ impl Server {
                 let _ = std::future::pending::<()>();
             };
             tokio::select! {
-                _ = signal::ctrl_c() => {
-                    if let Some(ref callback) = self.shutdown_callback { callback() };
-                    break;
-                }
-                _ = terminate => {
-                    if let Some(ref callback) = self.shutdown_callback { callback() };
-                    break;
-                }
-                s = listener.accept() =>{
-                    match s{
-                        Ok((stream, peer_addr)) => {
-                            tracing::info!("Accepting from: {}", stream.peer_addr().unwrap());
-                            let routes = routes.read().await.clone();
-                            let conn = conn.clone();
-                            self.rt.spawn(async move {
-                                if let Err(err) = Serve::new(routes, conn).call(stream,peer_addr).await {
-                                    tracing::error!("Failed to serve connection: {:?}", err);
-                                }
-                            });
-                        }
-                        Err(e) => {
-                            tracing::error!(error = ?e, "accept connection failed");
+                    _ = signal::ctrl_c() => {
+                        if let Some(ref callback) = self.shutdown_callback { callback() };
+                        break;
+                    }
+                    _ = terminate => {
+                        if let Some(ref callback) = self.shutdown_callback { callback() };
+                        break;
+                    }
+                    s = listener.accept() =>{
+                        match s{
+                            Ok((stream, peer_addr)) => {
+                                tracing::info!("Accepting from: {}", stream.peer_addr().unwrap());
+                                let routes = routes.read().await.clone();
+                                let conn = conn.clone();
+                                self.rt.get_or_init(||tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+            ).spawn(async move {
+                                    if let Err(err) = Serve::new(routes, conn).call(stream,peer_addr).await {
+                                        tracing::error!("Failed to serve connection: {:?}", err);
+                                    }
+                                });
+                            }
+                            Err(e) => {
+                                tracing::error!(error = ?e, "accept connection failed");
+                            }
                         }
                     }
                 }
-            }
         }
     }
 
     pub fn runtime(&self) -> &Runtime {
-        &self.rt
+        self.rt.get_or_init(|| {
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+        })
     }
 
-    pub fn set_runtime(mut self, rt: Runtime) -> Self {
-        self.rt = rt;
+    pub fn set_runtime(self, rt: Runtime) -> Self {
+        self.rt.set(rt).unwrap();
         self
     }
 
     pub fn run(&self) {
-        self.rt.block_on(self.serve());
+        self.rt
+            .get_or_init(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+            })
+            .block_on(self.serve());
     }
 }
