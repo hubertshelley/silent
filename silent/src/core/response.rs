@@ -3,7 +3,7 @@ use crate::{header, HeaderMap, Result, SilentError, StatusCode};
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
-use headers::{Header, HeaderMapExt};
+use headers::{ContentType, Header, HeaderMapExt};
 use hyper::body::{Body, SizeHint};
 use hyper::http::Extensions;
 use serde::Serialize;
@@ -202,11 +202,17 @@ impl Response {
 
 impl<S: Serialize> From<S> for Response {
     fn from(value: S) -> Self {
-        let result: Bytes = match serde_json::to_value(&value).unwrap() {
-            Value::String(value) => value.into_bytes().into(),
-            _ => serde_json::to_vec(&value).unwrap().into(),
-        };
         let mut res = Response::empty();
+        let result: Bytes = match serde_json::to_value(&value).unwrap() {
+            Value::String(value) => {
+                res.set_typed_header(ContentType::text_utf8());
+                value.into_bytes().into()
+            }
+            _ => {
+                res.set_typed_header(ContentType::json());
+                serde_json::to_vec(&value).unwrap().into()
+            }
+        };
         res.set_body(full(result));
         res
     }
