@@ -8,14 +8,14 @@ struct Temp {
 
 fn main() {
     logger::fmt().with_max_level(Level::INFO).init();
-    let route = Route::new("").get(|_req| async {
-        let temp = Temp {
-            name: "templates".to_string(),
-        };
-        Ok(TemplateResponse::from(("index.html".to_string(), temp)))
-    });
-    Server::new()
-        .set_template_dir("examples/templates/templates/**/*")
-        .bind_route(route)
-        .run();
+    let mut route = Route::new("")
+        .get(|_req| async {
+            let temp = Temp {
+                name: "templates".to_string(),
+            };
+            Ok(TemplateResponse::from(("index.html".to_string(), temp)))
+        })
+        .route();
+    route.set_template_dir("examples/templates/templates/**/*");
+    Server::new().run(route);
 }
