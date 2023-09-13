@@ -68,7 +68,7 @@ impl Server {
 
             #[cfg(not(unix))]
             let terminate = async {
-                let _ = std::future::pending::<()>();
+                let _ = std::future::pending::<()>().await;
             };
             tokio::select! {
                 _ = signal::ctrl_c() => {
