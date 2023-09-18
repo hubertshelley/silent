@@ -68,19 +68,8 @@ impl SilentError {
     }
     pub fn status_code(&self) -> StatusCode {
         match self {
-            Self::IOError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::TungsteniteError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::SerdeJsonError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::SerdeDeError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::HyperError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::FileEmpty(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::BodyEmpty => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::JsonEmpty => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::ContentTypeError => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::ParamsEmpty => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::ParamsNotFound => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::WsError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::BusinessError { code, .. } => *code,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
     pub fn trace(&self) -> Backtrace {

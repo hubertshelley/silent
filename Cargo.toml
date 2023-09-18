@@ -1,6 +1,7 @@
 [workspace]
 members = ["silent*", "examples/*"]
 default-members = ["silent", ]
+resolver = "2"
 
 [workspace.package]
 edition = "2021"

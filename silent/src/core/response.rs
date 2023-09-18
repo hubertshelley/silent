@@ -205,7 +205,11 @@ impl<S: Serialize> From<S> for Response {
         let mut res = Response::empty();
         let result: Bytes = match serde_json::to_value(&value).unwrap() {
             Value::String(value) => {
-                res.set_typed_header(ContentType::text_utf8());
+                if value.contains("html") {
+                    res.set_typed_header(ContentType::html());
+                } else {
+                    res.set_typed_header(ContentType::text_utf8());
+                }
                 value.into_bytes().into()
             }
             _ => {
