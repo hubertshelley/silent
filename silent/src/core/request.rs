@@ -10,9 +10,9 @@ use crate::SilentError;
 use crate::{header, StatusCode};
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
+use http::Extensions;
+use http::Request as BaseRequest;
 use http_body_util::BodyExt;
-use hyper::http::Extensions;
-use hyper::Request as HyperRequest;
 use mime::Mime;
 use serde::Deserialize;
 use serde_json::Value;
@@ -28,7 +28,7 @@ use url::form_urlencoded;
 /// ```
 #[derive(Debug)]
 pub struct Request {
-    req: HyperRequest<ReqBody>,
+    req: BaseRequest<ReqBody>,
     path_params: HashMap<String, PathParam>,
     params: HashMap<String, String>,
     body: ReqBody,
@@ -48,7 +48,7 @@ impl Request {
     /// 创建空请求体
     pub fn empty() -> Self {
         Self {
-            req: HyperRequest::builder()
+            req: BaseRequest::builder()
                 .method("GET")
                 .body(().into())
                 .unwrap(),
@@ -67,7 +67,7 @@ impl Request {
     }
 
     /// 获取可变原请求体
-    pub fn req_mut(&mut self) -> &mut HyperRequest<ReqBody> {
+    pub fn req_mut(&mut self) -> &mut BaseRequest<ReqBody> {
         &mut self.req
     }
 
@@ -241,7 +241,7 @@ impl Request {
 }
 
 #[cfg(feature = "cookie")]
-fn get_cookie(req: &HyperRequest<ReqBody>) -> Result<CookieJar, SilentError> {
+fn get_cookie(req: &BaseRequest<ReqBody>) -> Result<CookieJar, SilentError> {
     let mut jar = CookieJar::new();
     if let Some(cookies) = req.headers().get(header::COOKIE) {
         for cookie_str in cookies
@@ -263,23 +263,23 @@ fn get_cookie(req: &HyperRequest<ReqBody>) -> Result<CookieJar, SilentError> {
     Ok(jar)
 }
 
-impl From<HyperRequest<ReqBody>> for Request {
+impl From<BaseRequest<ReqBody>> for Request {
     #[cfg(feature = "cookie")]
-    fn from(req: HyperRequest<ReqBody>) -> Self {
+    fn from(req: BaseRequest<ReqBody>) -> Self {
         let cookies = get_cookie(&req).unwrap_or(CookieJar::default());
         let (parts, body) = req.into_parts();
         Self {
-            req: HyperRequest::from_parts(parts, ReqBody::Empty),
+            req: BaseRequest::from_parts(parts, ReqBody::Empty),
             body,
             cookies,
             ..Self::default()
         }
     }
     #[cfg(not(feature = "cookie"))]
-    fn from(req: HyperRequest<ReqBody>) -> Self {
+    fn from(req: BaseRequest<ReqBody>) -> Self {
         let (parts, body) = req.into_parts();
         Self {
-            req: HyperRequest::from_parts(parts, ReqBody::Empty),
+            req: BaseRequest::from_parts(parts, ReqBody::Empty),
             body,
             ..Self::default()
         }
@@ -287,7 +287,7 @@ impl From<HyperRequest<ReqBody>> for Request {
 }
 
 impl Deref for Request {
-    type Target = HyperRequest<ReqBody>;
+    type Target = BaseRequest<ReqBody>;
 
     fn deref(&self) -> &Self::Target {
         &self.req

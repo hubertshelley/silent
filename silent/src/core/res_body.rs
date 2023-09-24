@@ -2,7 +2,8 @@ use crate::error::BoxedError;
 use bytes::Bytes;
 use futures_util::stream::{BoxStream, Stream};
 use futures_util::TryStreamExt;
-use hyper::body::{Body, Frame, Incoming, SizeHint};
+use http_body::{Body, Frame, SizeHint};
+use hyper::body::Incoming;
 use std::collections::VecDeque;
 use std::error::Error as StdError;
 use std::io::{Error as IoError, ErrorKind};
@@ -16,8 +17,8 @@ pub enum ResBody {
     Once(Bytes),
     /// Chunks body.
     Chunks(VecDeque<Bytes>),
-    /// Hyper default body.
-    Hyper(Incoming),
+    /// Incoming default body.
+    Incoming(Incoming),
     /// Stream body.
     Stream(BoxStream<'static, Result<Bytes, BoxedError>>),
 }
@@ -54,7 +55,7 @@ impl Stream for ResBody {
                 }
             }
             ResBody::Chunks(chunks) => Poll::Ready(chunks.pop_front().map(Ok)),
-            ResBody::Hyper(body) => match Body::poll_frame(Pin::new(body), cx) {
+            ResBody::Incoming(body) => match Body::poll_frame(Pin::new(body), cx) {
                 Poll::Ready(Some(Ok(frame))) => Poll::Ready(frame.into_data().map(Ok).ok()),
                 Poll::Ready(Some(Err(e))) => {
                     Poll::Ready(Some(Err(IoError::new(ErrorKind::Other, e))))
@@ -91,7 +92,7 @@ impl Body for ResBody {
             ResBody::None => true,
             ResBody::Once(bytes) => bytes.is_empty(),
             ResBody::Chunks(chunks) => chunks.is_empty(),
-            ResBody::Hyper(body) => body.is_end_stream(),
+            ResBody::Incoming(body) => body.is_end_stream(),
             ResBody::Stream(_) => false,
         }
     }
@@ -104,7 +105,7 @@ impl Body for ResBody {
                 let size = chunks.iter().map(|bytes| bytes.len() as u64).sum();
                 SizeHint::with_exact(size)
             }
-            ResBody::Hyper(recv) => recv.size_hint(),
+            ResBody::Incoming(recv) => recv.size_hint(),
             ResBody::Stream(_) => SizeHint::default(),
         }
     }
@@ -118,7 +119,7 @@ impl From<Bytes> for ResBody {
 
 impl From<Incoming> for ResBody {
     fn from(value: Incoming) -> ResBody {
-        ResBody::Hyper(value)
+        ResBody::Incoming(value)
     }
 }
 

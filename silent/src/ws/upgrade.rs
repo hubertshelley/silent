@@ -1,7 +1,7 @@
 use crate::header::{HeaderMap, HeaderValue};
 use crate::prelude::PathParam;
 use crate::{Request, Result, SilentError};
-use hyper::http::Extensions;
+use http::Extensions;
 use hyper::upgrade;
 use hyper::upgrade::OnUpgrade;
 use std::collections::HashMap;

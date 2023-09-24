@@ -4,8 +4,8 @@ use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use headers::{ContentType, Header, HeaderMapExt};
-use hyper::body::{Body, SizeHint};
-use hyper::http::Extensions;
+use http::Extensions;
+use http_body::{Body, SizeHint};
 use serde::Serialize;
 use serde_json::Value;
 use std::fmt;

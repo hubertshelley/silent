@@ -1,6 +1,7 @@
 use bytes::Bytes;
 use futures_util::Stream;
-use hyper::body::{Body, Frame, Incoming, SizeHint};
+use http_body::{Body, Frame, SizeHint};
+use hyper::body::Incoming;
 use std::io::{Error as IoError, ErrorKind};
 use std::pin::Pin;
 use std::task::{Context, Poll};
