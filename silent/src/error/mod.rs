@@ -4,6 +4,7 @@ mod exception_handler_wrapper;
 use crate::{Response, StatusCode};
 pub(crate) use exception_handler_trait::ExceptionHandler;
 pub(crate) use exception_handler_wrapper::ExceptionHandlerWrapper;
+use serde::Serialize;
 use std::backtrace::Backtrace;
 use std::io;
 use thiserror::Error;
@@ -63,6 +64,13 @@ pub enum SilentError {
 pub type SilentResult<T> = Result<T, SilentError>;
 
 impl SilentError {
+    pub fn business_error_obj<S>(code: StatusCode, msg: S) -> Self
+    where
+        S: Serialize,
+    {
+        let msg = serde_json::to_string(&msg).unwrap_or_default();
+        Self::BusinessError { code, msg }
+    }
     pub fn business_error(code: StatusCode, msg: String) -> Self {
         Self::BusinessError { code, msg }
     }
@@ -70,6 +78,12 @@ impl SilentError {
         match self {
             Self::BusinessError { code, .. } => *code,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+    pub fn message(&self) -> String {
+        match self {
+            Self::BusinessError { msg, .. } => msg.clone(),
+            _ => self.to_string(),
         }
     }
     pub fn trace(&self) -> Backtrace {
@@ -81,7 +95,7 @@ impl From<SilentError> for Response {
     fn from(value: SilentError) -> Self {
         let mut res = Response::empty();
         res.set_status(value.status_code());
-        res.set_body(value.to_string().into());
+        res.set_body(value.message().into());
         res
     }
 }
