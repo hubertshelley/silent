@@ -4,7 +4,9 @@ mod exception_handler_wrapper;
 use crate::{Response, StatusCode};
 pub(crate) use exception_handler_trait::ExceptionHandler;
 pub(crate) use exception_handler_wrapper::ExceptionHandlerWrapper;
+use headers::ContentType;
 use serde::Serialize;
+use serde_json::Value;
 use std::backtrace::Backtrace;
 use std::io;
 use thiserror::Error;
@@ -95,7 +97,43 @@ impl From<SilentError> for Response {
     fn from(value: SilentError) -> Self {
         let mut res = Response::empty();
         res.set_status(value.status_code());
+        if serde_json::from_str::<Value>(&value.message()).is_ok() {
+            res.set_typed_header(ContentType::json());
+        }
         res.set_body(value.message().into());
         res
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Response;
+    use http_body_util::BodyExt;
+    use hyper::StatusCode;
+    use serde_json::Value;
+
+    #[derive(Serialize)]
+    struct ResBody {
+        code: u16,
+        msg: String,
+        data: Value,
+    }
+
+    #[tokio::test]
+    async fn test_silent_error() {
+        let res_body = ResBody {
+            code: 400,
+            msg: "bad request".to_string(),
+            data: Value::Null,
+        };
+        let err = SilentError::business_error_obj(StatusCode::BAD_REQUEST, res_body);
+        let mut res: Response = err.into();
+        assert_eq!(res.status_code, StatusCode::BAD_REQUEST);
+        println!("{:#?}", res.headers);
+        println!(
+            "{:#?}",
+            res.body.frame().await.unwrap().unwrap().data_ref().unwrap()
+        );
     }
 }
