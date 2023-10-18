@@ -17,6 +17,7 @@ use mime::Mime;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
 use tokio::sync::OnceCell;
 use url::form_urlencoded;
@@ -60,6 +61,17 @@ impl Request {
             #[cfg(feature = "cookie")]
             cookies: CookieJar::default(),
         }
+    }
+
+    /// 获取访问真实地址
+    #[inline]
+    pub fn remote(&self) -> SocketAddr {
+        self.headers()
+            .get("x-real-ip")
+            .and_then(|h| h.to_str().ok())
+            .unwrap()
+            .parse()
+            .unwrap()
     }
 
     pub(crate) fn set_path_params(&mut self, key: String, value: PathParam) {
@@ -266,7 +278,7 @@ fn get_cookie(req: &BaseRequest<ReqBody>) -> Result<CookieJar, SilentError> {
 impl From<BaseRequest<ReqBody>> for Request {
     #[cfg(feature = "cookie")]
     fn from(req: BaseRequest<ReqBody>) -> Self {
-        let cookies = get_cookie(&req).unwrap_or(CookieJar::default());
+        let cookies = get_cookie(&req).unwrap_or_default();
         let (parts, body) = req.into_parts();
         Self {
             req: BaseRequest::from_parts(parts, ReqBody::Empty),

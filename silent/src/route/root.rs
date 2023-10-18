@@ -90,6 +90,10 @@ impl RootRoute {
         tracing::debug!("{:?}", req);
         let exception_handler = self.exception_handler.clone();
         let (mut req, path) = req.split_url();
+        if req.headers().get("x-real-ip").is_none() {
+            req.headers_mut()
+                .insert("x-real-ip", peer_addr.ip().to_string().parse().unwrap());
+        }
         let method = req.method().clone();
         let url = req.uri().to_string().clone();
         let http_version = req.version();
