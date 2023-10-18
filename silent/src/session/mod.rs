@@ -77,9 +77,8 @@ where
             })?;
             if let Some(cookie_value) = cookie_value {
                 res.cookies_mut().add(
-                    Cookie::build("silent-web-session", cookie_value)
-                        .max_age(cookie::time::Duration::hours(2))
-                        .finish(),
+                    Cookie::build(("silent-web-session", cookie_value))
+                        .max_age(cookie::time::Duration::hours(2)),
                 );
             }
         }
