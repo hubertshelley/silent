@@ -17,7 +17,7 @@ use mime::Mime;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::net::IpAddr;
 use std::ops::{Deref, DerefMut};
 use tokio::sync::OnceCell;
 use url::form_urlencoded;
@@ -65,7 +65,7 @@ impl Request {
 
     /// 获取访问真实地址
     #[inline]
-    pub fn remote(&self) -> SocketAddr {
+    pub fn remote(&self) -> IpAddr {
         self.headers()
             .get("x-real-ip")
             .and_then(|h| h.to_str().ok())
