@@ -1,5 +1,4 @@
 /// The `silent` library.
-
 #[cfg(feature = "server")]
 mod conn;
 #[warn(missing_docs)]
@@ -7,7 +6,7 @@ mod core;
 mod error;
 mod handler;
 mod log;
-mod middleware;
+pub mod middleware;
 mod route;
 #[cfg(feature = "server")]
 mod rt;
@@ -25,7 +24,7 @@ mod templates;
 mod ws;
 
 pub use crate::core::{request::Request, response::Response};
-pub use crate::middleware::MiddleWareHandler;
+pub use crate::middleware::{middlewares, MiddleWareHandler};
 pub use error::SilentError;
 pub use error::SilentResult as Result;
 pub use handler::Handler;
