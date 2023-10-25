@@ -23,7 +23,7 @@ mod templates;
 #[cfg(feature = "ws")]
 mod ws;
 
-pub use crate::core::{request::Request, response::Response};
+pub use crate::core::{configs::Configs, request::Request, response::Response};
 pub use crate::middleware::{middlewares, MiddleWareHandler};
 pub use error::SilentError;
 pub use error::SilentResult as Result;
@@ -34,8 +34,8 @@ pub use hyper::{header, Method, StatusCode};
 
 pub mod prelude {
     pub use crate::core::{
-        path_param::PathParam, request::Request, res_body::full, res_body::stream_body,
-        response::Response,
+        configs::Configs, path_param::PathParam, request::Request, res_body::full,
+        res_body::stream_body, response::Response,
     };
     pub use crate::error::{SilentError, SilentResult as Result};
     #[cfg(feature = "static")]
