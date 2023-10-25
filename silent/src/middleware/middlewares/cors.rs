@@ -1,5 +1,6 @@
 use crate::{MiddleWareHandler, Request, Response, Result, SilentError};
 use async_trait::async_trait;
+use http::{header, Method};
 
 pub enum CorsType {
     Any,
@@ -17,6 +18,18 @@ impl CorsType {
 
 impl From<Vec<&str>> for CorsType {
     fn from(value: Vec<&str>) -> Self {
+        CorsType::AllowSome(value.iter().map(|s| s.to_string()).collect())
+    }
+}
+
+impl From<Vec<Method>> for CorsType {
+    fn from(value: Vec<Method>) -> Self {
+        CorsType::AllowSome(value.iter().map(|s| s.to_string()).collect())
+    }
+}
+
+impl From<Vec<header::HeaderName>> for CorsType {
+    fn from(value: Vec<header::HeaderName>) -> Self {
         CorsType::AllowSome(value.iter().map(|s| s.to_string()).collect())
     }
 }
@@ -55,11 +68,33 @@ impl From<&str> for CorsType {
         if value == "*" {
             CorsType::Any
         } else {
-            CorsType::AllowSome(vec![value.to_string()])
+            CorsType::AllowSome(value.split(',').map(|s| s.to_string()).collect())
         }
     }
 }
 
+/// cors 中间件
+/// ```rust
+/// use silent::prelude::*;
+/// use silent::middlewares::{Cors, CorsType};
+/// // set with CorsType
+/// let _ = Cors::new()
+///                .origin(CorsType::Any)
+///                .methods(CorsType::AllowSome(vec![Method::POST.to_string()]))
+///                .headers(CorsType::AllowSome(vec![header::AUTHORIZATION.to_string(), header::ACCEPT.to_string()]))
+///                .credentials(true);
+/// // set with Method or header
+/// let _ = Cors::new()
+///                .origin(CorsType::Any)
+///                .methods(vec![Method::POST])
+///                .headers(vec![header::AUTHORIZATION, header::ACCEPT])
+///                .credentials(true);
+/// // set with str
+/// let _ = Cors::new()
+///                .origin("*")
+///                .methods("POST")
+///                .headers("authorization,accept")
+///                .credentials(true);
 #[derive(Default)]
 pub struct Cors {
     origin: Option<CorsOriginType>,
