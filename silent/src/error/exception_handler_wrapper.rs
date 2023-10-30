@@ -1,5 +1,5 @@
 use crate::error::exception_handler_trait::ExceptionHandler;
-use crate::{Response, SilentError};
+use crate::{Configs, Response, SilentError};
 use async_trait::async_trait;
 use std::future::Future;
 use std::sync::Arc;
@@ -19,15 +19,15 @@ pub struct ExceptionHandlerWrapper<F> {
 impl<F, T, Fut> ExceptionHandlerWrapper<F>
 where
     Fut: Future<Output = T> + Send + 'static,
-    F: Fn(SilentError) -> Fut,
+    F: Fn(SilentError, Configs) -> Fut,
     T: Into<Response>,
 {
     pub fn new(handler: F) -> Self {
         Self { handler }
     }
 
-    pub async fn handle(&self, err: SilentError) -> T {
-        (self.handler)(err).await
+    pub async fn handle(&self, err: SilentError, configs: Configs) -> T {
+        (self.handler)(err, configs).await
     }
 
     pub fn arc(self) -> Arc<Self> {
@@ -40,11 +40,11 @@ where
 impl<F, T, Fut> ExceptionHandler for ExceptionHandlerWrapper<F>
 where
     Fut: Future<Output = T> + Send + 'static,
-    F: Fn(SilentError) -> Fut + Send + Sync + 'static,
+    F: Fn(SilentError, Configs) -> Fut + Send + Sync + 'static,
     T: Into<Response>,
 {
-    async fn call(&self, err: SilentError) -> Response {
-        self.handle(err).await.into()
+    async fn call(&self, err: SilentError, configs: Configs) -> Response {
+        self.handle(err, configs).await.into()
     }
 }
 
@@ -53,16 +53,20 @@ mod tests {
     use super::*;
     use crate::StatusCode;
 
-    async fn exception_handler(err: SilentError) -> SilentError {
+    async fn exception_handler(err: SilentError, _configs: Configs) -> SilentError {
         err
     }
 
     #[tokio::test]
     async fn handler_wrapper_match_req_works() {
         let handler_wrapper = ExceptionHandlerWrapper::new(exception_handler);
+        let configs = Configs::default();
         assert_eq!(
             handler_wrapper
-                .call(SilentError::business_error(StatusCode::OK, "".to_string()))
+                .call(
+                    SilentError::business_error(StatusCode::OK, "".to_string()),
+                    configs
+                )
                 .await
                 .status_code,
             StatusCode::OK

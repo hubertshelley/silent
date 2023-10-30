@@ -4,6 +4,7 @@ mod serve;
 use crate::conn::SilentConnection;
 use crate::route::RouteService;
 use crate::service::serve::Serve;
+use crate::Configs;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -13,6 +14,7 @@ pub struct Server {
     addr: SocketAddr,
     conn: Arc<SilentConnection>,
     shutdown_callback: Option<Box<dyn Fn() + Send + Sync>>,
+    configs: Option<Configs>,
 }
 
 impl Default for Server {
@@ -27,6 +29,7 @@ impl Server {
             addr: ([127, 0, 0, 1], 8000).into(),
             conn: Arc::new(SilentConnection::default()),
             shutdown_callback: None,
+            configs: None,
         }
     }
 
@@ -50,10 +53,8 @@ impl Server {
         let Self { conn, .. } = self;
         tracing::info!("Listening on http{}{}", "://", self.addr);
         let listener = TcpListener::bind(self.addr).await.unwrap();
-        #[cfg(feature = "session")]
         let mut root_route = service.route();
-        #[cfg(not(feature = "session"))]
-        let root_route = service.route();
+        root_route.set_configs(self.configs.clone());
         #[cfg(feature = "session")]
         root_route.check_session();
 
