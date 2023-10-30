@@ -86,25 +86,6 @@ impl Configs {
             .and_then(|boxed| (&**boxed as &(dyn Any + 'static)).downcast_ref())
     }
 
-    // /// Get a mutable reference to a type previously inserted on this `Configs`.
-    // ///
-    // /// # Example
-    // ///
-    // /// ```
-    // /// # use silent::Configs;
-    // /// let mut cfg = Configs::new();
-    // /// cfg.insert(String::from("Hello"));
-    // /// cfg.get_mut::<String>().unwrap().push_str(" World");
-    // ///
-    // /// assert_eq!(cfg.get::<String>().unwrap(), "Hello World");
-    // /// ```
-    // pub fn get_mut<T: Send + Sync + 'static>(&mut self) -> Option<&mut T> {
-    //     self.map
-    //         .as_mut()
-    //         .and_then(|map| map.get_mut(&TypeId::of::<T>()))
-    //         .and_then(|boxed| (&mut **boxed as &mut (dyn Any + 'static)).downcast_mut())
-    // }
-
     /// Remove a type from this `Configs`.
     ///
     /// If a extension of this type existed, it will be returned.
@@ -183,53 +164,108 @@ impl fmt::Debug for Configs {
     }
 }
 
-#[test]
-fn test_configs() {
-    #[derive(Debug, PartialEq, Clone)]
-    struct MyType(i32);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::RwLock;
+    use tracing::{error, info};
 
-    let mut configs = Configs::new();
+    #[test]
+    fn test_configs() {
+        #[derive(Debug, PartialEq, Clone)]
+        struct MyType(i32);
 
-    configs.insert(5i32);
-    configs.insert(MyType(10));
+        let mut configs = Configs::new();
 
-    assert_eq!(configs.get(), Some(&5i32));
-    // assert_eq!(configs.get_mut(), Some(&mut 5i32));
+        configs.insert(5i32);
+        configs.insert(MyType(10));
 
-    assert_eq!(configs.remove::<i32>(), Some(5i32));
-    assert!(configs.get::<i32>().is_none());
+        assert_eq!(configs.get(), Some(&5i32));
+        // assert_eq!(configs.get_mut(), Some(&mut 5i32));
 
-    assert_eq!(configs.get::<bool>(), None);
-    assert_eq!(configs.get(), Some(&MyType(10)));
+        assert_eq!(configs.remove::<i32>(), Some(5i32));
+        assert!(configs.get::<i32>().is_none());
 
-    #[derive(Debug, PartialEq, Clone)]
-    struct MyStringType(String);
+        assert_eq!(configs.get::<bool>(), None);
+        assert_eq!(configs.get(), Some(&MyType(10)));
 
-    configs.insert(MyStringType("Hello".to_string()));
+        #[derive(Debug, PartialEq, Clone)]
+        struct MyStringType(String);
 
-    assert_eq!(
-        configs.get::<MyStringType>(),
-        Some(&MyStringType("Hello".to_string()))
-    );
+        configs.insert(MyStringType("Hello".to_string()));
 
-    use std::thread;
-    for i in 0..100 {
-        let configs = configs.clone();
-        thread::spawn(move || {
-            if i % 5 == 0 {
-                // let mut configs = configs.clone();
-                let configs = configs.clone();
-                if let Some(my_type) = configs.get::<MyStringType>() {
-                    // my_type.0 = i.to_string();
+        assert_eq!(
+            configs.get::<MyStringType>(),
+            Some(&MyStringType("Hello".to_string()))
+        );
+
+        use std::thread;
+        for i in 0..100 {
+            let configs = configs.clone();
+            thread::spawn(move || {
+                if i % 5 == 0 {
+                    // let mut configs = configs.clone();
+                    let configs = configs.clone();
+                    if let Some(my_type) = configs.get::<MyStringType>() {
+                        // my_type.0 = i.to_string();
+                        println!("Ok: i:{}, v:{}", i, my_type.0)
+                    } else {
+                        println!("Err: i:{}", i)
+                    }
+                } else if let Some(my_type) = configs.get::<MyStringType>() {
                     println!("Ok: i:{}, v:{}", i, my_type.0)
                 } else {
                     println!("Err: i:{}", i)
                 }
-            } else if let Some(my_type) = configs.get::<MyStringType>() {
-                println!("Ok: i:{}, v:{}", i, my_type.0)
-            } else {
-                println!("Err: i:{}", i)
-            }
-        });
+            });
+        }
+    }
+
+    #[test]
+    fn test_configs_mut_ref() {
+        let mut configs = Configs::default();
+        #[derive(Debug, PartialEq, Clone)]
+        struct MyStringType(String);
+
+        configs.insert(Arc::new(RwLock::new(MyStringType("Hello".to_string()))));
+        assert_eq!(
+            configs
+                .get::<Arc<RwLock<MyStringType>>>()
+                .cloned()
+                .unwrap()
+                .read()
+                .unwrap()
+                .0
+                .clone(),
+            "Hello"
+        );
+
+        use std::thread;
+        for i in 0..100 {
+            let configs = configs.clone();
+            thread::spawn(move || {
+                if i % 5 == 0 {
+                    let configs = configs.clone();
+                    if let Some(my_type) = configs.get::<Arc<RwLock<MyStringType>>>().cloned() {
+                        if let Ok(mut my_type) = my_type.write() {
+                            my_type.0 = i.to_string();
+                            info!("Ok: i:{}, v:{}", i, my_type.0)
+                        } else {
+                            error!("Rwlock Lock Err: i:{}", i)
+                        }
+                    } else {
+                        error!("Get Err: i:{}", i)
+                    }
+                } else if let Some(my_type) = configs.get::<Arc<RwLock<MyStringType>>>() {
+                    if let Ok(my_type) = my_type.read() {
+                        info!("Ok: i:{}, v:{}", i, my_type.0)
+                    } else {
+                        error!("Rwlock Read Err: i:{}", i)
+                    }
+                } else {
+                    error!("Err: i:{}", i)
+                }
+            });
+        }
     }
 }
