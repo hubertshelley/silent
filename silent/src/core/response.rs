@@ -95,6 +95,18 @@ impl Response {
         Ok(res)
     }
 
+    /// 获取配置
+    #[inline]
+    pub fn get_config<T: Send + Sync + 'static>(&self) -> Result<&T> {
+        self.configs.get::<T>().ok_or(SilentError::ConfigNotFound)
+    }
+
+    /// 获取配置(Uncheck)
+    #[inline]
+    pub fn get_config_uncheck<T: Send + Sync + 'static>(&self) -> &T {
+        self.configs.get::<T>().unwrap()
+    }
+
     /// 获取全局配置
     #[inline]
     pub fn configs(&self) -> &Configs {
