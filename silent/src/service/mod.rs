@@ -33,6 +33,19 @@ impl Server {
         }
     }
 
+    #[inline]
+    pub fn set_configs(&mut self, configs: Configs) -> &mut Self {
+        self.configs = Some(configs);
+        self
+    }
+
+    #[inline]
+    pub fn with_configs(mut self, configs: Configs) -> Self {
+        self.configs = Some(configs);
+        self
+    }
+
+    #[inline]
     pub fn bind(&mut self, addr: SocketAddr) -> &mut Self {
         self.addr = addr;
         self
