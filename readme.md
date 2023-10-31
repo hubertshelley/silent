@@ -51,3 +51,22 @@ re-export aes/aes_gcm
 ### rsa
 
 re-export rsa
+
+## configs
+
+### setting
+
+```rust
+use silent::Configs;
+let mut configs = Configs::default();
+configs.insert(1i32);
+```
+
+### usage
+
+```rust
+async fn call(req: Request) -> Result<i32> {
+    let num = req.configs().get::<i32>().unwrap();
+    Ok(*num)
+}
+```
