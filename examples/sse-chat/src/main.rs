@@ -31,8 +31,7 @@ fn main() {
 
     Server::new()
         .bind("0.0.0.0:8001".parse().unwrap())
-        .bind_route(route)
-        .run();
+        .run(route);
 }
 
 #[derive(Debug)]

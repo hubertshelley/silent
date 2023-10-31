@@ -5,7 +5,7 @@ use crate::route::Route;
 use crate::session::SessionMiddleware;
 #[cfg(feature = "template")]
 use crate::templates::TemplateMiddleware;
-use crate::{MiddleWareHandler, Request, Response, SilentError, StatusCode};
+use crate::{Configs, MiddleWareHandler, Request, Response, SilentError, StatusCode};
 #[cfg(feature = "session")]
 use async_session::{Session, SessionStore};
 use chrono::Utc;
@@ -21,6 +21,7 @@ pub struct RootRoute {
     pub(crate) exception_handler: Option<Arc<dyn ExceptionHandler>>,
     #[cfg(feature = "session")]
     pub(crate) session_set: bool,
+    pub(crate) configs: Option<Configs>,
 }
 
 impl fmt::Debug for RootRoute {
@@ -43,6 +44,7 @@ impl RootRoute {
             exception_handler: None,
             #[cfg(feature = "session")]
             session_set: false,
+            configs: None,
         }
     }
 
@@ -73,11 +75,14 @@ impl RootRoute {
     pub fn set_exception_handler<F, T, Fut>(mut self, handler: F) -> Self
     where
         Fut: Future<Output = T> + Send + 'static,
-        F: Fn(SilentError) -> Fut + Send + Sync + 'static,
+        F: Fn(SilentError, Configs) -> Fut + Send + Sync + 'static,
         T: Into<Response>,
     {
         self.exception_handler = Some(ExceptionHandlerWrapper::new(handler).arc());
         self
+    }
+    pub(crate) fn set_configs(&mut self, configs: Option<Configs>) {
+        self.configs = configs;
     }
 }
 
@@ -90,6 +95,8 @@ impl RootRoute {
         tracing::debug!("{:?}", req);
         let exception_handler = self.exception_handler.clone();
         let (mut req, path) = req.split_url();
+        let configs = self.configs.clone().unwrap_or_default();
+        req.configs = configs.clone();
         if req.headers().get("x-real-ip").is_none() {
             req.headers_mut()
                 .insert("x-real-ip", peer_addr.ip().to_string().parse().unwrap());
@@ -106,6 +113,7 @@ impl RootRoute {
                 )),
                 Some(handler) => {
                     let mut pre_res = Response::empty();
+                    pre_res.configs = configs.clone();
                     let mut active_middlewares = vec![];
                     for (i, middleware) in route.middlewares.iter().enumerate() {
                         if middleware.match_req(&req).await {
@@ -174,7 +182,7 @@ impl RootRoute {
                     e.to_string()
                 );
                 match exception_handler {
-                    Some(handler) => Ok(handler.call(e).await),
+                    Some(handler) => Ok(handler.call(e, configs.clone()).await),
                     None => Err(e),
                 }
             }

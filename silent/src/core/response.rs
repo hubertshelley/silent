@@ -1,5 +1,5 @@
 use crate::core::res_body::{full, ResBody};
-use crate::{header, HeaderMap, Result, SilentError, StatusCode};
+use crate::{header, Configs, HeaderMap, Result, SilentError, StatusCode};
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
@@ -25,6 +25,7 @@ pub struct Response {
     #[cfg(feature = "cookie")]
     pub(crate) cookies: CookieJar,
     pub(crate) extensions: Extensions,
+    pub(crate) configs: Configs,
 }
 
 impl fmt::Debug for Response {
@@ -51,6 +52,7 @@ impl Response {
             #[cfg(feature = "cookie")]
             cookies: CookieJar::default(),
             extensions: Extensions::default(),
+            configs: Configs::default(),
         }
     }
     /// 设置响应状态
@@ -91,6 +93,30 @@ impl Response {
             })?,
         );
         Ok(res)
+    }
+
+    /// 获取配置
+    #[inline]
+    pub fn get_config<T: Send + Sync + 'static>(&self) -> Result<&T> {
+        self.configs.get::<T>().ok_or(SilentError::ConfigNotFound)
+    }
+
+    /// 获取配置(Uncheck)
+    #[inline]
+    pub fn get_config_uncheck<T: Send + Sync + 'static>(&self) -> &T {
+        self.configs.get::<T>().unwrap()
+    }
+
+    /// 获取全局配置
+    #[inline]
+    pub fn configs(&self) -> &Configs {
+        &self.configs
+    }
+
+    /// 获取可变全局配置
+    #[inline]
+    pub fn configs_mut(&mut self) -> &mut Configs {
+        &mut self.configs
     }
     #[inline]
     /// 设置响应header

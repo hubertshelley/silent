@@ -5,9 +5,9 @@ use crate::core::path_param::PathParam;
 use crate::core::req_body::ReqBody;
 use crate::core::serde::from_str_multi_val;
 use crate::header::CONTENT_TYPE;
-use crate::SilentError;
 #[cfg(feature = "cookie")]
 use crate::{header, StatusCode};
+use crate::{Configs, SilentError};
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use http::Extensions;
@@ -37,6 +37,7 @@ pub struct Request {
     json_data: OnceCell<Value>,
     #[cfg(feature = "cookie")]
     pub(crate) cookies: CookieJar,
+    pub(crate) configs: Configs,
 }
 
 impl Default for Request {
@@ -60,6 +61,7 @@ impl Request {
             json_data: OnceCell::new(),
             #[cfg(feature = "cookie")]
             cookies: CookieJar::default(),
+            configs: Configs::default(),
         }
     }
 
@@ -76,6 +78,30 @@ impl Request {
 
     pub(crate) fn set_path_params(&mut self, key: String, value: PathParam) {
         self.path_params.insert(key, value);
+    }
+
+    /// 获取配置
+    #[inline]
+    pub fn get_config<T: Send + Sync + 'static>(&self) -> Result<&T, SilentError> {
+        self.configs.get::<T>().ok_or(SilentError::ConfigNotFound)
+    }
+
+    /// 获取配置(Uncheck)
+    #[inline]
+    pub fn get_config_uncheck<T: Send + Sync + 'static>(&self) -> &T {
+        self.configs.get::<T>().unwrap()
+    }
+
+    /// 获取全局配置
+    #[inline]
+    pub fn configs(&self) -> &Configs {
+        &self.configs
+    }
+
+    /// 获取可变全局配置
+    #[inline]
+    pub fn configs_mut(&mut self) -> &mut Configs {
+        &mut self.configs
     }
 
     /// 获取可变原请求体
