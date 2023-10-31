@@ -50,6 +50,9 @@ pub enum SilentError {
     /// Params为空 错误
     #[error("params not found")]
     ParamsNotFound,
+    /// 配置不存在 错误
+    #[error("config not found")]
+    ConfigNotFound,
     /// websocket错误
     #[error("websocket error: {0}")]
     WsError(String),

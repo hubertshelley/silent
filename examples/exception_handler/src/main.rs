@@ -12,7 +12,7 @@ fn main() {
     let route = Route::new("")
         .get(|mut req| async move { req.params_parse::<Exception>() })
         .route()
-        .set_exception_handler(|e| async move {
+        .set_exception_handler(|e, _| async move {
             Exception {
                 code: e.status_code().as_u16(),
                 msg: e.to_string(),
