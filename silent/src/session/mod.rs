@@ -66,7 +66,13 @@ where
         let session = res.extensions.remove::<Session>();
         let cookie = res.cookies().get("silent-web-session");
         if let Some(mut session) = session {
-            if cookie.is_none() {
+            if let Some(cookie) = cookie {
+                if let Ok(session_id) = Session::id_from_cookie_value(cookie.value()) {
+                    if session.id() != session_id {
+                        session.regenerate()
+                    }
+                }
+            } else {
                 session.regenerate()
             }
             let cookie_value = session_store.store_session(session).await.map_err(|e| {
