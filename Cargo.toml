@@ -1,5 +1,5 @@
 [workspace]
-members = ["silent*", "examples/*"]
+members = ["silent", "examples/*"]
 default-members = ["silent", ]
 resolver = "2"
 
