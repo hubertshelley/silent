@@ -1,9 +1,9 @@
 use crate::core::res_body::{full, ResBody};
-use crate::{header, Configs, HeaderMap, Result, SilentError, StatusCode};
+use crate::{header, Configs, Result, SilentError, StatusCode};
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
-use headers::{ContentType, Header, HeaderMapExt};
+use headers::{ContentType, Header, HeaderMap, HeaderMapExt};
 use http::Extensions;
 use http_body::{Body, SizeHint};
 use serde::Serialize;
