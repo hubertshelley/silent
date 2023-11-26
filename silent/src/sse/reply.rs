@@ -1,7 +1,7 @@
 use crate::header::{CACHE_CONTROL, CONTENT_TYPE};
 use crate::prelude::stream_body;
 use crate::sse::{keep_alive, SSEEvent};
-use crate::{log, HeaderValue, Response, Result, SilentError, StatusCode};
+use crate::{headers::HeaderValue, log, Response, Result, SilentError, StatusCode};
 use futures_util::{future, Stream, TryStreamExt};
 
 pub fn sse_reply<S>(stream: S) -> Response

@@ -1,5 +1,7 @@
 use super::Route;
 #[cfg(feature = "ws")]
+use crate::tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
+#[cfg(feature = "ws")]
 use crate::ws::{HandlerWrapperWebSocket, Message, WebSocketHandler, WebSocketParts};
 use crate::{Handler, HandlerWrapper, Method, Request, Response, Result};
 use std::collections::HashMap;
@@ -9,8 +11,6 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 #[cfg(feature = "ws")]
 use tokio::sync::RwLock;
-#[cfg(feature = "ws")]
-use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 pub trait HandlerGetter {
     fn get_handler_mut(&mut self) -> &mut HashMap<Method, Arc<dyn Handler>>;

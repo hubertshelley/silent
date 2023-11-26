@@ -1,5 +1,7 @@
 use crate::conn::support::TokioIo;
 use crate::log::debug;
+use crate::tokio_tungstenite::tungstenite::protocol;
+use crate::tokio_tungstenite::WebSocketStream;
 use crate::ws::message::Message;
 use crate::ws::upgrade::{Upgraded, WebSocketParts};
 use crate::ws::websocket_handler::WebSocketHandler;
@@ -15,8 +17,6 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::sync::RwLock;
-use tokio_tungstenite::tungstenite::protocol;
-use tokio_tungstenite::WebSocketStream;
 
 pub struct WebSocket {
     parts: Arc<RwLock<WebSocketParts>>,

@@ -1,10 +1,10 @@
 mod exception_handler_trait;
 mod exception_handler_wrapper;
 
+use crate::headers::ContentType;
 use crate::{Response, StatusCode};
 pub(crate) use exception_handler_trait::ExceptionHandler;
 pub(crate) use exception_handler_wrapper::ExceptionHandlerWrapper;
-use headers::ContentType;
 use serde::Serialize;
 use serde_json::Value;
 use std::backtrace::Backtrace;
@@ -22,7 +22,7 @@ pub enum SilentError {
     IOError(#[from] io::Error),
     /// IO 错误
     #[error("io error")]
-    TungsteniteError(#[from] tokio_tungstenite::tungstenite::Error),
+    TungsteniteError(#[from] crate::tokio_tungstenite::tungstenite::Error),
     /// 反序列化 错误
     #[error("serde_json error `{0}`")]
     SerdeJsonError(#[from] serde_json::Error),
@@ -34,7 +34,7 @@ pub enum SilentError {
     HyperError(#[from] hyper::Error),
     /// 上传文件读取 错误
     #[error("upload file read error `{0}`")]
-    FileEmpty(#[from] multer::Error),
+    FileEmpty(#[from] crate::multer::Error),
     /// Body为空 错误
     #[error("body is empty")]
     BodyEmpty,

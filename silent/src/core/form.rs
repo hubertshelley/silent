@@ -1,7 +1,7 @@
 use crate::core::req_body::ReqBody;
 use crate::header::{HeaderMap, CONTENT_TYPE};
+use crate::multer::{Field, Multipart};
 use crate::{SilentError, StatusCode};
-use multer::{Field, Multipart};
 use multimap::MultiMap;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -41,7 +41,7 @@ impl FormData {
         if let Some(boundary) = headers
             .get(CONTENT_TYPE)
             .and_then(|ct| ct.to_str().ok())
-            .and_then(|ct| multer::parse_boundary(ct).ok())
+            .and_then(|ct| crate::multer::parse_boundary(ct).ok())
         {
             let mut multipart = Multipart::new(body, boundary);
             while let Some(mut field) = multipart.next_field().await? {

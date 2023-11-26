@@ -23,13 +23,16 @@ mod templates;
 #[cfg(feature = "ws")]
 mod ws;
 
+use silent_multer as multer;
+use silent_tokio_tungstenite as tokio_tungstenite;
+
 pub use crate::core::{configs::Configs, request::Request, response::Response};
 pub use crate::middleware::{middlewares, MiddleWareHandler};
 pub use error::SilentError;
 pub use error::SilentResult as Result;
 pub use handler::Handler;
 pub use handler::HandlerWrapper;
-pub use headers::*;
+pub use headers;
 pub use hyper::{header, Method, StatusCode};
 
 pub mod prelude {
@@ -66,6 +69,6 @@ pub mod prelude {
     pub use async_session::{Session, SessionStore};
     #[cfg(feature = "cookie")]
     pub use cookie::{time as CookieTime, Cookie};
-    pub use headers::*;
+    pub use headers;
     pub use hyper::{header, upgrade, Method, StatusCode};
 }
