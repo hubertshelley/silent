@@ -60,10 +60,12 @@ argon2 = "0.5.2"
 pbkdf2 = { version = "0.12", features = ["simple"] }
 aes-gcm = "0.10.3"
 aes = "0.8"
-rsa = "0.9.4"
+# remove rsa because it's not save
+#rsa = "0.9.6"
 cookie = { version = "0.18.0", features = ["secure", "percent-encode"] }
 pin-project-lite = "0.2.13"
 async-session = "3.0.0"
 tera = "1.19.1"
 http = "1.0.0"
 http-body = "1.0.0"
+futures = "0.3.29"

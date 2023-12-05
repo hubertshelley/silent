@@ -1,4 +1,5 @@
 pub mod aes;
 pub mod argon2;
 pub mod pbkdf2;
-pub mod rsa;
+// remove rsa because of it's not save
+// pub mod rsa;

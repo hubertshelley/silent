@@ -11,7 +11,8 @@ use tokio::net::TcpListener;
 use tokio::signal;
 
 pub struct Server {
-    addr: SocketAddr,
+    addr: Option<SocketAddr>,
+    listener: Option<TcpListener>,
     conn: Arc<SilentConnection>,
     shutdown_callback: Option<Box<dyn Fn() + Send + Sync>>,
     configs: Option<Configs>,
@@ -26,7 +27,8 @@ impl Default for Server {
 impl Server {
     pub fn new() -> Self {
         Self {
-            addr: ([127, 0, 0, 1], 8000).into(),
+            addr: None,
+            listener: None,
             conn: Arc::new(SilentConnection::default()),
             shutdown_callback: None,
             configs: None,
@@ -46,12 +48,18 @@ impl Server {
     }
 
     #[inline]
-    pub fn bind(&mut self, addr: SocketAddr) -> &mut Self {
-        self.addr = addr;
+    pub fn bind(mut self, addr: SocketAddr) -> Self {
+        self.addr = Some(addr);
         self
     }
 
-    pub fn set_shutdown_callback<F>(&mut self, callback: F) -> &mut Self
+    #[inline]
+    pub fn listen(mut self, listener: TcpListener) -> Self {
+        self.listener = Some(listener);
+        self
+    }
+
+    pub fn set_shutdown_callback<F>(mut self, callback: F) -> Self
     where
         F: Fn() + Send + Sync + 'static,
     {
@@ -59,15 +67,36 @@ impl Server {
         self
     }
 
-    pub async fn serve<S>(&self, service: S)
+    pub async fn serve<S>(self, service: S)
     where
         S: RouteService,
     {
-        let Self { conn, .. } = self;
-        tracing::info!("Listening on http{}{}", "://", self.addr);
-        let listener = TcpListener::bind(self.addr).await.unwrap();
+        let Self {
+            conn,
+            listener,
+            configs,
+            addr,
+            ..
+        } = self;
+
+        let listener = match listener {
+            None => match addr {
+                None => TcpListener::bind("127.0.0.1:0")
+                    .await
+                    .expect("failed to listen"),
+                Some(addr) => TcpListener::bind(addr)
+                    .await
+                    .unwrap_or_else(|_| panic!("failed to listen {}", addr)),
+            },
+            Some(listener) => listener,
+        };
+        tracing::info!(
+            "listening on: http{}//{}",
+            ":",
+            listener.local_addr().unwrap()
+        );
         let mut root_route = service.route();
-        root_route.set_configs(self.configs.clone());
+        root_route.set_configs(configs.clone());
         #[cfg(feature = "session")]
         root_route.check_session();
 
@@ -114,7 +143,7 @@ impl Server {
         }
     }
 
-    pub fn run<S>(&self, service: S)
+    pub fn run<S>(self, service: S)
     where
         S: RouteService,
     {
