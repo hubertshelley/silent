@@ -24,7 +24,9 @@ mod templates;
 mod ws;
 
 use silent_multer as multer;
-use silent_tokio_tungstenite as tokio_tungstenite;
+// use silent_tokio_tungstenite as tokio_tungstenite;
+#[allow(clippy::single_component_path_imports)]
+use tokio_tungstenite;
 
 pub use crate::core::{configs::Configs, request::Request, response::Response};
 pub use crate::middleware::{middlewares, MiddleWareHandler};
