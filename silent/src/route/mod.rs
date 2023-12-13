@@ -66,7 +66,26 @@ impl Route {
         if last_path.is_empty() {
             route
         } else {
-            route.append(Route::new(last_path))
+            route.append_route(Route::new(last_path))
+        }
+    }
+    fn append_route(mut self, route: Route) -> Self {
+        self.children.push(route);
+        self
+    }
+    fn get_append_real_route(&mut self, create_path: &str) -> &mut Self {
+        if !create_path.contains('/') {
+            self
+        } else {
+            let mut paths = create_path.splitn(2, '/');
+            let _first_path = paths.next().unwrap_or("");
+            let last_path = paths.next().unwrap_or("");
+            let route = self
+                .children
+                .iter_mut()
+                .find(|r| r.create_path == last_path);
+            let route = route.unwrap();
+            route.get_append_real_route(last_path)
         }
     }
     pub fn append(mut self, mut route: Route) -> Self {
@@ -74,7 +93,8 @@ impl Route {
             .iter()
             .cloned()
             .for_each(|m| route.middleware_hook(m.clone()));
-        self.children.push(route);
+        let real_route = self.get_append_real_route(&self.create_path.clone());
+        real_route.children.push(route);
         self
     }
     pub fn hook(mut self, handler: impl MiddleWareHandler + 'static) -> Self {
@@ -110,5 +130,14 @@ mod tests {
             .hook(MiddlewareTest {})
             .append(Route::new("test"));
         assert_eq!(route.children[0].middlewares.len(), 1)
+    }
+
+    #[test]
+    fn long_path_append_test() {
+        let route = Route::new("api/v1")
+            .hook(MiddlewareTest {})
+            .append(Route::new("test"));
+        assert_eq!(route.children.len(), 1);
+        assert_eq!(route.children[0].children.len(), 1);
     }
 }
