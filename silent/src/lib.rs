@@ -23,7 +23,9 @@ mod templates;
 #[cfg(feature = "ws")]
 mod ws;
 
-use silent_multer as multer;
+// use silent_multer as multer;
+#[allow(clippy::single_component_path_imports)]
+use multer;
 // use silent_tokio_tungstenite as tokio_tungstenite;
 #[allow(clippy::single_component_path_imports)]
 use tokio_tungstenite;
