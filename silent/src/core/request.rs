@@ -10,15 +10,15 @@ use crate::{header, StatusCode};
 use crate::{Configs, SilentError};
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
-use http::Extensions;
+use http::request::Parts;
 use http::Request as BaseRequest;
+use http::{Extensions, HeaderMap, HeaderValue, Method, Uri, Version};
 use http_body_util::BodyExt;
 use mime::Mime;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::ops::{Deref, DerefMut};
 use tokio::sync::OnceCell;
 use url::form_urlencoded;
 
@@ -29,7 +29,8 @@ use url::form_urlencoded;
 /// ```
 #[derive(Debug)]
 pub struct Request {
-    req: BaseRequest<ReqBody>,
+    // req: BaseRequest<ReqBody>,
+    parts: Parts,
     path_params: HashMap<String, PathParam>,
     params: HashMap<String, String>,
     body: ReqBody,
@@ -49,11 +50,17 @@ impl Default for Request {
 impl Request {
     /// 创建空请求体
     pub fn empty() -> Self {
+        let (parts, _) = BaseRequest::builder()
+            .method("GET")
+            .body(())
+            .unwrap()
+            .into_parts();
         Self {
-            req: BaseRequest::builder()
-                .method("GET")
-                .body(().into())
-                .unwrap(),
+            // req: BaseRequest::builder()
+            //     .method("GET")
+            //     .body(().into())
+            //     .unwrap(),
+            parts,
             path_params: HashMap::new(),
             params: HashMap::new(),
             body: ReqBody::Empty,
@@ -76,6 +83,57 @@ impl Request {
             .unwrap()
     }
 
+    /// 获取请求方法
+    #[inline]
+    pub fn method(&self) -> &Method {
+        &self.parts.method
+    }
+
+    /// 获取请求方法
+    #[inline]
+    pub fn method_mut(&mut self) -> &mut Method {
+        &mut self.parts.method
+    }
+    /// 获取请求uri
+    #[inline]
+    pub fn uri(&self) -> &Uri {
+        &self.parts.uri
+    }
+    /// 获取请求uri
+    #[inline]
+    pub fn uri_mut(&mut self) -> &mut Uri {
+        &mut self.parts.uri
+    }
+    /// 获取请求版本
+    #[inline]
+    pub fn version(&self) -> Version {
+        self.parts.version
+    }
+    /// 获取请求版本
+    #[inline]
+    pub fn version_mut(&mut self) -> &mut Version {
+        &mut self.parts.version
+    }
+    /// 获取请求头
+    #[inline]
+    pub fn headers(&self) -> &HeaderMap<HeaderValue> {
+        &self.parts.headers
+    }
+    /// 获取请求头
+    #[inline]
+    pub fn headers_mut(&mut self) -> &mut HeaderMap<HeaderValue> {
+        &mut self.parts.headers
+    }
+    /// 获取请求拓展
+    #[inline]
+    pub fn extensions(&self) -> &Extensions {
+        &self.parts.extensions
+    }
+    /// 获取请求拓展
+    #[inline]
+    pub fn extensions_mut(&mut self) -> &mut Extensions {
+        &mut self.parts.extensions
+    }
     pub(crate) fn set_path_params(&mut self, key: String, value: PathParam) {
         self.path_params.insert(key, value);
     }
@@ -105,9 +163,9 @@ impl Request {
     }
 
     /// 获取可变原请求体
-    pub fn req_mut(&mut self) -> &mut BaseRequest<ReqBody> {
-        &mut self.req
-    }
+    // pub fn req_mut(&mut self) -> &mut BaseRequest<ReqBody> {
+    //     &mut self.req
+    // }
 
     /// 获取路径参数集合
     pub fn path_params(&self) -> &HashMap<String, PathParam> {
@@ -307,7 +365,8 @@ impl From<BaseRequest<ReqBody>> for Request {
         let cookies = get_cookie(&req).unwrap_or_default();
         let (parts, body) = req.into_parts();
         Self {
-            req: BaseRequest::from_parts(parts, ReqBody::Empty),
+            // req: BaseRequest::from_parts(parts, ReqBody::Empty),
+            parts,
             body,
             cookies,
             ..Self::default()
@@ -317,23 +376,24 @@ impl From<BaseRequest<ReqBody>> for Request {
     fn from(req: BaseRequest<ReqBody>) -> Self {
         let (parts, body) = req.into_parts();
         Self {
-            req: BaseRequest::from_parts(parts, ReqBody::Empty),
+            // req: BaseRequest::from_parts(parts, ReqBody::Empty),
+            parts,
             body,
             ..Self::default()
         }
     }
 }
 
-impl Deref for Request {
-    type Target = BaseRequest<ReqBody>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.req
-    }
-}
-
-impl DerefMut for Request {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.req
-    }
-}
+// impl Deref for Request {
+//     type Target = BaseRequest<ReqBody>;
+//
+//     fn deref(&self) -> &Self::Target {
+//         &self.req
+//     }
+// }
+//
+// impl DerefMut for Request {
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.req
+//     }
+// }

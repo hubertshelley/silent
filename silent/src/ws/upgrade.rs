@@ -94,8 +94,7 @@ pub(crate) async fn on(mut req: Request) -> Result<Upgraded> {
         .ok_or(SilentError::WsError(
             "No OnUpgrade in Extensions".to_string(),
         ))?;
-    req.extensions_mut().insert(on_upgrade);
-    let upgrade = upgrade::on(req.req_mut()).await?;
+    let upgrade = on_upgrade.await?;
     Ok(Upgraded {
         head: WebSocketParts {
             path_params,
