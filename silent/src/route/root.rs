@@ -137,7 +137,7 @@ impl RootRoute {
                     }
                     match handler.call(req).await {
                         Ok(res) => {
-                            pre_res.from_response(res);
+                            pre_res.copy_from_response(res);
                             active_middlewares.reverse();
                             for i in active_middlewares {
                                 route.middlewares[i].after_response(&mut pre_res).await?

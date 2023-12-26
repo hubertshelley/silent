@@ -1,7 +1,7 @@
 use crate::conn::support::TokioIo;
 use crate::conn::SilentConnection;
 use crate::route::RootRoute;
-use crate::service::hyper_service::HyperHandler;
+use crate::service::hyper_service::HyperServiceHandler;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpStream;
@@ -23,7 +23,7 @@ impl Serve {
         let io = TokioIo::new(stream);
         self.conn
             .http1
-            .serve_connection(io, HyperHandler::new(peer_addr, self.routes.clone()))
+            .serve_connection(io, HyperServiceHandler::new(peer_addr, self.routes.clone()))
             .with_upgrades()
             .await
     }

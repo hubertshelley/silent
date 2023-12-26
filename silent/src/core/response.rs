@@ -198,7 +198,7 @@ impl Response {
 
     #[cfg(feature = "cookie")]
     /// move response to from another response
-    pub fn from_response(&mut self, res: Response) {
+    pub fn copy_from_response(&mut self, res: Response) {
         for (header_key, header_value) in res.headers.clone().into_iter() {
             if let Some(key) = header_key {
                 self.headers_mut().insert(key, header_value);
@@ -214,7 +214,7 @@ impl Response {
 
     #[cfg(not(feature = "cookie"))]
     /// move response to from another response
-    pub fn from_response(&mut self, res: Response) {
+    pub fn copy_from_response(&mut self, res: Response) {
         for (header_key, header_value) in res.headers.clone().into_iter() {
             if let Some(key) = header_key {
                 self.headers_mut().insert(key, header_value);

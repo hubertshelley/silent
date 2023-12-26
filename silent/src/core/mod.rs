@@ -1,3 +1,4 @@
+pub mod adapt;
 pub(crate) mod configs;
 mod form;
 pub(crate) mod path_param;

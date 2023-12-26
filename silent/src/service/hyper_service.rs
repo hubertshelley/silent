@@ -1,4 +1,4 @@
-use crate::core::res_body::ResBody;
+use crate::core::{adapt::RequestAdapt, res_body::ResBody};
 use crate::route::RootRoute;
 use crate::{Request, Response};
 use hyper::body::Incoming;
@@ -10,12 +10,12 @@ use std::pin::Pin;
 
 #[doc(hidden)]
 #[derive(Clone)]
-pub struct HyperHandler {
+pub struct HyperServiceHandler {
     pub(crate) remote_addr: SocketAddr,
     pub(crate) routes: RootRoute,
 }
 
-impl HyperHandler {
+impl HyperServiceHandler {
     #[inline]
     pub fn new(remote_addr: SocketAddr, routes: RootRoute) -> Self {
         Self {
@@ -31,18 +31,19 @@ impl HyperHandler {
             routes,
         } = self.clone();
         async move {
-            match routes.clone().handle(req, remote_addr).await {
-                Ok(res) => res,
-                Err(err) => {
+            routes
+                .clone()
+                .handle(req, remote_addr)
+                .await
+                .unwrap_or_else(|err| {
                     tracing::error!("Failed to handle request: {:?}", err);
                     err.into()
-                }
-            }
+                })
         }
     }
 }
 
-impl HyperService<HyperRequest<Incoming>> for HyperHandler {
+impl HyperService<HyperRequest<Incoming>> for HyperServiceHandler {
     type Response = HyperResponse<ResBody>;
     type Error = hyper::Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
@@ -50,7 +51,7 @@ impl HyperService<HyperRequest<Incoming>> for HyperHandler {
     #[inline]
     fn call(&self, req: HyperRequest<Incoming>) -> Self::Future {
         let (parts, body) = req.into_parts();
-        let req = HyperRequest::from_parts(parts, body.into()).into();
+        let req = HyperRequest::from_parts(parts, body.into()).tran_to_request();
         let response = self.handle(req);
         Box::pin(async move { Ok(response.await.into_hyper()) })
     }

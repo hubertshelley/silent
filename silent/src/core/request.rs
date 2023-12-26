@@ -5,8 +5,6 @@ use crate::core::path_param::PathParam;
 use crate::core::req_body::ReqBody;
 use crate::core::serde::from_str_multi_val;
 use crate::header::CONTENT_TYPE;
-#[cfg(feature = "cookie")]
-use crate::{header, StatusCode};
 use crate::{Configs, SilentError};
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
@@ -69,6 +67,16 @@ impl Request {
             #[cfg(feature = "cookie")]
             cookies: CookieJar::default(),
             configs: Configs::default(),
+        }
+    }
+
+    /// 从请求体创建请求
+    #[inline]
+    pub fn from_parts(parts: Parts, body: ReqBody) -> Self {
+        Self {
+            parts,
+            body,
+            ..Self::default()
         }
     }
 
@@ -335,65 +343,3 @@ impl Request {
         self.cookies.get(name.as_ref())
     }
 }
-
-#[cfg(feature = "cookie")]
-fn get_cookie(req: &BaseRequest<ReqBody>) -> Result<CookieJar, SilentError> {
-    let mut jar = CookieJar::new();
-    if let Some(cookies) = req.headers().get(header::COOKIE) {
-        for cookie_str in cookies
-            .to_str()
-            .map_err(|e| {
-                SilentError::business_error(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to parse cookie: {}", e),
-                )
-            })?
-            .split(';')
-            .map(|s| s.trim())
-        {
-            if let Ok(cookie) = Cookie::parse_encoded(cookie_str).map(|c| c.into_owned()) {
-                jar.add_original(cookie);
-            }
-        }
-    }
-    Ok(jar)
-}
-
-impl From<BaseRequest<ReqBody>> for Request {
-    #[cfg(feature = "cookie")]
-    fn from(req: BaseRequest<ReqBody>) -> Self {
-        let cookies = get_cookie(&req).unwrap_or_default();
-        let (parts, body) = req.into_parts();
-        Self {
-            // req: BaseRequest::from_parts(parts, ReqBody::Empty),
-            parts,
-            body,
-            cookies,
-            ..Self::default()
-        }
-    }
-    #[cfg(not(feature = "cookie"))]
-    fn from(req: BaseRequest<ReqBody>) -> Self {
-        let (parts, body) = req.into_parts();
-        Self {
-            // req: BaseRequest::from_parts(parts, ReqBody::Empty),
-            parts,
-            body,
-            ..Self::default()
-        }
-    }
-}
-
-// impl Deref for Request {
-//     type Target = BaseRequest<ReqBody>;
-//
-//     fn deref(&self) -> &Self::Target {
-//         &self.req
-//     }
-// }
-//
-// impl DerefMut for Request {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         &mut self.req
-//     }
-// }
