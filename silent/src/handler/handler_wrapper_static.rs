@@ -1,6 +1,9 @@
-use crate::prelude::full;
+use crate::prelude::stream_body;
 use crate::{Handler, Request, Response, SilentError, StatusCode};
 use async_trait::async_trait;
+use futures_util::StreamExt;
+use tokio::fs::File;
+use tokio_util::io::ReaderStream;
 
 struct HandlerWrapperStatic {
     path: String,
@@ -35,9 +38,11 @@ impl Handler for HandlerWrapperStatic {
             if path.ends_with('/') {
                 path.push_str("index.html");
             }
-            if let Ok(contents) = tokio::fs::read(path).await {
+            if let Ok(file) = File::open(path).await {
                 let mut res = Response::empty();
-                res.set_body(full(contents));
+                let reader_stream = ReaderStream::new(file);
+                let stream = reader_stream.boxed();
+                res.set_body(stream_body(stream));
                 return Ok(res);
             }
         }
