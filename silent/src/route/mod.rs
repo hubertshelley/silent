@@ -1,4 +1,4 @@
-use crate::handler::Handler;
+use crate::handler::{static_handler, Handler};
 use crate::middleware::MiddleWareHandler;
 use crate::Method;
 use std::collections::HashMap;
@@ -12,6 +12,7 @@ mod route_service;
 
 pub use root::RootRoute;
 
+use crate::prelude::HandlerGetter;
 pub use route_service::RouteService;
 
 #[derive(Clone)]
@@ -113,6 +114,12 @@ impl Route {
         self.children
             .iter_mut()
             .for_each(|r| r.middleware_hook_first(handler.clone()));
+    }
+
+    pub fn with_static(self, path: &str) -> Self {
+        self.append(
+            Route::new("<path:**>").insert_handler(Method::GET, Arc::new(static_handler(path))),
+        )
     }
 }
 

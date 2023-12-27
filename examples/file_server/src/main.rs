@@ -1,5 +1,4 @@
 use silent::prelude::*;
-use std::sync::Arc;
 
 fn main() {
     logger::fmt().init();
@@ -24,7 +23,6 @@ fn main() {
         )
         .unwrap();
     }
-    let route =
-        Route::new("<path:**>").insert_handler(Method::GET, Arc::new(static_handler("static")));
+    let route = Route::new("").with_static("static");
     Server::new().run(route);
 }
