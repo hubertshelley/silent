@@ -9,4 +9,4 @@ edition = "2021"
 silent = { path = "../../silent" }
 serde = { version = "1.0.193", features = ["derive"] }
 uuid = { version = "1.6.1", features = ["serde", "v4"] }
-async-trait = "0.1.74"
+async-trait = "0.1.76"

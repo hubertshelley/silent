@@ -12,6 +12,6 @@ version.workspace = true
 
 [dependencies]
 bytes = "1.5.0"
-futures-util = "0.3.29"
+futures-util = "0.3.30"
 multer = "3.0.0"
-tokio = { version = "1.35.0", features = ["full"] }
+tokio = { version = "1.35.1", features = ["full"] }
