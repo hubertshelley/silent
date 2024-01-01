@@ -45,5 +45,6 @@ mod keep_alive;
 mod reply;
 
 pub use event::SSEEvent;
+#[allow(unused_imports)]
 pub use keep_alive::{keep_alive, KeepAlive};
 pub use reply::sse_reply;
