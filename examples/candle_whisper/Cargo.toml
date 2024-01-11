@@ -1,0 +1,22 @@
+[package]
+name = "candle_whisper"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+metal = ["candle-core/metal"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+silent = { path = "../../silent", features = ["full"] }
+symphonia = { version = "0.5.3", features = ["all"] }
+anyhow = "1.0.79"
+candle-core = { version = "0.3.2", optional = true }
+candle-nn = { version = "0.3.2", optional = true }
+
