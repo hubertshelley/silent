@@ -41,8 +41,8 @@ pub use hyper::{header, Method, StatusCode};
 
 pub mod prelude {
     pub use crate::core::{
-        configs::Configs, path_param::PathParam, request::Request, res_body::full,
-        res_body::stream_body, response::Response,
+        configs::Configs, form::FilePart, form::FormData, path_param::PathParam, request::Request,
+        res_body::full, res_body::stream_body, response::Response,
     };
     pub use crate::error::{SilentError, SilentResult as Result};
     #[cfg(feature = "static")]

@@ -1,6 +1,6 @@
 pub mod adapt;
 pub(crate) mod configs;
-mod form;
+pub(crate) mod form;
 pub(crate) mod path_param;
 pub(crate) mod req_body;
 pub(crate) mod request;
