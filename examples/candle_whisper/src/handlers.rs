@@ -9,58 +9,20 @@ extern crate accelerate_src;
 #[cfg(feature = "mkl")]
 extern crate intel_mkl_src;
 
+use crate::args::{Args, Task};
+use crate::device::device;
+use crate::model::Model;
+use crate::multilingual;
 use anyhow::{Error as E, Result};
-use candle::{Device, IndexOp, Tensor};
+use candle_core::{self as candle, Device, IndexOp, Tensor};
 use candle_nn::{ops::softmax, VarBuilder};
+use candle_transformers::models::whisper::{self as m, audio, Config};
 use clap::{Parser, ValueEnum};
-use hf_hub::{api::sync::Api, Repo, RepoType};
 use rand::{distributions::Distribution, SeedableRng};
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
 use crate::pcm_decode::pcm_decode;
-use candle_transformers::models::whisper::{self as m, audio, Config};
-
-pub enum Model {
-    Normal(m::model::Whisper),
-    Quantized(m::quantized_model::Whisper),
-}
-
-// Maybe we should use some traits rather than doing the dispatch for all these.
-impl Model {
-    pub fn config(&self) -> &Config {
-        match self {
-            Self::Normal(m) => &m.config,
-            Self::Quantized(m) => &m.config,
-        }
-    }
-
-    pub fn encoder_forward(&mut self, x: &Tensor, flush: bool) -> candle::Result<Tensor> {
-        match self {
-            Self::Normal(m) => m.encoder.forward(x, flush),
-            Self::Quantized(m) => m.encoder.forward(x, flush),
-        }
-    }
-
-    pub fn decoder_forward(
-        &mut self,
-        x: &Tensor,
-        xa: &Tensor,
-        flush: bool,
-    ) -> candle::Result<Tensor> {
-        match self {
-            Self::Normal(m) => m.decoder.forward(x, xa, flush),
-            Self::Quantized(m) => m.decoder.forward(x, xa, flush),
-        }
-    }
-
-    pub fn decoder_final_linear(&self, x: &Tensor) -> candle::Result<Tensor> {
-        match self {
-            Self::Normal(m) => m.decoder.final_linear(x),
-            Self::Quantized(m) => m.decoder.final_linear(x),
-        }
-    }
-}
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -346,143 +308,16 @@ pub fn token_id(tokenizer: &Tokenizer, token: &str) -> candle::Result<u32> {
     }
 }
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
-enum Task {
-    Transcribe,
-    Translate,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
-enum WhichModel {
-    Tiny,
-    #[value(name = "tiny.en")]
-    TinyEn,
-    Base,
-    #[value(name = "base.en")]
-    BaseEn,
-    Small,
-    #[value(name = "small.en")]
-    SmallEn,
-    Medium,
-    #[value(name = "medium.en")]
-    MediumEn,
-    Large,
-    LargeV2,
-    LargeV3,
-    #[value(name = "distil-medium.en")]
-    DistilMediumEn,
-    #[value(name = "distil-large-v2")]
-    DistilLargeV2,
-}
-
-impl WhichModel {
-    fn is_multilingual(&self) -> bool {
-        match self {
-            Self::Tiny
-            | Self::Base
-            | Self::Small
-            | Self::Medium
-            | Self::Large
-            | Self::LargeV2
-            | Self::LargeV3
-            | Self::DistilLargeV2 => true,
-            Self::TinyEn | Self::BaseEn | Self::SmallEn | Self::MediumEn | Self::DistilMediumEn => {
-                false
-            }
-        }
-    }
-
-    fn model_and_revision(&self) -> (&'static str, &'static str) {
-        match self {
-            Self::Tiny => ("openai/whisper-tiny", "main"),
-            Self::TinyEn => ("openai/whisper-tiny.en", "refs/pr/15"),
-            Self::Base => ("openai/whisper-base", "refs/pr/22"),
-            Self::BaseEn => ("openai/whisper-base.en", "refs/pr/13"),
-            Self::Small => ("openai/whisper-small", "main"),
-            Self::SmallEn => ("openai/whisper-small.en", "refs/pr/10"),
-            Self::Medium => ("openai/whisper-medium", "main"),
-            Self::MediumEn => ("openai/whisper-medium.en", "main"),
-            Self::Large => ("openai/whisper-large", "refs/pr/36"),
-            Self::LargeV2 => ("openai/whisper-large-v2", "refs/pr/57"),
-            Self::LargeV3 => ("openai/whisper-large-v3", "main"),
-            Self::DistilMediumEn => ("distil-whisper/distil-medium.en", "main"),
-            Self::DistilLargeV2 => ("distil-whisper/distil-large-v2", "main"),
-        }
-    }
-}
-
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Run on CPU rather than on GPU.
-    #[arg(long)]
-    cpu: bool,
-
-    #[arg(long)]
-    model_id: String,
-
-    /// The model to use, check out available models:
-    /// https://huggingface.co/models?search=whisper
-    #[arg(long)]
-    revision: Option<String>,
-
-    /// The model to be used, can be tiny, small, medium.
-    #[arg(long, default_value = "tiny.en")]
-    model: WhichModel,
-
-    /// The input to be processed, in wav format, will default to `jfk.wav`. Alternatively
-    /// this can be set to sample:jfk, sample:gb1, ... to fetch a sample from the following
-    /// repo: https://huggingface.co/datasets/Narsil/candle_demo/
-    #[arg(long)]
-    input: String,
-
-    /// The seed to use when generating random samples.
-    #[arg(long, default_value_t = 299792458)]
-    seed: u64,
-
-    /// Enable tracing (generates a trace-timestamp.json file).
-    #[arg(long)]
-    tracing: bool,
-
-    #[arg(long)]
-    quantized: bool,
-
-    /// Language.
-    #[arg(long)]
-    language: Option<String>,
-
-    /// Task, when no task is specified, the input tokens contain only the sot token which can
-    /// improve things when in no-timestamp mode.
-    #[arg(long)]
-    task: Option<Task>,
-
-    /// Timestamps mode, this is not fully implemented yet.
-    #[arg(long)]
-    timestamps: bool,
-
-    /// Print the full DecodingResult structure rather than just the text.
-    #[arg(long)]
-    verbose: bool,
-}
-
 fn main() -> Result<()> {
-
     let args = Args::parse();
-    let _guard = if args.tracing {
-        let (chrome_layer, guard) = ChromeLayerBuilder::new().build();
-        tracing_subscriber::registry().with(chrome_layer).init();
-        Some(guard)
-    } else {
-        None
-    };
-    let device = candle_examples::device(args.cpu)?;
+    let device = device(args.cpu)?;
     let model_id = args.model_id;
-    let (config_filename, tokenizer_filename, weights_filename, input) = {
+    let input = PathBuf::from(args.input);
+    let (config_filename, tokenizer_filename, weights_filename) = {
         let config = PathBuf::from(format!("{model_id}/config.json"));
         let tokenizer = PathBuf::from(format!("{model_id}/tokenizer.json"));
         let model = PathBuf::from(format!("{model_id}/model.safetensors"));
-        let input = PathBuf::from(args.input);
-        (config, tokenizer, model, input)
+        (config, tokenizer, model)
     };
 
     let config: Config = serde_json::from_str(&std::fs::read_to_string(config_filename)?)?;
@@ -508,11 +343,7 @@ fn main() -> Result<()> {
     )?;
     println!("loaded mel: {:?}", mel.dims());
 
-    let mut model = if args.quantized {
-        let vb =
-            candle_transformers::quantized_var_builder::VarBuilder::from_gguf(&weights_filename)?;
-        Model::Quantized(m::quantized_model::Whisper::load(&vb, config)?)
-    } else {
+    let mut model = {
         let vb =
             unsafe { VarBuilder::from_mmaped_safetensors(&[weights_filename], m::DTYPE, &device)? };
         Model::Normal(m::model::Whisper::load(&vb, config)?)

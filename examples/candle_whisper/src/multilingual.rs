@@ -1,4 +1,4 @@
-use candle::{IndexOp, Result, Tensor, D};
+use candle_core::{IndexOp, Result, Tensor, D};
 use tokenizers::Tokenizer;
 
 const LANGUAGES: [(&str, &str); 99] = [

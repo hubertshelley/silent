@@ -4,6 +4,9 @@ mod types;
 
 use silent::prelude::*;
 
+mod args;
+mod device;
+mod model;
 mod multilingual;
 
 fn main() {
