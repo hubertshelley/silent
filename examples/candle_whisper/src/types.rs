@@ -1,5 +1,6 @@
 use crate::decoder::Segment;
 use crate::model::WhichModel;
+use anyhow::Error;
 use serde::Deserialize;
 use serde_json::json;
 use silent::prelude::{FilePart, FormData};
@@ -14,11 +15,39 @@ pub(crate) enum ResponseFormat {
     Vtt,
 }
 
+impl From<String> for ResponseFormat {
+    fn from(value: String) -> Self {
+        match value.as_str() {
+            "json" => Self::Json,
+            "text" => Self::Text,
+            "srt" => Self::Srt,
+            "verbose_json" => Self::VerboseJson,
+            "vtt" => Self::Vtt,
+            _ => Self::Json,
+        }
+    }
+}
+
+impl ResponseFormat {
+    pub(crate) fn is_verbose(&self) -> bool {
+        match self {
+            Self::Json | Self::Text => false,
+            Self::VerboseJson | Self::Srt | Self::Vtt => true,
+        }
+    }
+    pub(crate) fn has_timestamps(&self) -> bool {
+        match self {
+            Self::VerboseJson | Self::Json | Self::Text => false,
+            Self::Srt | Self::Vtt => true,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CreateTranscriptionRequest {
     // The audio file object (not file name) to transcribe, in one of these formats: wav.
     pub(crate) file: FilePart,
-    // ID of the model to use. Only whisper-large-v3 is currently available.
+    // ID of the model to use. Only large-v3 is currently available.
     pub(crate) model: WhichModel,
     // The language of the input audio. Supplying the input language in ISO-639-1 format will improve accuracy and latency.
     pub(crate) language: Option<String>,
@@ -42,16 +71,24 @@ impl TryFrom<&FormData> for CreateTranscriptionRequest {
                 StatusCode::BAD_REQUEST,
                 "file is required".to_string(),
             ))?;
-        let model = serde_json::from_str(&value.fields.get("model").cloned().ok_or(
-            SilentError::business_error(StatusCode::BAD_REQUEST, "model is required".to_string()),
-        )?)?;
-        let response_format = serde_json::from_str(
-            &value
-                .fields
-                .get("response_format")
-                .cloned()
-                .unwrap_or("json".to_string()),
-        )?;
+        let model = value
+            .fields
+            .get("model")
+            .cloned()
+            .ok_or(SilentError::business_error(
+                StatusCode::BAD_REQUEST,
+                "model is required".to_string(),
+            ))?
+            .try_into()
+            .map_err(|e: Error| {
+                SilentError::business_error(StatusCode::BAD_REQUEST, e.to_string())
+            })?;
+        let response_format = value
+            .fields
+            .get("response_format")
+            .cloned()
+            .unwrap_or("json".to_string())
+            .into();
         Ok(Self {
             file,
             model,
@@ -73,6 +110,7 @@ impl TryFrom<&FormData> for CreateTranscriptionRequest {
         })
     }
 }
+
 pub struct CreateTranscriptionResponse {
     segments: Vec<Segment>,
     format: ResponseFormat,
@@ -88,7 +126,7 @@ impl From<CreateTranscriptionResponse> for Response {
     fn from(value: CreateTranscriptionResponse) -> Self {
         match value.format {
             ResponseFormat::Json => json!({
-                "text": value.segments.iter().map(|s| s.text()).collect::<Vec<_>>(),
+                "text": value.segments.iter().map(|s| s.text()).collect::<Vec<_>>().join(""),
             })
             .into(),
             ResponseFormat::Text => value
@@ -96,10 +134,11 @@ impl From<CreateTranscriptionResponse> for Response {
                 .iter()
                 .map(|s| s.text())
                 .collect::<Vec<_>>()
+                .join("")
                 .into(),
             ResponseFormat::Srt => !unimplemented!("Srt"),
             ResponseFormat::VerboseJson => json!({
-                "text": value.segments.iter().map(|s| s.text()).collect::<Vec<_>>(),
+                "text": value.segments.iter().map(|s| s.text()).collect::<Vec<_>>().join(""),
             })
             .into(),
             ResponseFormat::Vtt => !unimplemented!("Vtt"),

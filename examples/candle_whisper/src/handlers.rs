@@ -20,7 +20,9 @@ use candle_nn::VarBuilder;
 use candle_transformers::models::whisper::{self as m, audio, Config};
 use silent::{Request, Response, Result as SilentResult, SilentError, StatusCode};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokenizers::Tokenizer;
+use tokio::sync::Mutex;
 
 use crate::pcm_decode::pcm_decode;
 use crate::types::{CreateTranscriptionRequest, CreateTranscriptionResponse};
@@ -40,6 +42,7 @@ pub(crate) struct WhisperModel {
     mel_filters: Vec<f32>,
     device: candle::Device,
 }
+
 pub(crate) fn init_model(args: Args) -> Result<WhisperModel> {
     let device = device(args.cpu)?;
     let model_id = args.model_id;
@@ -75,23 +78,11 @@ pub(crate) fn init_model(args: Args) -> Result<WhisperModel> {
     })
 }
 
-fn handle(req: CreateTranscriptionRequest) -> CreateTranscriptionResponse {
-    CreateTranscriptionResponse::new(vec![], req.response_format.clone())
-}
-
-async fn create_transcription(mut req: Request) -> SilentResult<Response> {
-    let req = req.form_data().await?.try_into().map_err(|e| {
-        SilentError::business_error(
-            StatusCode::BAD_REQUEST,
-            format!("failed to parse request: {}", e),
-        )
-    })?;
-    let res = handle(req);
-    Ok(res.into())
-}
-pub(crate) fn handle1(args: Args) -> Result<()> {
-    let mut whisper_model = init_model(args.clone())?;
-    let input = PathBuf::from(args.input);
+fn handle(
+    req: CreateTranscriptionRequest,
+    mut whisper_model: WhisperModel,
+) -> Result<CreateTranscriptionResponse> {
+    let input = req.file.path().clone();
 
     let pcm_data = pcm_decode(input);
     let config = whisper_model.config.clone();
@@ -111,7 +102,7 @@ pub(crate) fn handle1(args: Args) -> Result<()> {
     let mut model = whisper_model.model.clone();
     let tokenizer = whisper_model.tokenizer.clone();
     let device = whisper_model.device.clone();
-    let language_token = match (args.model.is_multilingual(), args.language) {
+    let language_token = match (req.model.is_multilingual(), req.language) {
         (true, None) => Some(multilingual::detect_language(&mut model, &tokenizer, &mel)?),
         (false, None) => None,
         (true, Some(language)) => match token_id(&tokenizer, &format!("<|{language}|>")) {
@@ -126,16 +117,40 @@ pub(crate) fn handle1(args: Args) -> Result<()> {
     let mut dc = Decoder::new(
         model,
         tokenizer,
-        args.seed,
+        299792458,
         &device,
         language_token,
-        args.task,
-        args.timestamps,
-        args.verbose,
-        args.temperature,
+        None,
+        req.response_format.has_timestamps(),
+        req.response_format.is_verbose(),
+        req.temperature,
     )?;
-    println!("starting decoding");
-    let s = dc.run(&mel)?;
-    println!("done: {:?}", s);
-    Ok(())
+    let segments = dc.run(&mel)?;
+    Ok(CreateTranscriptionResponse::new(
+        segments,
+        req.response_format.clone(),
+    ))
+}
+
+pub(crate) async fn create_transcription(mut req: Request) -> SilentResult<Response> {
+    let whisper_model = req
+        .configs()
+        .get::<Arc<Mutex<WhisperModel>>>()
+        .unwrap()
+        .lock()
+        .await
+        .clone();
+    let req = req.form_data().await?.try_into().map_err(|e| {
+        SilentError::business_error(
+            StatusCode::BAD_REQUEST,
+            format!("failed to parse request: {}", e),
+        )
+    })?;
+    let res = handle(req, whisper_model).map_err(|e| {
+        SilentError::business_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("failed to create transcription: {}", e),
+        )
+    })?;
+    Ok(res.into())
 }

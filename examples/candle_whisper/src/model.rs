@@ -1,3 +1,4 @@
+use anyhow::{bail, Error};
 use candle_core::{self as candle, Tensor};
 use candle_transformers::models::whisper::{self as m, Config};
 use clap::ValueEnum;
@@ -24,6 +25,29 @@ pub(crate) enum WhichModel {
     DistilMediumEn,
     #[value(name = "distil-large-v2")]
     DistilLargeV2,
+}
+
+impl TryFrom<String> for WhichModel {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Ok(match value {
+            s if s == "tiny" => Self::Tiny,
+            s if s == "tiny.en" => Self::TinyEn,
+            s if s == "base" => Self::Base,
+            s if s == "base.en" => Self::BaseEn,
+            s if s == "small" => Self::Small,
+            s if s == "small.en" => Self::SmallEn,
+            s if s == "medium" => Self::Medium,
+            s if s == "medium.en" => Self::MediumEn,
+            s if s == "large" => Self::Large,
+            s if s == "large-v2" => Self::LargeV2,
+            s if s == "large-v3" => Self::LargeV3,
+            s if s == "distil-medium.en" => Self::DistilMediumEn,
+            s if s == "distil-large-v2" => Self::DistilLargeV2,
+            _ => bail!("invalid model"),
+        })
+    }
 }
 
 impl WhichModel {
@@ -61,6 +85,7 @@ impl WhichModel {
         }
     }
 }
+
 #[derive(Clone, Debug)]
 pub enum Model {
     Normal(m::model::Whisper),
