@@ -18,7 +18,6 @@ use anyhow::{Error as E, Result};
 use candle_core::{self as candle, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::whisper::{self as m, audio, Config};
-use clap::ValueEnum;
 use silent::{Request, Response, Result as SilentResult, SilentError, StatusCode};
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
@@ -41,7 +40,7 @@ pub(crate) struct WhisperModel {
     mel_filters: Vec<f32>,
     device: candle::Device,
 }
-fn init_model(args: Args) -> Result<WhisperModel> {
+pub(crate) fn init_model(args: Args) -> Result<WhisperModel> {
     let device = device(args.cpu)?;
     let model_id = args.model_id;
     let (config_filename, tokenizer_filename, weights_filename) = {
@@ -95,8 +94,9 @@ pub(crate) fn handle1(args: Args) -> Result<()> {
     let input = PathBuf::from(args.input);
 
     let pcm_data = pcm_decode(input);
-
-    let mel = audio::pcm_to_mel(&whisper_model.config, &pcm_data, &whisper_model.mel_filters);
+    let config = whisper_model.config.clone();
+    let mel_filters = whisper_model.mel_filters.clone();
+    let mel = audio::pcm_to_mel(&config, &pcm_data, &mel_filters);
     let mel_len = mel.len();
     let mel = Tensor::from_vec(
         mel,
@@ -107,35 +107,34 @@ pub(crate) fn handle1(args: Args) -> Result<()> {
         ),
         &whisper_model.device,
     )?;
-
+    println!("loaded mel: {:?}", mel.dims());
+    let mut model = whisper_model.model.clone();
+    let tokenizer = whisper_model.tokenizer.clone();
+    let device = whisper_model.device.clone();
     let language_token = match (args.model.is_multilingual(), args.language) {
-        (true, None) => Some(multilingual::detect_language(
-            &mut whisper_model.model,
-            &whisper_model.tokenizer,
-            &mel,
-        )?),
+        (true, None) => Some(multilingual::detect_language(&mut model, &tokenizer, &mel)?),
         (false, None) => None,
-        (true, Some(language)) => {
-            match token_id(&whisper_model.tokenizer, &format!("<|{language}|>")) {
-                Ok(token_id) => Some(token_id),
-                Err(_) => anyhow::bail!("language {language} is not supported"),
-            }
-        }
+        (true, Some(language)) => match token_id(&tokenizer, &format!("<|{language}|>")) {
+            Ok(token_id) => Some(token_id),
+            Err(_) => anyhow::bail!("language {language} is not supported"),
+        },
         (false, Some(_)) => {
             anyhow::bail!("a language cannot be set for non-multilingual models")
         }
     };
+    println!("matched language: {:?}", language_token);
     let mut dc = Decoder::new(
-        whisper_model.model.clone(),
-        whisper_model.tokenizer.clone(),
+        model,
+        tokenizer,
         args.seed,
-        &whisper_model.device,
+        &device,
         language_token,
         args.task,
         args.timestamps,
         args.verbose,
         args.temperature,
     )?;
+    println!("starting decoding");
     let s = dc.run(&mel)?;
     println!("done: {:?}", s);
     Ok(())

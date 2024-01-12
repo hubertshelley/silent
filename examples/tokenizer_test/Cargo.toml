@@ -1,0 +1,17 @@
+[package]
+name = "tokenizer_test"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokenizers = { version = "0.15.0", features = ["onig"] }
+anyhow = "1.0.79"
+tracing-subscriber = "0.3.18"
+tracing = "0.1.40"

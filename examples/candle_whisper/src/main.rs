@@ -3,9 +3,11 @@ mod pcm_decode;
 mod types;
 
 use crate::args::Args;
-use crate::handlers::handle1;
+use crate::handlers::{handle1, init_model};
 use clap::Parser;
 use silent::prelude::*;
+use std::path::PathBuf;
+use tokenizers::Tokenizer;
 
 mod args;
 mod decoder;

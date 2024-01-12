@@ -27,8 +27,8 @@ silent = { path = "../../silent", features = ["full"] }
 symphonia = { version = "0.5.3", features = ["all"] }
 anyhow = "1.0.79"
 
-candle-core = { version = "0.3.2", optional = true }
-candle-nn = { version = "0.3.2", optional = true }
+candle-core = { version = "0.3.2" }
+candle-nn = { version = "0.3.2" }
 candle-transformers = { version = "0.3.2" }
 tokenizers = { version = "0.15.0", features = ["onig"] }
 rand = "0.8.5"
