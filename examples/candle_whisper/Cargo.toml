@@ -1,0 +1,42 @@
+[package]
+name = "candle_whisper"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = []
+metal = ["candle-core/metal", "candle-nn/metal"]
+cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda", "dep:bindgen_cuda"]
+
+
+[build-dependencies]
+anyhow = { version = "1", features = ["backtrace"] }
+bindgen_cuda = { version = "0.1.1", optional = true }
+
+
+[dependencies]
+clap = { version = "4.2.4", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+silent = { path = "../../silent", features = ["full"] }
+symphonia = { version = "0.5.3", features = ["all"] }
+anyhow = "1.0.79"
+tokio = { version = "1.35.1", features = ["full"] }
+
+#candle-core = { version = "0.3.2" }
+#candle-nn = { version = "0.3.2" }
+#candle-transformers = { version = "0.3.2" }
+# version = "0.3.2" is not working for metal
+candle-core = { git = "https://github.com/huggingface/candle" }
+candle-nn = { git = "https://github.com/huggingface/candle" }
+candle-transformers = { git = "https://github.com/huggingface/candle" }
+
+tokenizers = { version = "0.15.0", features = ["onig"] }
+rand = "0.8.5"
+serde_json = "1.0.109"
+byteorder = "1.5.0"

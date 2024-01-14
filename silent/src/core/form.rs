@@ -122,6 +122,7 @@ impl FilePart {
     pub fn do_not_delete_on_drop(&mut self) {
         self.temp_dir = None;
     }
+    /// Save the file to a new location.
     #[inline]
     pub fn save(&mut self, path: String) -> Result<u64, SilentError> {
         std::fs::copy(self.path(), Path::new(&path)).map_err(|e| SilentError::BusinessError {
