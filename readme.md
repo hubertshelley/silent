@@ -70,3 +70,7 @@ async fn call(req: Request) -> Result<i32> {
     Ok(*num)
 }
 ```
+
+## examples for llm
+
+* [whisper with candle](./examples/candle_whisper/readme.md)
