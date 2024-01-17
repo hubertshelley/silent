@@ -6,9 +6,16 @@ use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
-pub(crate) fn pcm_decode(path: PathBuf) -> Vec<f32> {
+use silent::{Result, SilentError, StatusCode};
+
+pub(crate) fn pcm_decode(path: PathBuf) -> Result<Vec<f32>> {
     // Open the media source.
-    let src = std::fs::File::open(path).expect("failed to open media");
+    let src = std::fs::File::open(path).map_err(|e| {
+        SilentError::business_error(
+            StatusCode::BAD_REQUEST,
+            format!("failed to open media: {e}"),
+        )
+    })?;
 
     // Create the media source stream.
     let mss = MediaSourceStream::new(Box::new(src), Default::default());
@@ -23,7 +30,9 @@ pub(crate) fn pcm_decode(path: PathBuf) -> Vec<f32> {
     // Probe the media source.
     let probed = symphonia::default::get_probe()
         .format(&hint, mss, &fmt_opts, &meta_opts)
-        .expect("unsupported format");
+        .map_err(|e| {
+            SilentError::business_error(StatusCode::BAD_REQUEST, format!("unsupported format: {e}"))
+        })?;
     // Get the instantiated format reader.
     let mut format = probed.format;
 
@@ -32,7 +41,12 @@ pub(crate) fn pcm_decode(path: PathBuf) -> Vec<f32> {
         .tracks()
         .iter()
         .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
-        .expect("no supported audio tracks");
+        .map_err(|e| {
+            SilentError::business_error(
+                StatusCode::BAD_REQUEST,
+                format!("no supported audio tracks: {e}"),
+            )
+        })?;
 
     // Use the default options for the decoder.
     let dec_opts: DecoderOptions = Default::default();
@@ -40,7 +54,9 @@ pub(crate) fn pcm_decode(path: PathBuf) -> Vec<f32> {
     // Create a decoder for the track.
     let mut decoder = symphonia::default::get_codecs()
         .make(&track.codec_params, &dec_opts)
-        .expect("unsupported codec");
+        .map_err(|e| {
+            SilentError::business_error(StatusCode::BAD_REQUEST, format!("unsupported codec: {e}"))
+        })?;
     let track_id = track.id;
     let mut input = Vec::new();
     // The decode loop.
@@ -101,5 +117,5 @@ pub(crate) fn pcm_decode(path: PathBuf) -> Vec<f32> {
             _ => {}
         }
     }
-    input
+    Ok(input)
 }
