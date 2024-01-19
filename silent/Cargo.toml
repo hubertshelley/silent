@@ -43,7 +43,7 @@ serde_json = "1.0.109"
 uuid = "1.6.1"
 url = "2.5.0"
 serde_urlencoded = "0.7.1"
-multimap = { version = "0.9.1", features = ["serde"] }
+multimap = { version = "0.10.0", features = ["serde"] }
 mime = "0.3.17"
 tempfile = "3.9.0"
 textnonce = "1.0.0"
