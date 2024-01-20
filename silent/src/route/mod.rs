@@ -127,6 +127,7 @@ impl Route {
 mod tests {
     use super::*;
 
+    #[derive(Clone, Eq, PartialEq)]
     struct MiddlewareTest;
 
     impl MiddleWareHandler for MiddlewareTest {}

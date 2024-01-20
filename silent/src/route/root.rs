@@ -1,4 +1,4 @@
-use crate::error::{ExceptionHandler, ExceptionHandlerWrapper};
+use crate::error::{ExceptionHandler, ExceptionHandlerWrapper, SilentResult};
 use crate::route::handler_match::{Match, RouteMatched};
 use crate::route::Route;
 #[cfg(feature = "session")]
@@ -48,11 +48,8 @@ impl RootRoute {
         }
     }
 
-    pub fn push(&mut self, mut route: Route) {
-        self.middlewares
-            .iter()
-            .cloned()
-            .for_each(|m| route.middleware_hook(m.clone()));
+    pub fn push(&mut self, route: Route) {
+        self.middlewares = route.middlewares.clone();
         self.children.push(route);
     }
 
@@ -105,68 +102,117 @@ impl RootRoute {
         let url = req.uri().to_string().clone();
         let http_version = req.version();
         let start_time = Utc::now().time();
-        let res = match self.handler_match(&mut req, path.as_str()) {
-            RouteMatched::Matched(route) => match route.handler.get(req.method()) {
-                None => Err(SilentError::business_error(
-                    StatusCode::METHOD_NOT_ALLOWED,
-                    "method not allowed".to_string(),
-                )),
-                Some(handler) => {
-                    let mut pre_res = Response::empty();
-                    pre_res.configs = configs.clone();
-                    let mut active_middlewares = vec![];
-                    for (i, middleware) in route.middlewares.iter().enumerate() {
-                        if middleware.match_req(&req).await {
-                            active_middlewares.push(i);
-                        }
-                    }
-                    for i in active_middlewares.clone() {
-                        route.middlewares[i]
-                            .pre_request(&mut req, &mut pre_res)
-                            .await?
-                    }
-                    #[cfg(feature = "cookie")]
-                    {
-                        *pre_res.cookies_mut() = req.cookies().clone();
-                    }
-                    #[cfg(feature = "session")]
-                    let session = req.extensions().get::<Session>().cloned();
-                    #[cfg(feature = "session")]
-                    if let Some(session) = session {
-                        pre_res.extensions.insert(session);
-                    }
-                    match handler.call(req).await {
-                        Ok(res) => {
-                            pre_res.copy_from_response(res);
-                            active_middlewares.reverse();
-                            for i in active_middlewares {
-                                route.middlewares[i].after_response(&mut pre_res).await?
+        let mut root_middlewares = vec![];
+        for middleware in self.middlewares.iter() {
+            if middleware.match_req(&req).await {
+                root_middlewares.push(middleware);
+            }
+        }
+        let mut pre_res = Response::empty();
+        let mut exception_str = None;
+        let res: SilentResult<Response> = {
+            for middleware in root_middlewares.clone() {
+                middleware.pre_request(&mut req, &mut pre_res).await?
+            }
+            let res = match self.handler_match(&mut req, path.as_str()) {
+                RouteMatched::Matched(route) => match route.handler.get(req.method()) {
+                    None => Err(SilentError::business_error(
+                        StatusCode::METHOD_NOT_ALLOWED,
+                        "method not allowed".to_string(),
+                    )),
+                    Some(handler) => {
+                        pre_res.configs = configs.clone();
+                        let mut active_middlewares = vec![];
+                        for middleware in route.middlewares.iter() {
+                            if middleware.match_req(&req).await {
+                                active_middlewares.push(middleware);
                             }
-                            Ok(pre_res)
                         }
-                        Err(e) => Err(e),
+                        for middleware in active_middlewares.clone() {
+                            middleware.pre_request(&mut req, &mut pre_res).await?
+                        }
+                        #[cfg(feature = "cookie")]
+                        {
+                            *pre_res.cookies_mut() = req.cookies().clone();
+                        }
+                        #[cfg(feature = "session")]
+                        let session = req.extensions().get::<Session>().cloned();
+                        #[cfg(feature = "session")]
+                        if let Some(session) = session {
+                            pre_res.extensions.insert(session);
+                        }
+                        match handler.call(req).await {
+                            Ok(res) => {
+                                pre_res.copy_from_response(res);
+                            }
+                            Err(e) => {
+                                exception_str = Some(e.to_string());
+                                pre_res.copy_from_response(e.into());
+                            }
+                        };
+                        active_middlewares.reverse();
+                        for middleware in active_middlewares {
+                            middleware.after_response(&mut pre_res).await?
+                        }
+                        Ok(())
+                    }
+                },
+                RouteMatched::Unmatched => Err(SilentError::business_error(
+                    StatusCode::NOT_FOUND,
+                    "Server not found".to_string(),
+                )),
+            };
+            root_middlewares.reverse();
+            match res {
+                Ok(()) => {
+                    for middleware in root_middlewares {
+                        middleware.after_response(&mut pre_res).await?
                     }
                 }
-            },
-            RouteMatched::Unmatched => Err(SilentError::business_error(
-                StatusCode::NOT_FOUND,
-                "Server not found".to_string(),
-            )),
+                Err(err) => {
+                    exception_str = match exception_str {
+                        None => Some(err.to_string()),
+                        Some(exception_str) => Some(format!("{};{:?}", exception_str, err)),
+                    };
+                    pre_res.copy_from_response(err.into());
+                    for middleware in root_middlewares {
+                        middleware.after_response(&mut pre_res).await?
+                    }
+                }
+            };
+            Ok(pre_res)
         };
         let end_time = Utc::now().time();
         let req_time = end_time - start_time;
         match res {
             Ok(res) => {
-                tracing::info!(
-                    "{} {} {} {:?} {} {:?} {}",
-                    peer_addr,
-                    method,
-                    url,
-                    http_version,
-                    res.status_code.as_u16(),
-                    res.content_length().lower(),
-                    req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
-                );
+                match exception_str {
+                    None => {
+                        tracing::info!(
+                            "{} {} {} {:?} {} {:?} {}",
+                            peer_addr,
+                            method,
+                            url,
+                            http_version,
+                            res.status_code.as_u16(),
+                            res.content_length().lower(),
+                            req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
+                        );
+                    }
+                    Some(exception_str) => {
+                        tracing::error!(
+                            "{} {} {} {:?} {} {:?} {} {}",
+                            peer_addr,
+                            method,
+                            url,
+                            http_version,
+                            res.status_code.as_u16(),
+                            0,
+                            req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
+                            exception_str
+                        );
+                    }
+                }
                 Ok(res)
             }
             Err(e) => {

@@ -7,11 +7,21 @@ fn main() {
         .hook(
             Cors::new()
                 .origin(CorsType::Any)
-                .methods(vec!["POST"])
+                .methods(CorsType::Any)
                 .headers(CorsType::Any)
                 .credentials(true),
         )
-        .get(|_req| async { Ok("hello world") })
+        .get(|mut req| async move {
+            let ok = req.params().get("ok").is_some();
+            if ok {
+                Err(SilentError::business_error(
+                    StatusCode::BAD_REQUEST,
+                    "bad request".to_string(),
+                ))
+            } else {
+                Ok("hello world")
+            }
+        })
         .post(|_req| async { Ok("hello world") })
         .put(|_req| async { Ok("hello world") })
         .patch(|_req| async { Ok("hello world") })
