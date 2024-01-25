@@ -28,9 +28,9 @@ pub fn from_str_multi_map<'de, I, T, K, C, V>(input: I) -> Result<T, ValError>
 where
     I: IntoIterator<Item = (K, C)> + 'de,
     T: Deserialize<'de>,
-    K: Into<Cow<'de, str>> + Hash + std::cmp::Eq + 'de,
+    K: Into<Cow<'de, str>> + Hash + Eq + 'de,
     C: IntoIterator<Item = V> + 'de,
-    V: Into<Cow<'de, str>> + std::cmp::Eq + 'de,
+    V: Into<Cow<'de, str>> + Eq + 'de,
 {
     let iter = input.into_iter().map(|(k, v)| {
         (
@@ -45,7 +45,7 @@ pub(crate) fn from_str_multi_val<'de, I, T, C>(input: I) -> Result<T, ValError>
 where
     I: IntoIterator<Item = C> + 'de,
     T: Deserialize<'de>,
-    C: Into<Cow<'de, str>> + std::cmp::Eq + 'de,
+    C: Into<Cow<'de, str>> + Eq + 'de,
 {
     let iter = input.into_iter().map(|v| CowValue(v.into()));
     T::deserialize(VecValue(iter))
@@ -183,6 +183,18 @@ impl<'de> Deserializer<'de> for CowValue<'de> {
     }
 
     #[inline]
+    fn deserialize_newtype_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    #[inline]
     fn deserialize_enum<V>(
         self,
         _name: &'static str,
@@ -193,18 +205,6 @@ impl<'de> Deserializer<'de> for CowValue<'de> {
         V: Visitor<'de>,
     {
         visitor.visit_enum(ValueEnumAccess(self.0))
-    }
-
-    #[inline]
-    fn deserialize_newtype_struct<V>(
-        self,
-        _name: &'static str,
-        visitor: V,
-    ) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        visitor.visit_newtype_struct(self)
     }
 
     forward_to_deserialize_any! {
@@ -280,6 +280,45 @@ where
     }
 
     #[inline]
+    fn deserialize_newtype_struct<V>(
+        self,
+        _name: &'static str,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_newtype_struct(self)
+    }
+
+    #[inline]
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        visitor.visit_seq(SeqDeserializer::new(self.0.into_iter()))
+    }
+
+    #[inline]
+    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_seq(visitor)
+    }
+    #[inline]
+    fn deserialize_tuple_struct<V>(
+        self,
+        _name: &'static str,
+        _len: usize,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: Visitor<'de>,
+    {
+        self.deserialize_seq(visitor)
+    }
+    #[inline]
     fn deserialize_enum<V>(
         self,
         _name: &'static str,
@@ -294,45 +333,6 @@ where
         } else {
             Err(DeError::custom("expected vec not empty"))
         }
-    }
-
-    #[inline]
-    fn deserialize_newtype_struct<V>(
-        self,
-        _name: &'static str,
-        visitor: V,
-    ) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        visitor.visit_newtype_struct(self)
-    }
-
-    #[inline]
-    fn deserialize_tuple_struct<V>(
-        self,
-        _name: &'static str,
-        _len: usize,
-        visitor: V,
-    ) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        self.deserialize_seq(visitor)
-    }
-    #[inline]
-    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        self.deserialize_seq(visitor)
-    }
-    #[inline]
-    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: Visitor<'de>,
-    {
-        visitor.visit_seq(SeqDeserializer::new(self.0.into_iter()))
     }
 
     forward_to_deserialize_any! {

@@ -12,7 +12,7 @@ where
     let body_stream = event_stream
         .map_err(|error| {
             // FIXME: error logging
-            log::error!("sse stream error: {}", error);
+            log::error!("sse stream error: {}", error.to_string());
             SilentError::BusinessError {
                 code: StatusCode::INTERNAL_SERVER_ERROR,
                 msg: "sse::keep error".to_string(),

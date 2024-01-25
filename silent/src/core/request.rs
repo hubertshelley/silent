@@ -1,16 +1,16 @@
-#[cfg(feature = "server")]
-use crate::core::form::FilePart;
-use crate::core::form::FormData;
+#[cfg(feature = "multipart")]
+use crate::core::form::{FilePart, FormData};
 use crate::core::path_param::PathParam;
 use crate::core::req_body::ReqBody;
+#[cfg(feature = "multipart")]
 use crate::core::serde::from_str_multi_val;
 use crate::header::CONTENT_TYPE;
 use crate::{Configs, SilentError};
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use http::request::Parts;
-use http::Request as BaseRequest;
 use http::{Extensions, HeaderMap, HeaderValue, Method, Uri, Version};
+use http::{Request as BaseRequest, StatusCode};
 use http_body_util::BodyExt;
 use mime::Mime;
 use serde::Deserialize;
@@ -32,6 +32,7 @@ pub struct Request {
     path_params: HashMap<String, PathParam>,
     params: HashMap<String, String>,
     body: ReqBody,
+    #[cfg(feature = "multipart")]
     form_data: OnceCell<FormData>,
     json_data: OnceCell<Value>,
     #[cfg(feature = "cookie")]
@@ -62,6 +63,7 @@ impl Request {
             path_params: HashMap::new(),
             params: HashMap::new(),
             body: ReqBody::Empty,
+            #[cfg(feature = "multipart")]
             form_data: OnceCell::new(),
             json_data: OnceCell::new(),
             #[cfg(feature = "cookie")]
@@ -160,8 +162,8 @@ impl Request {
 
     /// 获取全局配置
     #[inline]
-    pub fn configs(&self) -> &Configs {
-        &self.configs
+    pub fn configs(&self) -> Configs {
+        self.configs.clone()
     }
 
     /// 获取可变全局配置
@@ -234,6 +236,7 @@ impl Request {
     }
 
     /// 获取请求form_data
+    #[cfg(feature = "multipart")]
     #[inline]
     pub async fn form_data(&mut self) -> Result<&FormData, SilentError> {
         let content_type = self.content_type().unwrap();
@@ -248,7 +251,8 @@ impl Request {
     }
 
     /// 转换body参数
-    pub async fn body_parse<T>(&mut self, key: &str) -> Option<T>
+    #[cfg(feature = "multipart")]
+    pub async fn form_field<T>(&mut self, key: &str) -> Option<T>
     where
         for<'de> T: Deserialize<'de>,
     {
@@ -260,7 +264,7 @@ impl Request {
     }
 
     /// 获取上传的文件
-    #[cfg(feature = "server")]
+    #[cfg(feature = "multipart")]
     #[inline]
     pub async fn files<'a>(&'a mut self, key: &'a str) -> Option<&'a Vec<FilePart>> {
         self.form_data()

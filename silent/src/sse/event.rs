@@ -43,14 +43,14 @@ impl SSEEvent {
         self
     }
 
-    /// Set Server-sent event event
+    /// Set Server-sent events
     /// SSEEvent name field ("event:<event-name>")
     pub fn event<T: Into<String>>(mut self, event: T) -> SSEEvent {
         self.event = Some(event.into());
         self
     }
 
-    /// Set Server-sent event retry
+    /// Set Server-sent event retry duration
     /// Retry timeout field ("retry:<timeout>")
     pub fn retry(mut self, duration: Duration) -> SSEEvent {
         self.retry = Some(duration);

@@ -65,7 +65,7 @@ impl Message {
         self.inner.is_binary()
     }
 
-    /// Returns true if this message a is a Close message.
+    /// Returns true if this message is a Close message.
     #[inline]
     pub fn is_close(&self) -> bool {
         self.inner.is_close()

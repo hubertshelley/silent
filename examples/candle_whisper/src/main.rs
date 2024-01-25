@@ -5,6 +5,7 @@ mod types;
 use crate::args::Args;
 use crate::handlers::{create_transcription, init_model};
 use clap::Parser;
+use silent::middlewares::{Cors, CorsType};
 use silent::prelude::*;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -21,7 +22,15 @@ fn main() {
     let mut configs = Configs::default();
     let whisper_model = init_model(args.clone()).expect("failed to initialize model");
     configs.insert(Arc::new(Mutex::new(whisper_model)));
-    let route = Route::new("/v1/audio/transcriptions").post(create_transcription);
+    let route = Route::new("/v1/audio/transcriptions")
+        .hook(
+            Cors::new()
+                .origin(CorsType::Any)
+                .methods(CorsType::Any)
+                .headers(CorsType::Any)
+                .credentials(true),
+        )
+        .post(create_transcription);
     Server::new()
         .with_configs(configs)
         .bind("0.0.0.0:8000".parse().unwrap())

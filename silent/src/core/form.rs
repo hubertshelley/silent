@@ -7,9 +7,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use tempfile::Builder;
 use textnonce::TextNonce;
-#[cfg(feature = "server")]
 use tokio::fs::File;
-#[cfg(feature = "server")]
 use tokio::io::AsyncWriteExt;
 
 /// The extracted text fields and uploaded files from a `multipart/form-data` request.
@@ -41,13 +39,12 @@ impl FormData {
         if let Some(boundary) = headers
             .get(CONTENT_TYPE)
             .and_then(|ct| ct.to_str().ok())
-            .and_then(|ct| crate::multer::parse_boundary(ct).ok())
+            .and_then(|ct| multer::parse_boundary(ct).ok())
         {
             let mut multipart = Multipart::new(body, boundary);
             while let Some(mut field) = multipart.next_field().await? {
                 if let Some(name) = field.name().map(|s| s.to_owned()) {
                     if field.headers().get(CONTENT_TYPE).is_some() {
-                        #[cfg(feature = "server")]
                         form_data
                             .files
                             .insert(name, FilePart::create(&mut field).await?);
@@ -70,7 +67,6 @@ impl Default for FormData {
 
 // A file that is to be inserted into a `multipart/*` or alternatively an uploaded file that
 /// was received as part of `multipart/*` parsing.
-#[cfg(feature = "server")]
 #[derive(Clone, Debug)]
 pub struct FilePart {
     name: Option<String>,
@@ -85,7 +81,6 @@ pub struct FilePart {
     temp_dir: Option<PathBuf>,
 }
 
-#[cfg(feature = "server")]
 impl FilePart {
     /// Get file name.
     #[inline]
@@ -167,7 +162,6 @@ impl FilePart {
     }
 }
 
-#[cfg(feature = "server")]
 impl Drop for FilePart {
     fn drop(&mut self) {
         if let Some(temp_dir) = &self.temp_dir {

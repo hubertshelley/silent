@@ -25,6 +25,12 @@ pub struct Route {
     create_path: String,
 }
 
+impl Default for Route {
+    fn default() -> Self {
+        Self::new("")
+    }
+}
+
 impl fmt::Debug for Route {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn get_route_str(pre_fix: String, route: &Route) -> String {

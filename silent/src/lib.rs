@@ -1,3 +1,4 @@
+mod configs;
 /// The `silent` library.
 #[cfg(feature = "server")]
 mod conn;
@@ -30,7 +31,8 @@ use multer;
 #[allow(clippy::single_component_path_imports)]
 use tokio_tungstenite;
 
-pub use crate::core::{configs::Configs, request::Request, response::Response};
+pub use crate::configs::Configs;
+pub use crate::core::{request::Request, response::Response};
 pub use crate::middleware::{middlewares, MiddleWareHandler};
 pub use error::SilentError;
 pub use error::SilentResult as Result;
@@ -40,9 +42,12 @@ pub use headers;
 pub use hyper::{header, Method, StatusCode};
 
 pub mod prelude {
+    pub use crate::configs::Configs;
+    #[cfg(feature = "multipart")]
+    pub use crate::core::form::{FilePart, FormData};
     pub use crate::core::{
-        configs::Configs, form::FilePart, form::FormData, path_param::PathParam, request::Request,
-        res_body::full, res_body::stream_body, response::Response,
+        path_param::PathParam, request::Request, res_body::full, res_body::stream_body,
+        response::Response,
     };
     pub use crate::error::{SilentError, SilentResult as Result};
     #[cfg(feature = "static")]

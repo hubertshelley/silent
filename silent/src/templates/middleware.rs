@@ -87,7 +87,7 @@ mod tests {
         let temp_middleware = TemplateMiddleware {
             template: Arc::new(tera),
         };
-        let route = Route::new("")
+        let route = Route::default()
             .get(|_req| async {
                 let temp = Temp {
                     name: "templates".to_string(),
