@@ -74,3 +74,7 @@ async fn call(req: Request) -> Result<i32> {
 ## examples for llm
 
 * [whisper with candle](./examples/candle_whisper/readme.md)
+
+## complex projects for llm
+
+* [llm_server](https://github.com/silent-rs/llm_server)
