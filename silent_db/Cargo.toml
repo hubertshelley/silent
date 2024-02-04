@@ -1,0 +1,19 @@
+[package]
+name = "silent_db"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+mysql = []
+postgres = []
+sqlite = []
+
+[dependencies]
+serde = { version = "1.0.196", features = ["derive"] }

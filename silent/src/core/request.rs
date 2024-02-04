@@ -9,8 +9,8 @@ use crate::{Configs, SilentError};
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use http::request::Parts;
+use http::Request as BaseRequest;
 use http::{Extensions, HeaderMap, HeaderValue, Method, Uri, Version};
-use http::{Request as BaseRequest, StatusCode};
 use http_body_util::BodyExt;
 use mime::Mime;
 use serde::Deserialize;
