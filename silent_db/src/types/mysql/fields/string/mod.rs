@@ -1,0 +1,10 @@
+mod blob;
+mod char;
+mod longblob;
+mod longtext;
+mod mediumblob;
+mod mediumtext;
+mod text;
+mod tinyblob;
+mod tinytext;
+mod varchar;
