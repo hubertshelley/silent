@@ -1,2 +1,2 @@
 #[cfg(feature = "mysql")]
-mod mysql;
+pub mod mysql;

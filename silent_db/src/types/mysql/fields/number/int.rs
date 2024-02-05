@@ -1,12 +1,27 @@
 use crate::core::fields::{Field, FieldType};
-pub struct IntField {
-    name: String,
-    default: Option<String>,
-    nullable: bool,
-    primary_key: bool,
-    unique: bool,
-    auto_increment: bool,
-    comment: Option<String>,
+#[derive(Clone)]
+pub struct Int {
+    pub name: String,
+    pub default: Option<String>,
+    pub nullable: bool,
+    pub primary_key: bool,
+    pub unique: bool,
+    pub auto_increment: bool,
+    pub comment: Option<String>,
+}
+
+impl Default for Int {
+    fn default() -> Self {
+        Int {
+            name: "int".to_string(),
+            default: None,
+            nullable: true,
+            primary_key: false,
+            unique: false,
+            auto_increment: false,
+            comment: None,
+        }
+    }
 }
 
 struct IntType;
@@ -17,20 +32,20 @@ impl FieldType for IntType {
     }
 }
 
-impl Field for IntField {
+impl Field for Int {
     fn get_name(&self) -> String {
         self.name.clone()
     }
 
-    fn get_type(&self) -> &dyn FieldType {
-        &IntType
+    fn get_type(&self) -> Box<dyn FieldType> {
+        Box::new(IntType)
     }
     fn get_default(&self) -> Option<String> {
         self.default.clone()
     }
     fn get_nullable(&self) -> bool {
         match self.primary_key {
-            true => true,
+            true => false,
             false => self.nullable,
         }
     }

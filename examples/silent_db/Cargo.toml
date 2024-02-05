@@ -1,5 +1,5 @@
 [package]
-name = "silent-db"
+name = "example_silent_db"
 edition.workspace = true
 authors.workspace = true
 homepage.workspace = true
@@ -10,12 +10,10 @@ version.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-mysql = ["sqlx/mysql"]
-postgres = ["sqlx/postgres"]
-sqlite = ["sqlx/sqlite"]
-
 [dependencies]
-anyhow = { version = "1.0.40" }
-serde = { version = "1.0.196", features = ["derive"] }
-sqlx = { version = "0.7.3", features = ["runtime-async-std", "macros"] }
+silent-db = { path = "../../silent_db", features = ["mysql"] }
+sqlx = { version = "0.7.3", features = ["runtime-tokio", "macros", "mysql"] }
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0.79"
+async-trait = "0.1.77"
+

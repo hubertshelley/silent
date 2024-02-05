@@ -4,7 +4,7 @@ pub trait FieldType {
 
 pub trait Field {
     fn get_name(&self) -> String;
-    fn get_type(&self) -> &dyn FieldType;
+    fn get_type(&self) -> Box<dyn FieldType>;
     fn get_default(&self) -> Option<String> {
         None
     }
@@ -24,7 +24,7 @@ pub trait Field {
         None
     }
     fn get_create_sql(&self) -> String {
-        let mut sql = format!("{} {}", self.get_name(), self.get_type().get_type_str());
+        let mut sql = format!("`{}` {}", self.get_name(), self.get_type().get_type_str());
         if let Some(default) = self.get_default() {
             sql.push_str(&format!(" DEFAULT {}", default));
         }
@@ -67,8 +67,8 @@ mod tests {
         fn get_name(&self) -> String {
             format!("`{}`", self.name)
         }
-        fn get_type(&self) -> &dyn FieldType {
-            &IntType
+        fn get_type(&self) -> Box<dyn FieldType> {
+            Box::new(IntType)
         }
         fn get_default(&self) -> Option<String> {
             self.default.clone()

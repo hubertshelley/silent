@@ -1,13 +1,17 @@
 use crate::core::fields::Field;
 
+pub trait TableUtil {
+    fn get_all_tables(&self) -> String;
+    fn get_table(&self, table: &str) -> String;
+}
 pub trait Table {
     fn get_name() -> String;
     fn get_fields() -> Vec<Box<dyn Field>>;
     fn get_comment() -> Option<String> {
         None
     }
-    fn get_create_sql() -> String {
-        let mut sql = format!("CREATE TABLE {} (", Self::get_name());
+    fn get_create_sql(&self) -> String {
+        let mut sql = format!("CREATE TABLE `{}` (", Self::get_name());
         let fields: Vec<String> = Self::get_fields()
             .iter()
             .map(|field| field.get_create_sql())
@@ -48,8 +52,8 @@ mod tests {
         fn get_name(&self) -> String {
             format!("`{}`", self.name)
         }
-        fn get_type(&self) -> &dyn FieldType {
-            &IntType
+        fn get_type(&self) -> Box<dyn FieldType> {
+            Box::new(IntType)
         }
         fn get_default(&self) -> Option<String> {
             self.default.clone()
@@ -102,8 +106,9 @@ mod tests {
 
     #[test]
     fn test_get_create_sql() {
+        let table = TestTable;
         assert_eq!(
-            TestTable::get_create_sql(),
+            table.get_create_sql(),
             "CREATE TABLE test_table (`id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT) COMMENT='Test Table';"
         );
     }

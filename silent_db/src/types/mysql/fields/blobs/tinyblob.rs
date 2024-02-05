@@ -1,6 +1,6 @@
 use crate::core::fields::{Field, FieldType};
 #[derive(Clone)]
-pub struct Float {
+pub struct TinyBlob {
     pub name: String,
     pub default: Option<String>,
     pub nullable: bool,
@@ -8,11 +8,10 @@ pub struct Float {
     pub unique: bool,
     pub comment: Option<String>,
 }
-
-impl Default for Float {
+impl Default for TinyBlob {
     fn default() -> Self {
-        Float {
-            name: "float".to_string(),
+        TinyBlob {
+            name: "tinyblob".to_string(),
             default: None,
             nullable: true,
             primary_key: false,
@@ -21,22 +20,21 @@ impl Default for Float {
         }
     }
 }
+struct TinyBlobType;
 
-struct FloatType;
-
-impl FieldType for FloatType {
+impl FieldType for TinyBlobType {
     fn get_type_str(&self) -> String {
-        "FLOAT".to_string()
+        "TINYBLOB".to_string()
     }
 }
 
-impl Field for Float {
+impl Field for TinyBlob {
     fn get_name(&self) -> String {
         self.name.clone()
     }
 
     fn get_type(&self) -> Box<dyn FieldType> {
-        Box::new(FloatType)
+        Box::new(TinyBlobType)
     }
     fn get_default(&self) -> Option<String> {
         self.default.clone()

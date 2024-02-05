@@ -1,5 +1,5 @@
 // mod dsl;
 pub(crate) mod fields;
-// mod migrate;
-mod query;
-mod tables;
+pub(crate) mod migrate;
+pub(crate) mod query;
+pub(crate) mod tables;
