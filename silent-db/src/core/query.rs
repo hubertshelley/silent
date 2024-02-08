@@ -1,27 +1,29 @@
 use std::ops::{Add, BitAnd, BitOr};
 
+#[derive(Debug)]
 pub struct QueryBuilder {
-    filed: String,
+    field: String,
     action: String,
     value: String,
 }
 
 impl QueryBuilder {
     pub fn get_sql(&self) -> String {
-        let filed = if self.filed.is_empty() {
-            self.filed.clone()
+        let field = if self.field.is_empty() {
+            self.field.clone()
         } else {
-            format!("{} ", self.value)
+            format!("`{}` ", self.field)
         };
         let action = if self.action.is_empty() {
             self.action.clone()
         } else {
             format!("{} ", self.action)
         };
-        format!("{}{}{}", filed, action, self.value)
+        format!("{}{}{}", field, action, self.value)
     }
 }
 
+#[derive(Debug)]
 pub struct QueryBuilderGroup {
     group: Vec<QueryBuilder>,
 }
@@ -55,7 +57,7 @@ impl BitAnd for QueryBuilderGroup {
 
     fn bitand(self, other: QueryBuilderGroup) -> QueryBuilderGroup {
         let builder = QueryBuilder {
-            filed: format!("({})", self.get_sql()),
+            field: format!("({})", self.get_sql()),
             action: "AND".to_string(),
             value: format!("({})", other.get_sql()),
         };
@@ -70,7 +72,7 @@ impl BitOr for QueryBuilderGroup {
 
     fn bitor(self, other: QueryBuilderGroup) -> QueryBuilderGroup {
         let builder = QueryBuilder {
-            filed: format!("({})", self.get_sql()),
+            field: format!("({})", self.get_sql()),
             action: "OR".to_string(),
             value: format!("({})", other.get_sql()),
         };
@@ -81,7 +83,7 @@ impl BitOr for QueryBuilderGroup {
 }
 
 pub trait Query {
-    fn get_filed() -> String;
+    fn get_field() -> String;
     #[inline]
     fn parse<T>(value: T) -> String
     where
@@ -98,7 +100,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "=".to_string(),
                 value: Self::parse(value),
             }],
@@ -110,7 +112,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "!=".to_string(),
                 value: Self::parse(value),
             }],
@@ -122,7 +124,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: ">".to_string(),
                 value: Self::parse(value),
             }],
@@ -134,7 +136,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: ">=".to_string(),
                 value: Self::parse(value),
             }],
@@ -146,7 +148,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "<".to_string(),
                 value: Self::parse(value),
             }],
@@ -158,7 +160,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "<=".to_string(),
                 value: Self::parse(value),
             }],
@@ -170,7 +172,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "LIKE".to_string(),
                 value: format!("'%{}%'", value.to_string()),
             }],
@@ -182,7 +184,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "LIKE".to_string(),
                 value: format!("'{}%'", value.to_string()),
             }],
@@ -194,7 +196,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "LIKE".to_string(),
                 value: format!("'%{}'", value.to_string()),
             }],
@@ -207,7 +209,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "BETWEEN".to_string(),
                 value: format!("{} AND {}", Self::parse(value.0), Self::parse(value.1)),
             }],
@@ -219,7 +221,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "IN".to_string(),
                 value: format!(
                     "({})",
@@ -235,7 +237,7 @@ pub trait Query {
     fn is_null() -> QueryBuilderGroup {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "IS".to_string(),
                 value: "NULL".to_string(),
             }],
@@ -244,7 +246,7 @@ pub trait Query {
     fn not_null() -> QueryBuilderGroup {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: Self::get_filed(),
+                field: Self::get_field(),
                 action: "IS NOT".to_string(),
                 value: "NULL".to_string(),
             }],
@@ -256,7 +258,7 @@ pub trait Query {
     {
         QueryBuilderGroup {
             group: vec![QueryBuilder {
-                filed: "".to_string(),
+                field: "".to_string(),
                 action: "".to_string(),
                 value: value.to_string(),
             }],
@@ -270,14 +272,14 @@ mod tests {
 
     type User = String;
     impl Query for User {
-        fn get_filed() -> String {
+        fn get_field() -> String {
             "user".to_string()
         }
     }
 
     type Age = u16;
     impl Query for Age {
-        fn get_filed() -> String {
+        fn get_field() -> String {
             "age".to_string()
         }
     }

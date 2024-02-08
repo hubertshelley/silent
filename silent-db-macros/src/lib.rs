@@ -43,11 +43,6 @@ pub fn derive_table(item: TokenStream) -> TokenStream {
         fields.extend(field.token_stream);
     }
     fields.extend(table_token);
-    // TokenStream::from(quote! {
-    //     #fields
-    //     #table_token
-    // })
-    // table_token
     fields
 }
 
@@ -120,7 +115,7 @@ fn derive_field_attribute(args: &Attribute, field_name: String) -> FieldAttr {
     let camel_field_name = to_camel_case(&field_name.to_string());
 
     let args = quote! {
-        name: Self::get_filed(),
+        name: Self::get_field(),
     };
     // 设置字段名称
     let args = match field_attr.name.clone() {
@@ -182,34 +177,12 @@ fn derive_field_attribute(args: &Attribute, field_name: String) -> FieldAttr {
         None => quote! { #args },
     };
 
-    // Generate the code for implementing the trait
-    // let expanded = quote! {
-    //     pub struct #camel_field_name(#field_type);
-    //
-    //     impl Query for #camel_field_name {
-    //         fn get_filed() -> String {
-    //             #snake_field_name.to_string()
-    //         }
-    //     }
-    //
-    //     impl #camel_field_name {
-    //         pub fn new() -> Self {
-    //             #camel_field_name(#field_type {
-    //                 #args
-    //                 ..Default::default()
-    //             })
-    //         }
-    //         pub fn rc(&self) -> Rc<field_type> {
-    //             Rc::new(self.0.clone())
-    //         }
-    //     }
-    // };
     let code = format!(
         r#"
     pub struct {camel_field_name}({field_type});
     
     impl Query for {camel_field_name} {{
-        fn get_filed() -> String {{
+        fn get_field() -> String {{
             "{snake_field_name}".to_string()
         }}
     }}

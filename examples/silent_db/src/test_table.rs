@@ -13,7 +13,7 @@ pub(crate) struct Test {
 pub(crate) struct Id(Int);
 
 impl Query for Id {
-    fn get_filed() -> String {
+    fn get_field() -> String {
         "id".to_string()
     }
 }
@@ -21,7 +21,7 @@ impl Query for Id {
 impl Id {
     pub fn new() -> Self {
         Id(Int {
-            name: Self::get_filed(),
+            name: Self::get_field(),
             primary_key: true,
             auto_increment: true,
             comment: Some("ID".to_string()),
@@ -36,7 +36,7 @@ impl Id {
 pub(crate) struct Name(VarChar);
 
 impl Query for Name {
-    fn get_filed() -> String {
+    fn get_field() -> String {
         "name".to_string()
     }
 }
@@ -44,7 +44,7 @@ impl Query for Name {
 impl Name {
     pub fn new() -> Self {
         Name(VarChar {
-            name: Self::get_filed(),
+            name: Self::get_field(),
             comment: Some("姓名".to_string()),
             length: 36,
             ..Default::default()
@@ -58,7 +58,7 @@ impl Name {
 pub(crate) struct Age(Int);
 
 impl Query for Age {
-    fn get_filed() -> String {
+    fn get_field() -> String {
         "age".to_string()
     }
 }
@@ -66,7 +66,7 @@ impl Query for Age {
 impl Age {
     pub fn new() -> Self {
         Age(Int {
-            name: Self::get_filed(),
+            name: Self::get_field(),
             comment: Some("年龄".to_string()),
             ..Default::default()
         })

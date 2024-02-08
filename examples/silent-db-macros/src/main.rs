@@ -16,20 +16,12 @@ struct TestTable {
     #[field(field_type = "Int", comment = "年龄")]
     age: u32,
 }
-// #[field(field_type=Int, primary_key, auto_increment, comment = "ID")]
-// struct TestTable {
-//     id: u32,
-//     name: String,
-//     age: u32,
-// }
-// #[derive(Table)]
-// #[table(name = "test_name", comment = "test_comment")]
-// struct TestTable {
-//     id: u32,
-//     name: String,
-//     age: u32,
-// }
 
 fn main() {
     println!("{}", TestTable::manager().get_create_sql());
+    println!("{:?}", Id::query_eq(1));
+    println!("{:?}", Id::query_eq(1).get_sql());
+    let query = Id::query_eq("1") & Name::query_eq("zhangsan");
+    println!("{:?}", query);
+    println!("{:?}", query.get_query());
 }
