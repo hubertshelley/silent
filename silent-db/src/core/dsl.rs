@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::ops::Deref;
 
 #[derive(Debug, Eq, PartialEq)]
-pub(crate) struct SqlStatement(Statement, pub(crate) String);
+pub struct SqlStatement(pub(crate) Statement, pub(crate) String);
 
 impl From<(Statement, String)> for SqlStatement {
     fn from((statement, sql): (Statement, String)) -> Self {

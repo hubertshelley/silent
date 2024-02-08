@@ -1,5 +1,5 @@
 [package]
-name = "example_silent_db"
+name = "example-silent-db-macros"
 edition.workspace = true
 authors.workspace = true
 homepage.workspace = true
@@ -12,9 +12,4 @@ version.workspace = true
 
 [dependencies]
 silent-db = { path = "../../silent-db", features = ["mysql"] }
-sqlx = { version = "0.7.3", features = ["runtime-tokio", "macros", "mysql", "any"] }
-tokio = { version = "1.0", features = ["full"] }
-anyhow = "1.0.79"
-async-trait = "0.1.77"
-serde = { version = "1.0.196", features = ["derive"] }
-
+silent-db-macros = { path = "../../silent-db-macros" }

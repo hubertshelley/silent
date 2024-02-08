@@ -1,32 +1,46 @@
+use crate::core::dsl::SqlStatement;
 use crate::core::fields::Field;
+use anyhow::Result;
+use std::path::Path;
+use std::rc::Rc;
 
 pub trait TableUtil {
     fn get_all_tables(&self) -> String;
     fn get_table(&self, table: &str) -> String;
+    fn transform(&self, table: &SqlStatement) -> Result<Box<dyn Table>>;
+    fn generate_models(&self, tables: Vec<SqlStatement>, models_path: &Path) -> Result<()>;
 }
 pub trait Table {
-    fn get_name() -> String;
-    fn get_fields() -> Vec<Box<dyn Field>>;
-    fn get_comment() -> Option<String> {
+    fn get_name(&self) -> String;
+    fn get_fields(&self) -> Vec<Rc<dyn Field>>;
+    fn get_comment(&self) -> Option<String> {
         None
     }
     fn get_create_sql(&self) -> String {
-        let mut sql = format!("CREATE TABLE `{}` (", Self::get_name());
-        let fields: Vec<String> = Self::get_fields()
+        let mut sql = format!("CREATE TABLE `{}` (", self.get_name());
+        let fields: Vec<String> = self
+            .get_fields()
             .iter()
             .map(|field| field.get_create_sql())
             .collect();
         sql.push_str(&fields.join(", "));
         sql.push(')');
-        if let Some(comment) = Self::get_comment() {
+        if let Some(comment) = self.get_comment() {
             sql.push_str(&format!(" COMMENT='{}'", comment));
         }
         sql.push(';');
         sql
     }
     fn get_drop_sql(&self) -> String {
-        format!("DROP TABLE {};", Self::get_name())
+        format!("DROP TABLE `{}`;", self.get_name())
     }
+}
+
+pub trait TableManage {
+    fn get_manager(&self) -> Box<dyn Table> {
+        Self::manager()
+    }
+    fn manager() -> Box<dyn Table>;
 }
 
 #[cfg(test)]
@@ -84,10 +98,10 @@ mod tests {
     }
 
     impl Table for TestTable {
-        fn get_name() -> String {
+        fn get_name(&self) -> String {
             "test_table".to_string()
         }
-        fn get_fields() -> Vec<Box<dyn Field>> {
+        fn get_fields(&self) -> Vec<Rc<dyn Field>> {
             let int = IntField {
                 name: "id".to_string(),
                 default: None,
@@ -97,9 +111,9 @@ mod tests {
                 auto_increment: true,
                 comment: None,
             };
-            vec![Box::new(int)]
+            vec![Rc::new(int)]
         }
-        fn get_comment() -> Option<String> {
+        fn get_comment(&self) -> Option<String> {
             Some("Test Table".to_string())
         }
     }

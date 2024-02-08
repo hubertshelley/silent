@@ -1,6 +1,10 @@
+use serde::{Deserialize, Serialize};
+use silent_db::mysql::base::TableManager;
 use silent_db::mysql::fields::{Int, VarChar};
-use silent_db::{Field, Query, Table};
+use silent_db::{Query, Table, TableManage};
+use std::rc::Rc;
 
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub(crate) struct Test {
     pub id: u32,
     pub name: String,
@@ -24,8 +28,8 @@ impl Id {
             ..Default::default()
         })
     }
-    pub fn boxed(&self) -> Box<Int> {
-        Box::new(self.0.clone())
+    pub fn rc(&self) -> Rc<Int> {
+        Rc::new(self.0.clone())
     }
 }
 
@@ -46,8 +50,8 @@ impl Name {
             ..Default::default()
         })
     }
-    pub fn boxed(&self) -> Box<VarChar> {
-        Box::new(self.0.clone())
+    pub fn rc(&self) -> Rc<VarChar> {
+        Rc::new(self.0.clone())
     }
 }
 
@@ -67,17 +71,18 @@ impl Age {
             ..Default::default()
         })
     }
-    pub fn boxed(&self) -> Box<Int> {
-        Box::new(self.0.clone())
+    pub fn rc(&self) -> Rc<Int> {
+        Rc::new(self.0.clone())
     }
 }
 
-impl Table for Test {
-    fn get_name() -> String {
-        "test".to_string()
-    }
-    fn get_fields() -> Vec<Box<dyn Field>> {
-        vec![Id::new().boxed(), Name::new().boxed(), Age::new().boxed()]
+impl TableManage for Test {
+    fn manager() -> Box<dyn Table> {
+        Box::new(TableManager {
+            name: "test".to_string(),
+            fields: vec![Id::new().rc(), Name::new().rc(), Age::new().rc()],
+            comment: Some("Test Table".to_string()),
+        })
     }
 }
 
@@ -86,13 +91,14 @@ mod tests {
     use super::*;
     #[test]
     fn test_table() {
-        assert_eq!(Test::get_name(), "test");
-        let fields = Test::get_fields();
+        let table = Test::manager();
+        assert_eq!(table.get_name(), "test");
+        let fields = table.get_fields();
         assert_eq!(fields.len(), 3);
         assert_eq!(fields[0].get_name(), "id");
         assert_eq!(fields[1].get_name(), "name");
         assert_eq!(fields[2].get_name(), "age");
-        println!("Create: {:?}", Test::get_create_sql());
-        println!("Drop: {:?}", Test::get_drop_sql());
+        assert_eq!(table.get_create_sql(), "CREATE TABLE `test` (`id` INT NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT COMMENT 'ID', `name` VARCHAR(36) COMMENT '姓名', `age` INT COMMENT '年龄');");
+        assert_eq!(table.get_drop_sql(), "DROP TABLE `test`;");
     }
 }

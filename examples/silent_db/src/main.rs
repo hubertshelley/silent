@@ -1,5 +1,3 @@
-use silent_db::mysql::base::TableUtils;
-
 use sqlx::FromRow;
 
 mod test_table;
@@ -13,6 +11,7 @@ async fn main() {
             .parse()
             .unwrap(),
     );
-    migrate.generate(Box::new(TableUtils::new())).await.unwrap();
-    // migrate.migrate().await.unwrap()
+    // migrate.generate(Box::new(TableUtils::new())).await.unwrap();
+    migrate.migrate().await.unwrap();
+    // migrate.rollback(1).await.unwrap();
 }

@@ -4,11 +4,12 @@ use crate::Table;
 use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
 use console::style;
+use sqlparser::ast::Statement;
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 use sqlx::any::AnyConnectOptions;
 use sqlx::migrate::{MigrationType, Migrator};
-use sqlx::{Acquire, AnyConnection, ConnectOptions, FromRow};
+use sqlx::{AnyConnection, ConnectOptions, FromRow};
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
@@ -59,26 +60,19 @@ impl Migrate {
         println!("run migrate");
         // todo!()
         let _ = tables;
+        for table in tables {
+            table.get_create_sql();
+        }
         Ok(())
     }
     pub async fn migrate(self) -> Result<()> {
         println!("run migrate");
         let migrator = self.get_migrator().await?;
         let mut conn = self.get_conn().await?;
-        // let mut transaction = conn.begin().await?;
         migrator
             .run(&mut conn)
             .await
             .map_err(|e| anyhow!("migrate error: {}", e))
-        //     ?;
-        // match result {
-        //     Ok(_) => transaction.commit().await?,
-        //     Err(err) => {
-        //         transaction.rollback().await?;
-        //         return Err(anyhow!("migrate error: {}", err));
-        //     }
-        // }
-        // Ok(())
     }
 
     pub async fn rollback(self, target: i64) -> Result<()> {
@@ -88,15 +82,37 @@ impl Migrate {
         migrator.undo(&mut conn, target).await?;
         Ok(())
     }
-    pub async fn generate(self, utils: Box<dyn TableUtil>) -> Result<()> {
-        println!("run generate");
-        let migrations_path = self.migrations_path.clone();
+    async fn get_exist_tables(self, utils: &Box<dyn TableUtil>) -> Result<Vec<SqlStatement>> {
         let mut conn = self.get_conn().await?;
         let sql = utils.get_all_tables();
         let tables: Vec<TableName> = sqlx::query_as(&sql)
             .fetch_all(&mut conn)
             .await
             .map_err(|e| anyhow!("{}", e))?;
+        let mut generate_tables: Vec<SqlStatement> = vec![];
+        for table in tables {
+            let create_list: Vec<TableCreate> = sqlx::query_as(&utils.get_table(&table.0))
+                .fetch_all(&mut conn)
+                .await?;
+            let dialect = GenericDialect {};
+            for create in create_list {
+                let sql = create.1;
+                let ast = Parser::parse_sql(&dialect, &sql)?
+                    .pop()
+                    .ok_or(anyhow!("failed to parse sql"))?;
+                if let Statement::CreateTable { name, .. } = ast.clone() {
+                    if name.to_string() == "`_sqlx_migrations`" {
+                        continue;
+                    }
+                }
+                generate_tables.push((ast, sql.to_string()).into());
+            }
+        }
+        Ok(generate_tables)
+    }
+    pub async fn generate(self, utils: Box<dyn TableUtil>) -> Result<()> {
+        println!("run generate");
+        let migrations_path = self.migrations_path.clone();
         let path = Path::new(&migrations_path);
         if !path.exists() {
             fs::create_dir_all(path)?;
@@ -104,9 +120,9 @@ impl Migrate {
         if !path.is_dir() {
             return Err(anyhow!("migrations path is not a directory"));
         }
-        if path.read_dir()?.next().is_some() {
-            return Err(anyhow!("migrations path is not empty"));
-        }
+        // if path.read_dir()?.next().is_some() {
+        //     return Err(anyhow!("migrations path is not empty"));
+        // }
         let prefix = Utc::now().format("%Y%m%d%H%M%S").to_string();
         let up_path_buf = create_file(
             &migrations_path,
@@ -120,34 +136,50 @@ impl Migrate {
             "init",
             MigrationType::ReversibleDown,
         )?;
-        let mut generate_tables: Vec<SqlStatement> = vec![];
-        if let Err(()) = {
-            for table in tables {
-                let create_list: Vec<TableCreate> = sqlx::query_as(&utils.get_table(&table.0))
-                    .fetch_all(&mut conn)
-                    .await?;
-                let dialect = GenericDialect {};
-                for create in create_list {
-                    let sql = create.1;
-                    let ast = Parser::parse_sql(&dialect, &sql)?
-                        .pop()
-                        .ok_or(anyhow!("failed to parse sql"))?;
-                    generate_tables.push((ast, sql.to_string()).into());
-                }
-            }
+        match async {
+            let mut generate_tables = self.get_exist_tables(&utils).await?;
             let mut up_file = OpenOptions::new().append(true).open(&up_path_buf)?;
+            let mut down_file = OpenOptions::new().append(true).open(&down_path_buf)?;
             generate_tables.sort();
             for sql in &generate_tables {
                 up_file.write_all(sql.1.as_bytes())?;
                 up_file.write_all(b";\n")?;
             }
-            up_file.write_all(sql.as_bytes())?;
-            Ok(())
-        } {
-            fs::remove_file(up_path_buf)?;
-            fs::remove_file(down_path_buf)?;
+            generate_tables.reverse();
+            for sql in &generate_tables {
+                let table = utils.transform(sql)?;
+                down_file.write_all(table.get_drop_sql().as_bytes())?;
+                down_file.write_all(b"\n")?;
+            }
+            let models_path = Path::new("./models");
+            utils.generate_models(generate_tables, models_path)?;
+            println!(
+                "Generate models at {:?} success",
+                style(models_path).green()
+            );
+            Ok::<(), anyhow::Error>(())
         }
-        Ok(())
+        .await
+        {
+            Ok(_) => {
+                println!(
+                    "Migration files {} generated at ./{}",
+                    style(prefix).yellow(),
+                    style(migrations_path).green()
+                );
+                Ok(())
+            }
+            Err(e) => {
+                fs::remove_file(up_path_buf)?;
+                fs::remove_file(down_path_buf)?;
+                println!(
+                    "Migration files {} generate failed by {}",
+                    style(prefix).yellow(),
+                    style(e.to_string()).red()
+                );
+                Err(e)
+            }
+        }
     }
 }
 fn create_file(

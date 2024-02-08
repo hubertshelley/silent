@@ -8,7 +8,17 @@ pub struct QueryBuilder {
 
 impl QueryBuilder {
     pub fn get_sql(&self) -> String {
-        format!("{} {} {}", self.filed, self.action, self.value)
+        let filed = if self.filed.is_empty() {
+            self.filed.clone()
+        } else {
+            format!("{} ", self.value)
+        };
+        let action = if self.action.is_empty() {
+            self.action.clone()
+        } else {
+            format!("{} ", self.action)
+        };
+        format!("{}{}{}", filed, action, self.value)
     }
 }
 
@@ -237,6 +247,18 @@ pub trait Query {
                 filed: Self::get_filed(),
                 action: "IS NOT".to_string(),
                 value: "NULL".to_string(),
+            }],
+        }
+    }
+    fn raw<T>(value: T) -> QueryBuilderGroup
+    where
+        T: ToString,
+    {
+        QueryBuilderGroup {
+            group: vec![QueryBuilder {
+                filed: "".to_string(),
+                action: "".to_string(),
+                value: value.to_string(),
             }],
         }
     }

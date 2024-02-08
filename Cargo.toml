@@ -1,5 +1,5 @@
 [workspace]
-members = ["silent", "examples/*", "silent_db"]
+members = ["silent", "examples/*", "silent-db", "silent-db-macros"]
 default-members = ["silent", ]
 resolver = "2"
 
