@@ -4,6 +4,7 @@ pub(crate) struct TableAttr {
     pub(crate) name: Option<String>,
     pub(crate) comment: Option<String>,
 }
+
 pub(crate) fn get_table_attr(args: &Attribute) -> TableAttr {
     let mut table_attr = TableAttr {
         name: None,
@@ -89,8 +90,6 @@ pub(crate) fn get_field_attr(args: &Attribute) -> FieldAttr {
             field_attr.length = Some(meta.value()?.parse::<LitInt>()?.base10_parse::<u16>()?);
             Ok(())
         } else {
-            println!("meta.path: {:?}", meta.path);
-            println!("meta.value: {:?}", meta.value()?);
             Ok(())
         }
     });

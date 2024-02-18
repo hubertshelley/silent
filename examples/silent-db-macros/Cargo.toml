@@ -12,4 +12,3 @@ version.workspace = true
 
 [dependencies]
 silent-db = { path = "../../silent-db", features = ["mysql"] }
-silent-db-macros = { path = "../../silent-db-macros" }

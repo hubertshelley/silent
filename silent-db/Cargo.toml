@@ -12,9 +12,9 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-mysql = ["sqlx/mysql", "silent-db-macros/mysql"]
-postgres = ["sqlx/postgres", "silent-db-macros/postgres"]
-sqlite = ["sqlx/sqlite", "silent-db-macros/sqlite"]
+mysql = ["sqlx/mysql"]
+postgres = ["sqlx/postgres"]
+sqlite = ["sqlx/sqlite"]
 
 [dependencies]
 anyhow = { version = "1.0.40" }

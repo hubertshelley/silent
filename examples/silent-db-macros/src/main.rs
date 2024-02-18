@@ -3,9 +3,9 @@ use silent_db::mysql::fields::{Int, VarChar};
 use silent_db::Query;
 use silent_db::Table;
 use silent_db::TableManage;
-use silent_db_macros::Table;
 use std::rc::Rc;
 
+#[allow(dead_code)]
 #[derive(Table)]
 #[table(name = "test_name", comment = "test_comment")]
 struct TestTable {

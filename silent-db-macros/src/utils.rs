@@ -33,6 +33,7 @@ pub fn to_snake_case(s: &str) -> String {
     }
     result
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

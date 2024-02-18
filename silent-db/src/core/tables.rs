@@ -5,11 +5,13 @@ use std::path::Path;
 use std::rc::Rc;
 
 pub trait TableUtil {
+    fn get_name(&self) -> String;
     fn get_all_tables(&self) -> String;
     fn get_table(&self, table: &str) -> String;
     fn transform(&self, table: &SqlStatement) -> Result<Box<dyn Table>>;
     fn generate_models(&self, tables: Vec<SqlStatement>, models_path: &Path) -> Result<()>;
 }
+
 pub trait Table {
     fn get_name(&self) -> String;
     fn get_fields(&self) -> Vec<Rc<dyn Field>>;

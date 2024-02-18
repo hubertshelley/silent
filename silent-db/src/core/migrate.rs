@@ -13,6 +13,7 @@ use sqlx::{AnyConnection, ConnectOptions, FromRow};
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 pub struct Migrate {
@@ -26,6 +27,7 @@ struct TableName(String);
 
 #[derive(Debug, FromRow)]
 struct TableCreate(String, String);
+
 impl Migrate {
     pub fn new(migrations_path: String, options: AnyConnectOptions) -> Self {
         Migrate {
@@ -82,8 +84,15 @@ impl Migrate {
         migrator.undo(&mut conn, target).await?;
         Ok(())
     }
-    async fn get_exist_tables(self, utils: &Box<dyn TableUtil>) -> Result<Vec<SqlStatement>> {
+    async fn get_exist_tables(self, utils: &dyn TableUtil) -> Result<Vec<SqlStatement>> {
         let mut conn = self.get_conn().await?;
+        if conn.backend_name() != utils.get_name() {
+            return Err(anyhow!(
+                "database({}) is not support, database({}) is supported",
+                conn.backend_name(),
+                utils.get_name()
+            ));
+        }
         let sql = utils.get_all_tables();
         let tables: Vec<TableName> = sqlx::query_as(&sql)
             .fetch_all(&mut conn)
@@ -110,6 +119,34 @@ impl Migrate {
         }
         Ok(generate_tables)
     }
+    async fn generate_files(
+        self,
+        utils: Box<dyn TableUtil>,
+        up_path_buf: PathBuf,
+        down_path_buf: PathBuf,
+    ) -> Result<()> {
+        let mut generate_tables = self.get_exist_tables(utils.deref()).await?;
+        let mut up_file = OpenOptions::new().append(true).open(&up_path_buf)?;
+        let mut down_file = OpenOptions::new().append(true).open(&down_path_buf)?;
+        generate_tables.sort();
+        for sql in &generate_tables {
+            up_file.write_all(sql.1.as_bytes())?;
+            up_file.write_all(b";\n")?;
+        }
+        generate_tables.reverse();
+        for sql in &generate_tables {
+            let table = utils.transform(sql)?;
+            down_file.write_all(table.get_drop_sql().as_bytes())?;
+            down_file.write_all(b"\n")?;
+        }
+        let models_path = Path::new("./src/models");
+        utils.generate_models(generate_tables, models_path)?;
+        println!(
+            "Generate models at {:?} success",
+            style(models_path).green()
+        );
+        Ok(())
+    }
     pub async fn generate(self, utils: Box<dyn TableUtil>) -> Result<()> {
         println!("run generate");
         let migrations_path = self.migrations_path.clone();
@@ -120,6 +157,7 @@ impl Migrate {
         if !path.is_dir() {
             return Err(anyhow!("migrations path is not a directory"));
         }
+        // TODO: check if the migrations path is empty
         // if path.read_dir()?.next().is_some() {
         //     return Err(anyhow!("migrations path is not empty"));
         // }
@@ -136,30 +174,9 @@ impl Migrate {
             "init",
             MigrationType::ReversibleDown,
         )?;
-        match async {
-            let mut generate_tables = self.get_exist_tables(&utils).await?;
-            let mut up_file = OpenOptions::new().append(true).open(&up_path_buf)?;
-            let mut down_file = OpenOptions::new().append(true).open(&down_path_buf)?;
-            generate_tables.sort();
-            for sql in &generate_tables {
-                up_file.write_all(sql.1.as_bytes())?;
-                up_file.write_all(b";\n")?;
-            }
-            generate_tables.reverse();
-            for sql in &generate_tables {
-                let table = utils.transform(sql)?;
-                down_file.write_all(table.get_drop_sql().as_bytes())?;
-                down_file.write_all(b"\n")?;
-            }
-            let models_path = Path::new("./models");
-            utils.generate_models(generate_tables, models_path)?;
-            println!(
-                "Generate models at {:?} success",
-                style(models_path).green()
-            );
-            Ok::<(), anyhow::Error>(())
-        }
-        .await
+        match self
+            .generate_files(utils, up_path_buf.clone(), down_path_buf.clone())
+            .await
         {
             Ok(_) => {
                 println!(
@@ -182,6 +199,7 @@ impl Migrate {
         }
     }
 }
+
 fn create_file(
     migration_source: &str,
     file_prefix: &str,
