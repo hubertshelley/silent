@@ -3,7 +3,7 @@ extern crate proc_macro;
 mod macros;
 mod utils;
 
-use crate::macros::{get_field_attr, get_table_attr};
+use crate::macros::{get_field_attr, get_table_attr, TableAttr};
 use crate::utils::{to_camel_case, to_snake_case};
 use proc_macro::TokenStream;
 use quote::quote;
@@ -13,11 +13,6 @@ use syn::{parse_macro_input, Attribute, Data, DeriveInput, Fields};
 pub fn derive_table(item: TokenStream) -> TokenStream {
     let item_copy = item.clone();
     let input = parse_macro_input!(item as DeriveInput);
-    let table_token = input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("table"))
-        .unwrap();
     let fields = match input.data {
         Data::Struct(ref data_struct) => {
             if let Fields::Named(ref fields_named) = data_struct.fields {
@@ -30,13 +25,32 @@ pub fn derive_table(item: TokenStream) -> TokenStream {
     };
     let mut fields_data: Vec<FieldAttr> = vec![];
     for field in fields {
-        for attr in field.attrs.iter() {
-            if attr.path().is_ident("field") {
-                let field_name = field.ident.as_ref().unwrap().to_string();
-                fields_data.push(derive_field_attribute(attr, field_name));
-            }
+        let field_name = field.ident.as_ref().unwrap().to_string();
+        if let Some(attr) = field
+            .attrs
+            .iter()
+            .find(|attr| attr.path().is_ident("field"))
+        {
+            fields_data.push(derive_field_attribute(attr, field_name));
+        } else {
+            let attr = FieldAttr {
+                name: to_snake_case(&field_name),
+                token_stream: Default::default(),
+            };
+            fields_data.push(attr);
         }
     }
+    let table_token = match input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("table"))
+    {
+        Some(attr) => get_table_attr(attr),
+        None => TableAttr {
+            name: Some(to_snake_case(&input.ident.to_string())),
+            comment: None,
+        },
+    };
     let table_token = derive_table_attribute(table_token, item_copy, &fields_data);
     let mut fields = TokenStream::from(quote! {});
     for field in fields_data {
@@ -46,14 +60,11 @@ pub fn derive_table(item: TokenStream) -> TokenStream {
     fields
 }
 
-// #[proc_macro_attribute]
 fn derive_table_attribute(
-    args: &Attribute,
+    table_attr: TableAttr,
     input: TokenStream,
     field_data: &[FieldAttr],
 ) -> TokenStream {
-    let table_attr = get_table_attr(args);
-
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
@@ -80,7 +91,6 @@ fn derive_table_attribute(
             .collect::<Vec<String>>()
             .join(", ")
     );
-    println!("fields_code: {:?}", fields_code);
     let fields_token: proc_macro2::TokenStream = fields_code.parse().unwrap();
 
     // Generate the code for implementing the trait
@@ -106,10 +116,8 @@ struct FieldAttr {
     token_stream: TokenStream,
 }
 
-// #[proc_macro_attribute]
 fn derive_field_attribute(args: &Attribute, field_name: String) -> FieldAttr {
     let field_attr = get_field_attr(args);
-    print!("field_attr: {:?}", field_attr);
 
     let snake_field_name = to_snake_case(&field_name.to_string());
     let camel_field_name = to_camel_case(&field_name.to_string());
