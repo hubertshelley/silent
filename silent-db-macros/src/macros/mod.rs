@@ -103,33 +103,33 @@ pub(crate) fn get_field_attr(args: &Attribute) -> FieldAttr {
     field_attr
 }
 
-/// 自动检测并使用默认字段类型
-/// 如: u32 -> Int
-///    String -> VarChar(255)
-///    f64 -> Float
-///    bool -> Bool
-///    DateTime<Utc> -> DateTime
-///    Option<T> -> Nullable<T>
-pub(crate) fn field_type_detect(field_type: &str) -> FieldAttr {
-    let field_type = match field_type {
-        "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" => "Int".to_string(),
-        "String" => "VarChar".to_string(),
-        "f32" | "f64" => "Float".to_string(),
-        "bool" => "Bool".to_string(),
-        "DateTime<Utc>" => "DateTime".to_string(),
-        _ => field_type.to_string(),
-    };
-    FieldAttr {
-        field_type,
-        name: None,
-        default: None,
-        nullable: None,
-        primary_key: None,
-        auto_increment: None,
-        unique: None,
-        comment: None,
-        max_digits: None,
-        decimal_places: None,
-        length: None,
-    }
-}
+// /// 自动检测并使用默认字段类型
+// /// 如: u32 -> Int
+// ///    String -> VarChar(255)
+// ///    f64 -> Float
+// ///    bool -> Bool
+// ///    DateTime<Utc> -> DateTime
+// ///    Option<T> -> Nullable<T>
+// pub(crate) fn field_type_detect(field_type: &str) -> FieldAttr {
+//     let field_type = match field_type {
+//         "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" => "Int".to_string(),
+//         "String" => "VarChar".to_string(),
+//         "f32" | "f64" => "Float".to_string(),
+//         "bool" => "Bool".to_string(),
+//         "DateTime<Utc>" => "DateTime".to_string(),
+//         _ => field_type.to_string(),
+//     };
+//     FieldAttr {
+//         field_type,
+//         name: None,
+//         default: None,
+//         nullable: None,
+//         primary_key: None,
+//         auto_increment: None,
+//         unique: None,
+//         comment: None,
+//         max_digits: None,
+//         decimal_places: None,
+//         length: None,
+//     }
+// }
