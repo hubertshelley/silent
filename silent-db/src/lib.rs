@@ -7,5 +7,6 @@ pub use core::migrate::Migrate;
 pub use core::query::{Query, QueryBuilderGroup};
 pub use core::tables::{Table, TableManage, TableUtil};
 pub use silent_db_macros::Table;
+pub use sqlx::FromRow;
 #[cfg(feature = "mysql")]
 pub use types::mysql;

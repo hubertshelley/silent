@@ -10,6 +10,77 @@ pub trait TableUtil {
     fn get_table(&self, table: &str) -> String;
     fn transform(&self, table: &SqlStatement) -> Result<Box<dyn Table>>;
     fn generate_models(&self, tables: Vec<SqlStatement>, models_path: &Path) -> Result<()>;
+
+    /// 从字段字符串中检测字段类型和长度
+    fn detect_fields(&self, field_str: &str) -> DetectField {
+        let field_str = field_str.to_lowercase();
+        // 利用正则取出字段后的包含括号的长度数值
+        // 如 int(11) -> 11
+        // 如 varchar(255) -> 255
+        // 如 decimal(10, 2) -> 10, 2
+        let re = regex::Regex::new(r"\((\d+)(?:, (\d+))?\)").unwrap();
+        let length = if let Some(caps) = re.captures(&field_str) {
+            if caps.len() == 3 {
+                match (caps.get(1), caps.get(2)) {
+                    (Some(max_digits), Some(decimal_places)) => Some(
+                        (
+                            max_digits.as_str().parse::<u8>().unwrap_or(0),
+                            decimal_places.as_str().parse::<u8>().unwrap_or(0),
+                        )
+                            .into(),
+                    ),
+                    (Some(max_length), None) => {
+                        Some(max_length.as_str().parse::<u16>().unwrap_or(0).into())
+                    }
+                    (_, _) => None,
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        // 利用正则表达式取出首个左括号之前的字符串作为字段类型
+        // 如 int(11) -> int
+        // 如 varchar(255) -> varchar
+        // 如 decimal(10, 2) -> decimal
+        let re = regex::Regex::new(r"(\w+)(?:\(\d+(?:, \d+)?\))?$").unwrap();
+        let field_type = re
+            .captures(&field_str)
+            .unwrap()
+            .get(1)
+            .unwrap()
+            .as_str()
+            .to_string();
+        DetectField { field_type, length }
+    }
+
+    /// 从DetectField中获取字段类型和结构体类型
+    fn get_field_type(&self, detect_field: &DetectField) -> (&str, &str);
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct DetectField {
+    pub field_type: String,
+    pub length: Option<DetectFieldLength>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum DetectFieldLength {
+    MaxLength(u16),
+    MaxDigits(u8, u8),
+}
+
+impl From<u16> for DetectFieldLength {
+    fn from(length: u16) -> Self {
+        DetectFieldLength::MaxLength(length)
+    }
+}
+
+impl From<(u8, u8)> for DetectFieldLength {
+    fn from(digits: (u8, u8)) -> Self {
+        DetectFieldLength::MaxDigits(digits.0, digits.1)
+    }
 }
 
 pub trait Table {

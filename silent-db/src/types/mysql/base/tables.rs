@@ -1,5 +1,5 @@
 use crate::core::dsl::SqlStatement;
-use crate::core::tables::TableUtil;
+use crate::core::tables::{DetectField, DetectFieldLength, TableUtil};
 use crate::utils::{to_camel_case, to_snake_case};
 use crate::{Field, Table};
 use anyhow::Result;
@@ -71,6 +71,7 @@ impl TableUtil for TableUtils {
                 let name = name.0.first().unwrap().value.clone();
 
                 models.push(name.clone());
+                let mut field_types = Vec::new();
                 let mut file = OpenOptions::new()
                     .create(true)
                     .write(true)
@@ -78,23 +79,28 @@ impl TableUtil for TableUtils {
                     .open(models_path.join(format!("{}.rs", to_snake_case(&name))))?;
                 let table_derive = format!("#[derive(Table)]\n#[table(name = \"{}\"", name);
                 let table_derive = if let Some(comment) = comment {
-                    format!("{}, comment = \"{}\")]", table_derive, comment)
+                    format!("{}, comment = \"{}\")]\n", table_derive, comment)
                 } else {
-                    format!("{})]", table_derive)
+                    format!("{})]\n", table_derive)
                 };
                 let content = columns
                     .iter()
                     .map(|column| {
                         let name = column.name.value.clone();
                         let field_type = column.data_type.to_string();
+                        let detect_field = self.detect_fields(&field_type);
+                        let (field_type, struct_type) = self.get_field_type(&detect_field);
+                        if !field_types.contains(&field_type.to_string()) {
+                            field_types.push(field_type.to_string());
+                        }
                         let mut field_derive = format!(
-                            "#[field(field_type = \"{}\", name = \"{}\"",
+                            "    #[field(field_type = \"{}\", name = \"{}\"",
                             field_type, name
                         );
                         for options in column.options.iter() {
                             match &options.option {
-                                sqlparser::ast::ColumnOption::NotNull => {
-                                    field_derive.push_str(", nullable = false");
+                                sqlparser::ast::ColumnOption::Null => {
+                                    field_derive.push_str(", nullable");
                                 }
                                 sqlparser::ast::ColumnOption::Unique { .. } => {
                                     field_derive.push_str(", unique");
@@ -111,19 +117,70 @@ impl TableUtil for TableUtils {
                                 _ => {}
                             }
                         }
-                        let field = format!("{}: {}", to_snake_case(&name), field_type);
+                        match detect_field.length {
+                            Some(DetectFieldLength::MaxLength(max_length)) => {
+                                field_derive.push_str(&format!(", max_length = {}", max_length));
+                            }
+                            Some(DetectFieldLength::MaxDigits(max_digits, decimal_places)) => {
+                                field_derive.push_str(&format!(
+                                    ", max_digits = {:?}, decimal_places = {:?}",
+                                    max_digits, decimal_places
+                                ));
+                            }
+                            _ => {}
+                        }
+                        let field = format!("    {}: {}", to_snake_case(&name), struct_type);
                         format!("{})]\n{}", field_derive, field)
                     })
                     .collect::<Vec<String>>()
                     .join(",\n");
+                let table_derive = format!(
+                    "{}{}{}\n\n\n{}",
+                    r#"use serde::{Deserialize, Serialize};
+use silent_db::mysql::base::TableManager;
+use silent_db::mysql::fields::{"#,
+                    field_types.join(", "),
+                    r#"};
+use silent_db::{Query, Table, TableManage};
+use std::rc::Rc;"#,
+                    table_derive
+                );
                 file.write_all(table_derive.as_bytes())?;
                 file.write_all(format!("pub struct {}{{\n", to_camel_case(&name)).as_bytes())?;
                 file.write_all(content.as_bytes())?;
-                file.write_all("}\n".to_string().as_bytes())?;
+                file.write_all("\n}\n".to_string().as_bytes())?;
                 mod_files.write_all(format!("pub mod {};\n", to_snake_case(&name)).as_bytes())?;
             }
         }
         Ok(())
+    }
+    fn get_field_type(&self, detect_field: &DetectField) -> (&str, &str) {
+        match detect_field.field_type.as_str() {
+            "int" => {
+                let field_type = match detect_field.length {
+                    Some(DetectFieldLength::MaxLength(max_length)) => {
+                        if max_length == 1 {
+                            "bool"
+                        } else if max_length <= 16 {
+                            "i16"
+                        } else if max_length <= 32 {
+                            "i32"
+                        } else if max_length <= 64 {
+                            "i64"
+                        } else {
+                            "u64"
+                        }
+                    }
+                    _ => "u64",
+                };
+                ("Int", field_type)
+            }
+            "varchar" => {
+                let field_type = "String";
+                ("VarChar", field_type)
+            }
+            _ => ("VarChar", "String"),
+        }
     }
 }
 
@@ -184,7 +241,7 @@ impl Eq for TableManager {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::tables::TableManage;
+    use crate::core::tables::{DetectFieldLength, TableManage};
     use crate::mysql::fields::Int;
 
     struct TestTable;
@@ -218,5 +275,28 @@ mod tests {
     fn test_get_drop_sql() {
         let table = TestTable;
         assert_eq!(table.get_manager().get_drop_sql(), "DROP TABLE test_table;");
+    }
+
+    #[test]
+    fn test_utils_detect_field() {
+        let utils = TableUtils::new();
+        let detect_field = utils.detect_fields("int(11)");
+        assert_eq!(detect_field.field_type, "int");
+        assert_eq!(
+            detect_field,
+            DetectField {
+                field_type: "int".to_string(),
+                length: Some(DetectFieldLength::MaxLength(11)),
+            }
+        );
+        let detect_field = utils.detect_fields("varchar(255)");
+        assert_eq!(detect_field.field_type, "varchar");
+        assert_eq!(detect_field.length, Some(DetectFieldLength::MaxLength(255)));
+        let detect_field = utils.detect_fields("decimal(10, 2)");
+        assert_eq!(detect_field.field_type, "decimal");
+        assert_eq!(
+            detect_field.length,
+            Some(DetectFieldLength::MaxDigits(10, 2))
+        );
     }
 }

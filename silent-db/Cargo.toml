@@ -26,6 +26,7 @@ console = "0.15.8"
 quote = "1.0.35"
 syn = "2.0.48"
 silent-db-macros = { path = "../silent-db-macros" }
+regex = "1.10.3"
 
 [dev-dependencies]
 serde = { version = "1.0.196", features = ["derive"] }
