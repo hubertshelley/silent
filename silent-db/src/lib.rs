@@ -2,6 +2,7 @@ mod core;
 mod types;
 mod utils;
 
+pub use chrono::*;
 pub use core::fields::{Field, FieldType};
 pub use core::migrate::Migrate;
 pub use core::query::{Query, QueryBuilderGroup};

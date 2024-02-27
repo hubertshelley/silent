@@ -8,6 +8,7 @@ pub struct TinyInt {
     pub unique: bool,
     pub auto_increment: bool,
     pub comment: Option<String>,
+    pub length: u16,
 }
 
 impl Default for TinyInt {
@@ -20,14 +21,15 @@ impl Default for TinyInt {
             unique: false,
             auto_increment: false,
             comment: None,
+            length: 8,
         }
     }
 }
-struct TinyIntType;
+struct TinyIntType(u16);
 
 impl FieldType for TinyIntType {
     fn get_type_str(&self) -> String {
-        "TINYINT".to_string()
+        format!("TINYINT({})", self.0)
     }
 }
 
@@ -37,7 +39,7 @@ impl Field for TinyInt {
     }
 
     fn get_type(&self) -> Box<dyn FieldType> {
-        Box::new(TinyIntType)
+        Box::new(TinyIntType(self.length))
     }
     fn get_default(&self) -> Option<String> {
         self.default.clone()

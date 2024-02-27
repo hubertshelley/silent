@@ -1,6 +1,7 @@
 use silent_db::mysql::base::TableUtils;
 use sqlx::FromRow;
 
+mod models;
 mod test_table;
 
 #[derive(Debug, FromRow)]

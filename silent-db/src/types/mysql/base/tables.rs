@@ -156,6 +156,61 @@ use std::rc::Rc;"#,
     }
     fn get_field_type(&self, detect_field: &DetectField) -> (&str, &str) {
         match detect_field.field_type.as_str() {
+            // blob
+            "blob" => {
+                let field_type = "Vec<u8>";
+                ("Blob", field_type)
+            }
+            "longblob" => {
+                let field_type = "Vec<u8>";
+                ("LongBlob", field_type)
+            }
+            "mediumblob" => {
+                let field_type = "Vec<u8>";
+                ("MediumBlob", field_type)
+            }
+            "tinyblob" => {
+                let field_type = "Vec<u8>";
+                ("TinyBlob", field_type)
+            }
+            // datetime
+            "date" => {
+                let field_type = "chrono::NaiveDate";
+                ("Date", field_type)
+            }
+            "datetime" => {
+                let field_type = "chrono::NaiveDateTime";
+                ("Datetime", field_type)
+            }
+            "time" => {
+                let field_type = "chrono::NaiveTime";
+                ("Time", field_type)
+            }
+            "timestamp" => {
+                let field_type = "chrono::NaiveDateTime";
+                ("TimeStamp", field_type)
+            }
+            "year" => {
+                let field_type = "i16";
+                ("Year", field_type)
+            }
+            // number
+            "bigint" => {
+                let field_type = "i64";
+                ("BigInt", field_type)
+            }
+            "decimal" => {
+                let field_type = "f64";
+                ("Decimal", field_type)
+            }
+            "double" => {
+                let field_type = "f64";
+                ("Double", field_type)
+            }
+            "float" => {
+                let field_type = "f32";
+                ("Float", field_type)
+            }
             "int" => {
                 let field_type = match detect_field.length {
                     Some(DetectFieldLength::MaxLength(max_length)) => {
@@ -174,6 +229,48 @@ use std::rc::Rc;"#,
                     _ => "u64",
                 };
                 ("Int", field_type)
+            }
+            "mediumint" => {
+                let field_type = "i32";
+                ("MediumInt", field_type)
+            }
+            "smallint" => {
+                let field_type = "i16";
+                ("SmallInt", field_type)
+            }
+            "tinyint" => {
+                let field_type = match detect_field.length {
+                    Some(DetectFieldLength::MaxLength(max_length)) => {
+                        if max_length == 1 {
+                            "bool"
+                        } else {
+                            "i8"
+                        }
+                    }
+                    _ => "i8",
+                };
+                ("TinyInt", field_type)
+            }
+            // string
+            "char" => {
+                let field_type = "String";
+                ("Char", field_type)
+            }
+            "longtext" => {
+                let field_type = "String";
+                ("LongText", field_type)
+            }
+            "mediumtext" => {
+                let field_type = "String";
+                ("MediumText", field_type)
+            }
+            "text" => {
+                let field_type = "String";
+                ("Text", field_type)
+            }
+            "tinytext" => {
+                let field_type = "String";
+                ("TinyText", field_type)
             }
             "varchar" => {
                 let field_type = "String";
