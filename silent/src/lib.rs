@@ -11,6 +11,8 @@ pub mod middleware;
 mod route;
 #[cfg(feature = "server")]
 mod rt;
+#[cfg(feature = "scheduler")]
+mod scheduler;
 #[cfg(feature = "security")]
 mod security;
 #[cfg(feature = "server")]
@@ -25,6 +27,7 @@ mod templates;
 mod ws;
 
 // use silent_multer as multer;
+#[allow(unused_imports)]
 #[allow(clippy::single_component_path_imports)]
 use multer;
 // use silent_tokio_tungstenite as tokio_tungstenite;
@@ -40,6 +43,8 @@ pub use handler::Handler;
 pub use handler::HandlerWrapper;
 pub use headers;
 pub use hyper::{header, Method, StatusCode};
+#[cfg(feature = "scheduler")]
+pub use scheduler::{ProcessTime, Scheduler, Task};
 
 pub mod prelude {
     pub use crate::configs::Configs;
@@ -60,6 +65,8 @@ pub mod prelude {
     pub use crate::route::handler_append::WSHandlerAppend;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
     pub use crate::route::{Route, RouteService};
+    #[cfg(feature = "scheduler")]
+    pub use crate::scheduler::Task;
     #[cfg(feature = "security")]
     pub use crate::security::{argon2, pbkdf2};
     #[cfg(feature = "server")]

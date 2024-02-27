@@ -5,6 +5,8 @@ use crate::conn::SilentConnection;
 use crate::route::RouteService;
 use crate::service::serve::Serve;
 use crate::Configs;
+#[cfg(feature = "scheduler")]
+use crate::Scheduler;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -99,6 +101,12 @@ impl Server {
         root_route.set_configs(configs.clone());
         #[cfg(feature = "session")]
         root_route.check_session();
+        #[cfg(feature = "scheduler")]
+        let scheduler = root_route.scheduler.clone();
+        #[cfg(feature = "scheduler")]
+        tokio::spawn(async move {
+            Scheduler::schedule(scheduler).await;
+        });
 
         loop {
             #[cfg(unix)]

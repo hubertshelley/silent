@@ -34,7 +34,7 @@ pub enum SilentError {
     HyperError(#[from] hyper::Error),
     /// 上传文件读取 错误
     #[error("upload file read error `{0}`")]
-    FileEmpty(#[from] crate::multer::Error),
+    FileEmpty(#[from] multer::Error),
     /// Body为空 错误
     #[error("body is empty")]
     BodyEmpty,
@@ -56,6 +56,9 @@ pub enum SilentError {
     /// websocket错误
     #[error("websocket error: {0}")]
     WsError(String),
+    /// anyhow错误
+    #[error("{0}")]
+    AnyhowError(#[from] anyhow::Error),
     /// 业务错误
     #[error("business error: {msg} ({code})")]
     BusinessError {
