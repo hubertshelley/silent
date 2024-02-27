@@ -14,4 +14,4 @@ version.workspace = true
 bytes = "1.5.0"
 futures-util = "0.3.30"
 multer = "3.0.0"
-tokio = { version = "1.35.1", features = ["full"] }
+tokio = { version = "1.36.0", features = ["full"] }
