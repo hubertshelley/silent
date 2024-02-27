@@ -5,7 +5,7 @@ use crate::route::Route;
 use crate::session::SessionMiddleware;
 #[cfg(feature = "template")]
 use crate::templates::TemplateMiddleware;
-use crate::{Configs, MiddleWareHandler, Request, Response, SilentError, StatusCode};
+use crate::{Configs, MiddleWareHandler, Request, Response, Scheduler, SilentError, StatusCode};
 #[cfg(feature = "session")]
 use async_session::{Session, SessionStore};
 use chrono::Utc;
@@ -13,6 +13,7 @@ use std::fmt;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 #[derive(Clone, Default)]
 pub struct RootRoute {
@@ -22,6 +23,8 @@ pub struct RootRoute {
     #[cfg(feature = "session")]
     pub(crate) session_set: bool,
     pub(crate) configs: Option<Configs>,
+    #[cfg(feature = "scheduler")]
+    pub(crate) scheduler: Arc<Mutex<Scheduler>>,
 }
 
 impl fmt::Debug for RootRoute {
@@ -45,6 +48,8 @@ impl RootRoute {
             #[cfg(feature = "session")]
             session_set: false,
             configs: None,
+            #[cfg(feature = "scheduler")]
+            scheduler: Arc::new(Mutex::new(Scheduler::new())),
         }
     }
 
@@ -108,6 +113,8 @@ impl RootRoute {
                 root_middlewares.push(middleware);
             }
         }
+        #[cfg(feature = "scheduler")]
+        req.extensions_mut().insert(self.scheduler.clone());
         let mut pre_res = Response::empty();
         let mut exception_str = None;
         let res: SilentResult<Response> = {
