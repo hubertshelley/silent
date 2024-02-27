@@ -5,7 +5,9 @@ use crate::route::Route;
 use crate::session::SessionMiddleware;
 #[cfg(feature = "template")]
 use crate::templates::TemplateMiddleware;
-use crate::{Configs, MiddleWareHandler, Request, Response, Scheduler, SilentError, StatusCode};
+#[cfg(feature = "scheduler")]
+use crate::Scheduler;
+use crate::{Configs, MiddleWareHandler, Request, Response, SilentError, StatusCode};
 #[cfg(feature = "session")]
 use async_session::{Session, SessionStore};
 use chrono::Utc;
@@ -13,6 +15,7 @@ use std::fmt;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::sync::Arc;
+#[cfg(feature = "scheduler")]
 use tokio::sync::Mutex;
 
 #[derive(Clone, Default)]
