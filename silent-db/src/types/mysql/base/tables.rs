@@ -77,7 +77,10 @@ impl TableUtil for TableUtils {
                     .write(true)
                     .truncate(true)
                     .open(models_path.join(format!("{}.rs", to_snake_case(&name))))?;
-                let table_derive = format!("#[derive(Table)]\n#[table(name = \"{}\"", name);
+                let table_derive = format!(
+                    "#[derive(Table, Clone, Debug, Deserialize, Serialize)]\n#[table(name = \"{}\"",
+                    name
+                );
                 let table_derive = if let Some(comment) = comment {
                     format!("{}, comment = \"{}\")]\n", table_derive, comment)
                 } else {
@@ -97,19 +100,23 @@ impl TableUtil for TableUtils {
                             "    #[field(field_type = \"{}\", name = \"{}\"",
                             field_type, name
                         );
+                        let mut is_optional = false;
                         for options in column.options.iter() {
                             match &options.option {
                                 sqlparser::ast::ColumnOption::Null => {
                                     field_derive.push_str(", nullable");
+                                    is_optional = true;
                                 }
                                 sqlparser::ast::ColumnOption::Unique { .. } => {
                                     field_derive.push_str(", unique");
                                 }
                                 sqlparser::ast::ColumnOption::Default(default) => {
                                     field_derive.push_str(&format!(", default = \"{}\"", default));
+                                    is_optional = true;
                                 }
                                 sqlparser::ast::ColumnOption::Generated { .. } => {
                                     field_derive.push_str(", auto_increment");
+                                    is_optional = true;
                                 }
                                 sqlparser::ast::ColumnOption::Comment(comment) => {
                                     field_derive.push_str(&format!(", comment = \"{}\"", comment));
@@ -117,6 +124,11 @@ impl TableUtil for TableUtils {
                                 _ => {}
                             }
                         }
+                        let struct_type = if is_optional {
+                            format!("Option<{}>", struct_type)
+                        } else {
+                            struct_type.to_string()
+                        };
                         match detect_field.length {
                             Some(DetectFieldLength::MaxLength(max_length)) => {
                                 field_derive.push_str(&format!(", max_length = {}", max_length));
@@ -141,7 +153,7 @@ use silent_db::mysql::base::TableManager;
 use silent_db::mysql::fields::{"#,
                     field_types.join(", "),
                     r#"};
-use silent_db::{Query, Table, TableManage};
+use silent_db::*;
 use std::rc::Rc;"#,
                     table_derive
                 );
@@ -175,19 +187,19 @@ use std::rc::Rc;"#,
             }
             // datetime
             "date" => {
-                let field_type = "chrono::NaiveDate";
+                let field_type = "NaiveDate";
                 ("Date", field_type)
             }
             "datetime" => {
-                let field_type = "chrono::NaiveDateTime";
+                let field_type = "NaiveDateTime";
                 ("Datetime", field_type)
             }
             "time" => {
-                let field_type = "chrono::NaiveTime";
+                let field_type = "NaiveTime";
                 ("Time", field_type)
             }
             "timestamp" => {
-                let field_type = "chrono::NaiveDateTime";
+                let field_type = "NaiveDateTime";
                 ("TimeStamp", field_type)
             }
             "year" => {
