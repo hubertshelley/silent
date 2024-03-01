@@ -5,6 +5,8 @@ use crate::core::req_body::ReqBody;
 #[cfg(feature = "multipart")]
 use crate::core::serde::from_str_multi_val;
 use crate::header::CONTENT_TYPE;
+#[cfg(feature = "scheduler")]
+use crate::Scheduler;
 use crate::{Configs, SilentError};
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
@@ -17,6 +19,10 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::net::IpAddr;
+#[cfg(feature = "scheduler")]
+use std::sync::Arc;
+#[cfg(feature = "scheduler")]
+use tokio::sync::Mutex;
 use tokio::sync::OnceCell;
 use url::form_urlencoded;
 
@@ -345,5 +351,11 @@ impl Request {
         T: AsRef<str>,
     {
         self.cookies.get(name.as_ref())
+    }
+    #[cfg(feature = "scheduler")]
+    #[inline]
+    /// Get `Scheduler` from extensions.
+    pub fn scheduler(&self) -> &Arc<Mutex<Scheduler>> {
+        self.extensions().get().unwrap()
     }
 }
