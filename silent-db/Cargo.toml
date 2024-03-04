@@ -18,7 +18,7 @@ sqlite = ["sqlx/sqlite"]
 
 [dependencies]
 anyhow = { version = "1.0.80" }
-sqlparser = { version = "0.43.1", features = ["serde"] }
+sqlparser = { version = "0.44.0", features = ["serde"] }
 sqlx = { version = "0.7.3", features = ["runtime-tokio", "macros", "any"] }
 serde_json = "1.0.114"
 chrono = { version = "0.4.34", features = ["serde"] }
