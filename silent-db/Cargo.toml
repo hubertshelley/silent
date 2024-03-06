@@ -28,7 +28,7 @@ chrono = { version = "0.4.34", features = ["serde"] }
 console = "0.15.8"
 quote = "1.0.35"
 syn = "2.0.51"
-silent-db-macros = { path = "../silent-db-macros" }
+silent-db-macros = { path = "../silent-db-macros", version = "0.1.0" }
 regex = "1.10.3"
 
 [dev-dependencies]
