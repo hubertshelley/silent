@@ -1,6 +1,6 @@
 use silent_db::mysql::base::TableUtils;
 
-mod models;
+// mod models;
 
 #[tokio::main]
 async fn main() {
