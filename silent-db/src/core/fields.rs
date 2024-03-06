@@ -53,7 +53,7 @@ mod tests {
     use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
-    struct IntField {
+    struct TestIntField {
         name: String,
         default: Option<String>,
         nullable: bool,
@@ -63,9 +63,9 @@ mod tests {
         comment: Option<String>,
     }
 
-    impl Field for IntField {
+    impl Field for TestIntField {
         fn get_name(&self) -> String {
-            format!("`{}`", self.name)
+            self.name.clone()
         }
         fn get_type(&self) -> Box<dyn FieldType> {
             Box::new(IntType)
@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_int_field() {
-        let field = IntField {
+        let field = TestIntField {
             name: "id".to_string(),
             default: None,
             nullable: false,
@@ -109,7 +109,7 @@ mod tests {
             auto_increment: true,
             comment: Some("ID".to_string()),
         };
-        assert_eq!(field.get_name(), "`id`");
+        assert_eq!(field.get_name(), "id");
         assert_eq!(field.get_type().get_type_str(), "INT");
         assert_eq!(
             field.get_create_sql(),

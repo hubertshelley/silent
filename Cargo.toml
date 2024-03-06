@@ -1,6 +1,6 @@
 [workspace]
 members = ["silent", "examples/*", "silent-db", "silent-db-macros"]
-default-members = ["silent", ]
+default-members = ["silent", "silent-db", "silent-db-macros"]
 resolver = "2"
 
 [workspace.package]

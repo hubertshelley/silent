@@ -1,7 +1,7 @@
 use crate::core::dsl::SqlStatement;
 use crate::core::tables::{DetectField, DetectFieldLength, TableUtil};
 use crate::utils::{to_camel_case, to_snake_case};
-use crate::{Field, Table};
+use crate::{Field, IndexTrait, Table};
 use anyhow::Result;
 use sqlparser::ast::Statement;
 use std::fmt::Debug;
@@ -39,6 +39,7 @@ impl TableUtil for TableUtils {
             Ok(Box::new(TableManager {
                 name,
                 fields: vec![],
+                indices: vec![],
                 comment,
             }))
         } else {
@@ -297,6 +298,7 @@ use std::rc::Rc;"#,
 pub struct TableManager {
     pub name: String,
     pub fields: Vec<Rc<dyn Field>>,
+    pub indices: Vec<Rc<dyn IndexTrait>>,
     pub comment: Option<String>,
 }
 
@@ -305,6 +307,7 @@ impl Default for TableManager {
         TableManager {
             name: "".to_string(),
             fields: vec![],
+            indices: vec![],
             comment: None,
         }
     }
@@ -317,6 +320,9 @@ impl Table for TableManager {
 
     fn get_fields(&self) -> Vec<Rc<dyn Field>> {
         self.fields.clone()
+    }
+    fn get_indices(&self) -> Vec<Rc<dyn IndexTrait>> {
+        self.indices.clone()
     }
 
     fn get_comment(&self) -> Option<String> {
@@ -352,6 +358,8 @@ mod tests {
     use super::*;
     use crate::core::tables::{DetectFieldLength, TableManage};
     use crate::mysql::fields::Int;
+    use crate::mysql::indices::{Index, IndexType};
+    use crate::IndexSort;
 
     struct TestTable;
 
@@ -366,6 +374,7 @@ mod tests {
                     comment: None,
                     ..Default::default()
                 })],
+                indices: vec![],
                 comment: Some("Test Table".to_string()),
             })
         }
@@ -376,14 +385,49 @@ mod tests {
         let table = TestTable;
         assert_eq!(
             table.get_manager().get_create_sql(),
-            "CREATE TABLE test_table (`id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT) COMMENT='Test Table';"
+            "CREATE TABLE `test_table` (`id` INT NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT) COMMENT='Test Table';"
+        );
+    }
+    struct TestTableWithIndex;
+
+    impl TableManage for TestTableWithIndex {
+        fn manager() -> Box<dyn Table> {
+            Box::new(TableManager {
+                name: "test_table".to_string(),
+                fields: vec![Rc::new(Int {
+                    name: "id".to_string(),
+                    primary_key: true,
+                    auto_increment: true,
+                    comment: None,
+                    ..Default::default()
+                })],
+                indices: vec![Rc::new(Index {
+                    alias: Some("idx".to_string()),
+                    index_type: IndexType::Unique,
+                    fields: vec!["id".to_string()],
+                    sort: IndexSort::ASC,
+                })],
+                comment: Some("Test Table".to_string()),
+            })
+        }
+    }
+
+    #[test]
+    fn test_get_create_sql_with_index() {
+        let table = TestTableWithIndex;
+        assert_eq!(
+            table.get_manager().get_create_sql(),
+            "CREATE TABLE `test_table` (`id` INT NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT, UNIQUE KEY `idx` (`id`) ASC) COMMENT='Test Table';"
         );
     }
 
     #[test]
     fn test_get_drop_sql() {
         let table = TestTable;
-        assert_eq!(table.get_manager().get_drop_sql(), "DROP TABLE test_table;");
+        assert_eq!(
+            table.get_manager().get_drop_sql(),
+            "DROP TABLE `test_table`;"
+        );
     }
 
     #[test]

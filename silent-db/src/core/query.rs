@@ -9,17 +9,17 @@ pub struct QueryBuilder {
 
 impl QueryBuilder {
     pub fn get_sql(&self) -> String {
-        let field = if self.field.is_empty() {
+        let field = if self.field.is_empty() || self.field.starts_with('(') {
             self.field.clone()
         } else {
-            format!("`{}` ", self.field)
+            format!("`{}`", self.field)
         };
         let action = if self.action.is_empty() {
             self.action.clone()
         } else {
             format!("{} ", self.action)
         };
-        format!("{}{}{}", field, action, self.value)
+        format!("{} {}{}", field, action, self.value)
     }
 }
 
@@ -290,37 +290,40 @@ mod tests {
             | User::query_eq("lisi") & Age::query_lt(30);
         assert_eq!(
             query.get_sql(),
-            "((user = 'zhangsan') AND (age > 18)) OR ((user = 'lisi') AND (age < 30))"
+            "((`user` = 'zhangsan') AND (`age` > 18)) OR ((`user` = 'lisi') AND (`age` < 30))"
         );
         let query = (User::query_eq("zhangsan") + Age::query_gt(18))
             | User::query_eq("lisi") & Age::query_lt(30);
         assert_eq!(
             query.get_sql(),
-            "(user = 'zhangsan' AND age > 18) OR ((user = 'lisi') AND (age < 30))"
+            "(`user` = 'zhangsan' AND `age` > 18) OR ((`user` = 'lisi') AND (`age` < 30))"
         );
         let query = User::query_eq("zhangsan") + Age::query_gt(18) + Age::query_lt(30);
         assert_eq!(
             query.get_sql(),
-            "user = 'zhangsan' AND age > 18 AND age < 30"
+            "`user` = 'zhangsan' AND `age` > 18 AND `age` < 30"
         );
         let query = User::query_eq("zhangsan") & Age::gte(18) & Age::lte(30);
         assert_eq!(
             query.get_sql(),
-            "((user = 'zhangsan') AND (age >= 18)) AND (age <= 30)"
+            "((`user` = 'zhangsan') AND (`age` >= 18)) AND (`age` <= 30)"
         );
         let query = User::like("zhangsan") + Age::between((18, 30));
         assert_eq!(
             query.get_sql(),
-            "user LIKE '%zhangsan%' AND age BETWEEN 18 AND 30"
+            "`user` LIKE '%zhangsan%' AND `age` BETWEEN 18 AND 30"
         );
         let query = User::r#in(vec!["zhangsan", "lisi"]) + Age::query_ne(18);
         assert_eq!(
             query.get_sql(),
-            "user IN ('zhangsan', 'lisi') AND age != 18"
+            "`user` IN ('zhangsan', 'lisi') AND `age` != 18"
         );
         let query = User::is_null() + Age::not_null();
-        assert_eq!(query.get_sql(), "user IS NULL AND age IS NOT NULL");
+        assert_eq!(query.get_sql(), "`user` IS NULL AND `age` IS NOT NULL");
         let query = User::starts_with("zhang") + User::ends_with("san");
-        assert_eq!(query.get_sql(), "user LIKE 'zhang%' AND user LIKE '%san'");
+        assert_eq!(
+            query.get_sql(),
+            "`user` LIKE 'zhang%' AND `user` LIKE '%san'"
+        );
     }
 }
