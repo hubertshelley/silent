@@ -6,6 +6,9 @@ homepage.workspace = true
 license.workspace = true
 readme.workspace = true
 repository.workspace = true
+description = """
+Macros for silent-db
+"""
 #version.workspace = true
 version = "0.1.0"
 
