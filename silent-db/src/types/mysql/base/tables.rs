@@ -188,19 +188,19 @@ use std::rc::Rc;"#,
             }
             // datetime
             "date" => {
-                let field_type = "NaiveDate";
+                let field_type = "DateTime<Utc>";
                 ("Date", field_type)
             }
             "datetime" => {
-                let field_type = "NaiveDateTime";
+                let field_type = "DateTime<Utc>";
                 ("Datetime", field_type)
             }
             "time" => {
-                let field_type = "NaiveTime";
+                let field_type = "DateTime<Utc>";
                 ("Time", field_type)
             }
             "timestamp" => {
-                let field_type = "NaiveDateTime";
+                let field_type = "DateTime<Utc>";
                 ("TimeStamp", field_type)
             }
             "year" => {
@@ -288,6 +288,11 @@ use std::rc::Rc;"#,
             "varchar" => {
                 let field_type = "String";
                 ("VarChar", field_type)
+            }
+            // string
+            "json" => {
+                let field_type = "Value";
+                ("Json", field_type)
             }
             _ => ("VarChar", "String"),
         }
