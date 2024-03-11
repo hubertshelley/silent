@@ -49,6 +49,7 @@ pub fn derive_table(item: TokenStream) -> TokenStream {
         None => TableAttr {
             name: Some(to_snake_case(&input.ident.to_string())),
             comment: None,
+            indices: vec![],
         },
     };
     let table_token = derive_table_attribute(table_token, item_copy, &fields_data);
@@ -91,7 +92,18 @@ fn derive_table_attribute(
             .collect::<Vec<String>>()
             .join(", ")
     );
+
+    let indices_code = format!(
+        "vec![{}]",
+        table_attr
+            .indices
+            .iter()
+            .map(|field| format!("Rc::new({})", field.to_string()))
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
     let fields_token: proc_macro2::TokenStream = fields_code.parse().unwrap();
+    let indices_token: proc_macro2::TokenStream = indices_code.parse().unwrap();
 
     // Generate the code for implementing the trait
     let expanded = quote! {
@@ -100,6 +112,7 @@ fn derive_table_attribute(
                 Box::new(TableManager {
                     name: #name,
                     fields: #fields_token,
+                    indices: #indices_token,
                     comment: #comment,
                 })
             }

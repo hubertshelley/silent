@@ -1,20 +1,72 @@
+use std::fmt::Display;
 use syn::{Attribute, LitInt, LitStr};
 
 pub(crate) struct TableAttr {
     pub(crate) name: Option<String>,
     pub(crate) comment: Option<String>,
+    pub(crate) indices: Vec<IndexAttr>,
+}
+
+pub(crate) struct IndexAttr {
+    pub(crate) alias: Option<String>,
+    pub(crate) index_type: String,
+    pub(crate) fields: String,
+    pub(crate) sort: Option<String>,
+}
+
+impl IndexAttr {
+    fn get_index_type(&self) -> String {
+        // TODO: add more index type
+        self.index_type.clone()
+    }
+
+    fn get_sort(&self) -> String {
+        if self.sort == Some("desc".to_string()) {
+            "IndexSort::DESC".to_string()
+        } else {
+            self.sort.clone().unwrap_or("IndexSort::ASC".to_string())
+        }
+    }
+}
+
+impl Display for IndexAttr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let alias = match &self.alias {
+            Some(alias) => format!("Some(\"{}\".to_string())", alias),
+            None => "None".to_string(),
+        };
+        let fields = self
+            .fields
+            .split(',')
+            .map(|f| format!("\"{}\".to_string()", f))
+            .collect::<Vec<String>>()
+            .join(",");
+
+        write!(
+            f,
+            "Index {{alias:{}, index_type: {}, fields: vec![{}],sort: {}}}",
+            alias,
+            self.get_index_type(),
+            fields,
+            self.get_sort()
+        )
+    }
 }
 
 pub(crate) fn get_table_attr(args: &Attribute) -> TableAttr {
     let mut table_attr = TableAttr {
         name: None,
         comment: None,
+        indices: vec![],
     };
     let attr_parser = syn::meta::parser(|meta| {
         if meta.path.is_ident("name") {
             table_attr.name = Some(meta.value()?.parse::<LitStr>()?.value());
             Ok(())
         } else if meta.path.is_ident("comment") {
+            table_attr.comment = Some(meta.value()?.parse::<LitStr>()?.value());
+            Ok(())
+        } else if meta.path.is_ident("index") {
             table_attr.comment = Some(meta.value()?.parse::<LitStr>()?.value());
             Ok(())
         } else {
