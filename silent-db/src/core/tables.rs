@@ -9,7 +9,7 @@ pub trait TableUtil {
     fn get_name(&self) -> String;
     fn get_all_tables(&self) -> String;
     fn get_table(&self, table: &str) -> String;
-    fn transform(&self, table: &SqlStatement) -> Result<Box<dyn TableTrait>>;
+    fn transform(&self, table: &SqlStatement) -> Result<Box<dyn Table>>;
     fn generate_models(&self, tables: Vec<SqlStatement>, models_path: &Path) -> Result<()>;
 
     /// 从字段字符串中检测字段类型和长度
@@ -84,7 +84,7 @@ impl From<(u8, u8)> for DetectFieldLength {
     }
 }
 
-pub trait TableTrait {
+pub trait Table {
     fn get_name(&self) -> String;
     fn get_fields(&self) -> Vec<Rc<dyn Field>>;
     fn get_indices(&self) -> Vec<Rc<dyn IndexTrait>> {
@@ -123,10 +123,10 @@ pub trait TableTrait {
 }
 
 pub trait TableManage {
-    fn get_manager(&self) -> Box<dyn TableTrait> {
+    fn get_manager(&self) -> Box<dyn Table> {
         Self::manager()
     }
-    fn manager() -> Box<dyn TableTrait>;
+    fn manager() -> Box<dyn Table>;
 }
 
 #[cfg(test)]
@@ -183,7 +183,7 @@ mod tests {
         }
     }
 
-    impl TableTrait for TestTable {
+    impl Table for TestTable {
         fn get_name(&self) -> String {
             "test_table".to_string()
         }
@@ -200,7 +200,7 @@ mod tests {
             vec![Rc::new(int)]
         }
         fn get_comment(&self) -> Option<String> {
-            Some("Test TableTrait".to_string())
+            Some("Test Table".to_string())
         }
     }
 
@@ -209,7 +209,7 @@ mod tests {
         let table = TestTable;
         assert_eq!(
             table.get_create_sql(),
-            "CREATE TABLE `test_table` (`id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT) COMMENT='Test TableTrait';"
+            "CREATE TABLE `test_table` (`id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT) COMMENT='Test Table';"
         );
     }
 

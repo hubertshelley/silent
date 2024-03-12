@@ -1,7 +1,7 @@
 use crate::core::dsl::SqlStatement;
 use crate::core::tables::{DetectField, DetectFieldLength, TableUtil};
 use crate::utils::{to_camel_case, to_snake_case};
-use crate::{Field, IndexTrait, TableTrait};
+use crate::{Field, IndexTrait, Table};
 use anyhow::Result;
 use sqlparser::ast::Statement;
 use std::fmt::Debug;
@@ -32,7 +32,7 @@ impl TableUtil for TableUtils {
         format!("SHOW CREATE TABLE `{}`;", table)
     }
 
-    fn transform(&self, table: &SqlStatement) -> Result<Box<dyn TableTrait>> {
+    fn transform(&self, table: &SqlStatement) -> Result<Box<dyn Table>> {
         let SqlStatement(statement, _) = table;
         if let Statement::CreateTable { name, comment, .. } = statement.clone() {
             let name = name.0.first().unwrap().value.clone();
@@ -79,7 +79,7 @@ impl TableUtil for TableUtils {
                     .truncate(true)
                     .open(models_path.join(format!("{}.rs", to_snake_case(&name))))?;
                 let table_derive = format!(
-                    "#[derive(TableTrait, Clone, Debug, Deserialize, Serialize)]\n#[table(name = \"{}\"",
+                    "#[derive(Table, Clone, Debug, Deserialize, Serialize)]\n#[table(name = \"{}\"",
                     name
                 );
                 let table_derive = if let Some(comment) = comment {
@@ -318,7 +318,7 @@ impl Default for TableManager {
     }
 }
 
-impl TableTrait for TableManager {
+impl Table for TableManager {
     fn get_name(&self) -> String {
         self.name.clone()
     }
@@ -339,7 +339,7 @@ impl Debug for TableManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "TableTrait {{ name: {}\n    fields: {}\n}}",
+            "Table {{ name: {}\n    fields: {}\n}}",
             self.name,
             self.fields
                 .iter()
@@ -369,7 +369,7 @@ mod tests {
     struct TestTable;
 
     impl TableManage for TestTable {
-        fn manager() -> Box<dyn TableTrait> {
+        fn manager() -> Box<dyn Table> {
             Box::new(TableManager {
                 name: "test_table".to_string(),
                 fields: vec![Rc::new(Int {
@@ -380,7 +380,7 @@ mod tests {
                     ..Default::default()
                 })],
                 indices: vec![],
-                comment: Some("Test TableTrait".to_string()),
+                comment: Some("Test Table".to_string()),
             })
         }
     }
@@ -390,13 +390,13 @@ mod tests {
         let table = TestTable;
         assert_eq!(
             table.get_manager().get_create_sql(),
-            "CREATE TABLE `test_table` (`id` INT NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT) COMMENT='Test TableTrait';"
+            "CREATE TABLE `test_table` (`id` INT NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT) COMMENT='Test Table';"
         );
     }
     struct TestTableWithIndex;
 
     impl TableManage for TestTableWithIndex {
-        fn manager() -> Box<dyn TableTrait> {
+        fn manager() -> Box<dyn Table> {
             Box::new(TableManager {
                 name: "test_table".to_string(),
                 fields: vec![Rc::new(Int {
@@ -412,7 +412,7 @@ mod tests {
                     fields: vec!["id".to_string()],
                     sort: IndexSort::ASC,
                 })],
-                comment: Some("Test TableTrait".to_string()),
+                comment: Some("Test Table".to_string()),
             })
         }
     }
@@ -422,7 +422,7 @@ mod tests {
         let table = TestTableWithIndex;
         assert_eq!(
             table.get_manager().get_create_sql(),
-            "CREATE TABLE `test_table` (`id` INT NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT, UNIQUE KEY `idx` (`id`) ASC) COMMENT='Test TableTrait';"
+            "CREATE TABLE `test_table` (`id` INT NOT NULL PRIMARY KEY UNIQUE AUTO_INCREMENT, UNIQUE KEY `idx` (`id`) ASC) COMMENT='Test Table';"
         );
     }
 

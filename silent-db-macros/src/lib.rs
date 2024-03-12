@@ -1,14 +1,24 @@
 #![allow(dead_code)]
 
-use proc_macro2::TokenStream;
 use std::fmt::Display;
 
 use darling::{ast, FromDeriveInput, FromField};
+use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
+use syn::parse_macro_input;
 
 use crate::utils::{to_camel_case, to_snake_case};
 
 mod utils;
+
+#[proc_macro_derive(Table, attributes(table, field))]
+pub fn derive_table(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(item as syn::DeriveInput);
+    let table_attr = TableAttr::from_derive_input(&input).unwrap();
+    let mut tokens = TokenStream::new();
+    table_attr.to_tokens(&mut tokens);
+    tokens.into()
+}
 
 #[derive(Debug, FromDeriveInput)]
 #[darling(
@@ -195,7 +205,7 @@ struct FieldAttr {
     comment: Option<String>,
     max_digits: Option<u8>,
     decimal_places: Option<u8>,
-    length: Option<u16>,
+    max_length: Option<u16>,
 }
 
 fn derive_field_attribute(field_attr: &FieldAttr, field_name: String) -> FieldToken {
@@ -210,7 +220,7 @@ fn derive_field_attribute(field_attr: &FieldAttr, field_name: String) -> FieldTo
         comment,
         max_digits,
         decimal_places,
-        length,
+        max_length,
         ..
     } = field_attr;
 
@@ -274,7 +284,7 @@ fn derive_field_attribute(field_attr: &FieldAttr, field_name: String) -> FieldTo
         None => quote! { #args },
     };
     // 设置字段长度
-    let args = match length {
+    let args = match max_length {
         Some(c) => quote! { #args
         length: #c, },
         None => quote! { #args },
