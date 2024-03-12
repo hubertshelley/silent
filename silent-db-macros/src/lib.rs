@@ -2,7 +2,7 @@
 
 use std::fmt::Display;
 
-use darling::{ast, FromDeriveInput, FromField};
+use darling::{ast, FromDeriveInput, FromField, FromMeta};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::parse_macro_input;
@@ -32,7 +32,8 @@ struct TableAttr {
     data: ast::Data<(), FieldAttr>,
     name: Option<String>,
     comment: Option<String>,
-    // indices: Vec<IndexAttr>,
+    #[darling(multiple)]
+    index: Vec<IndexAttr>,
 }
 impl ToTokens for TableAttr {
     fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -41,9 +42,10 @@ impl ToTokens for TableAttr {
             ref data,
             name,
             comment,
+            index,
             ..
         } = self;
-
+        let indices = index;
         let struct_name = ident;
 
         let comment = match comment {
@@ -90,21 +92,21 @@ impl ToTokens for TableAttr {
                 .join(", ")
         );
 
-        // let indices_code = format!(
-        //     "vec![{}]",
-        //     indices
-        //         .iter()
-        //         .map(|index| {
-        //             if !index.check_fields(&field_name_list) {
-        //                 panic!("Index fields is empty");
-        //             }
-        //             format!("Rc::new({})", index)
-        //         })
-        //         .collect::<Vec<String>>()
-        //         .join(", ")
-        // );
+        let indices_code = format!(
+            "vec![{}]",
+            indices
+                .iter()
+                .map(|index| {
+                    if !index.check_fields(&field_name_list) {
+                        panic!("Index fields is empty");
+                    }
+                    format!("Rc::new({})", index)
+                })
+                .collect::<Vec<String>>()
+                .join(", ")
+        );
         let fields_token: TokenStream = fields_code.parse().unwrap();
-        // let indices_token: TokenStream = indices_code.parse().unwrap();
+        let indices_token: TokenStream = indices_code.parse().unwrap();
 
         // Generate the code for implementing the trait
         let expanded = quote! {
@@ -113,8 +115,7 @@ impl ToTokens for TableAttr {
                     Box::new(TableManager {
                         name: #name,
                         fields: #fields_token,
-                        // indices: #indices_token,
-                        indices: vec![],
+                        indices: #indices_token,
                         comment: #comment,
                     })
                 }
@@ -125,11 +126,8 @@ impl ToTokens for TableAttr {
     }
 }
 
-#[derive(Debug, FromField)]
-#[darling(attributes(index))]
+#[derive(Debug, FromMeta)]
 struct IndexAttr {
-    ident: Option<syn::Ident>,
-    ty: syn::Type,
     alias: Option<String>,
     index_type: String,
     fields: String,
