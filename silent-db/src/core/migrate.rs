@@ -1,6 +1,6 @@
 use crate::core::dsl::SqlStatement;
 use crate::core::tables::TableUtil;
-use crate::Table;
+use crate::TableTrait;
 use anyhow::{anyhow, Context, Result};
 use chrono::Utc;
 use console::style;
@@ -58,7 +58,7 @@ impl Migrate {
             .await
             .map_err(|e| anyhow!("{}", e))
     }
-    pub async fn make_migration(&mut self, tables: Vec<impl Table>) -> Result<()> {
+    pub async fn make_migration(&mut self, tables: Vec<impl TableTrait>) -> Result<()> {
         println!("run migrate");
         // todo!()
         let _ = tables;

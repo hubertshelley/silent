@@ -1,136 +1,218 @@
-extern crate proc_macro;
+#![allow(dead_code)]
 
-mod macros;
+use proc_macro2::TokenStream;
+use std::fmt::Display;
+
+use darling::{ast, FromDeriveInput, FromField};
+use quote::{quote, ToTokens};
+
+use crate::utils::{to_camel_case, to_snake_case};
+
 mod utils;
 
-use crate::macros::{get_field_attr, get_table_attr, TableAttr};
-use crate::utils::{to_camel_case, to_snake_case};
-use proc_macro::TokenStream;
-use quote::quote;
-use syn::{parse_macro_input, Attribute, Data, DeriveInput, Fields};
+#[derive(Debug, FromDeriveInput)]
+#[darling(
+    attributes(table),
+    supports(struct_any),
+    forward_attrs(allow, doc, cfg)
+)]
+struct TableAttr {
+    ident: syn::Ident,
+    generics: syn::Generics,
+    data: ast::Data<(), FieldAttr>,
+    name: Option<String>,
+    comment: Option<String>,
+    // indices: Vec<IndexAttr>,
+}
+impl ToTokens for TableAttr {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let TableAttr {
+            ref ident,
+            ref data,
+            name,
+            comment,
+            ..
+        } = self;
 
-#[proc_macro_derive(Table, attributes(table, field))]
-pub fn derive_table(item: TokenStream) -> TokenStream {
-    let item_copy = item.clone();
-    let input = parse_macro_input!(item as DeriveInput);
-    let fields = match input.data {
-        Data::Struct(ref data_struct) => {
-            if let Fields::Named(ref fields_named) = data_struct.fields {
-                fields_named.named.iter()
-            } else {
-                panic!("Only named fields are supported");
+        let struct_name = ident;
+
+        let comment = match comment {
+            Some(c) => quote! { Some(#c.to_string()) },
+            None => {
+                quote! { None }
             }
+        };
+
+        let name = match name {
+            Some(c) => quote! { #c.to_string() },
+            None => {
+                let table_name = to_snake_case(&struct_name.to_string());
+                quote! { #table_name.to_string() }
+            }
+        };
+        let fields = data
+            .as_ref()
+            .take_struct()
+            .expect("Should never be enum")
+            .fields;
+
+        let mut fields_data: Vec<FieldToken> = vec![];
+        for field in fields {
+            fields_data.push(derive_field_attribute(
+                field,
+                field.ident.as_ref().unwrap().to_string(),
+            ));
         }
-        _ => panic!("Only structs are supported"),
-    };
-    let mut fields_data: Vec<FieldAttr> = vec![];
-    for field in fields {
-        let field_name = field.ident.as_ref().unwrap().to_string();
-        if let Some(attr) = field
-            .attrs
+        let field_name_list = fields_data
             .iter()
-            .find(|attr| attr.path().is_ident("field"))
-        {
-            fields_data.push(derive_field_attribute(attr, field_name));
-        } else {
-            let attr = FieldAttr {
-                name: to_snake_case(&field_name),
-                token_stream: Default::default(),
-            };
-            fields_data.push(attr);
+            .map(|f| f.name.clone())
+            .collect::<Vec<String>>();
+        for field in fields_data {
+            tokens.extend(field.token_stream);
         }
+
+        let fields_code = format!(
+            "vec![{}]",
+            field_name_list
+                .iter()
+                .map(|field| format!("{}::new().rc()", to_camel_case(field)))
+                .collect::<Vec<String>>()
+                .join(", ")
+        );
+
+        // let indices_code = format!(
+        //     "vec![{}]",
+        //     indices
+        //         .iter()
+        //         .map(|index| {
+        //             if !index.check_fields(&field_name_list) {
+        //                 panic!("Index fields is empty");
+        //             }
+        //             format!("Rc::new({})", index)
+        //         })
+        //         .collect::<Vec<String>>()
+        //         .join(", ")
+        // );
+        let fields_token: TokenStream = fields_code.parse().unwrap();
+        // let indices_token: TokenStream = indices_code.parse().unwrap();
+
+        // Generate the code for implementing the trait
+        let expanded = quote! {
+            impl TableManage for #struct_name {
+                fn manager() -> Box<dyn Table> {
+                    Box::new(TableManager {
+                        name: #name,
+                        fields: #fields_token,
+                        // indices: #indices_token,
+                        indices: vec![],
+                        comment: #comment,
+                    })
+                }
+            }
+        };
+
+        tokens.extend(expanded);
     }
-    let table_token = match input
-        .attrs
-        .iter()
-        .find(|attr| attr.path().is_ident("table"))
-    {
-        Some(attr) => get_table_attr(attr),
-        None => TableAttr {
-            name: Some(to_snake_case(&input.ident.to_string())),
-            comment: None,
-            indices: vec![],
-        },
-    };
-    let table_token = derive_table_attribute(table_token, item_copy, &fields_data);
-    let mut fields = TokenStream::from(quote! {});
-    for field in fields_data {
-        fields.extend(field.token_stream);
-    }
-    fields.extend(table_token);
-    fields
 }
 
-fn derive_table_attribute(
-    table_attr: TableAttr,
-    input: TokenStream,
-    field_data: &[FieldAttr],
-) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let struct_name = &input.ident;
+#[derive(Debug, FromField)]
+#[darling(attributes(index))]
+struct IndexAttr {
+    ident: Option<syn::Ident>,
+    ty: syn::Type,
+    alias: Option<String>,
+    index_type: String,
+    fields: String,
+    sort: Option<String>,
+}
 
-    let comment = match table_attr.comment {
-        Some(c) => quote! { Some(#c.to_string()) },
-        None => {
-            quote! { None }
+impl IndexAttr {
+    fn get_index_type(&self) -> String {
+        // TODO: add more index type
+        self.index_type.clone()
+    }
+
+    fn get_sort(&self) -> String {
+        if self.sort == Some("desc".to_string()) {
+            "IndexSort::DESC".to_string()
+        } else {
+            self.sort.clone().unwrap_or("IndexSort::ASC".to_string())
         }
-    };
+    }
+    pub(crate) fn check_fields(&self, fields: &[String]) -> bool {
+        let index_fields = self
+            .fields
+            .clone()
+            .split(',')
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+        index_fields.iter().all(|f| fields.contains(f))
+    }
+}
 
-    let name = match table_attr.name {
-        Some(c) => quote! { #c.to_string() },
-        None => {
-            let table_name = to_snake_case(&struct_name.to_string());
-            quote! { #table_name.to_string() }
-        }
-    };
-
-    let fields_code = format!(
-        "vec![{}]",
-        field_data
-            .iter()
-            .map(|field| format!("{}::new().rc()", to_camel_case(&field.name)))
+impl Display for IndexAttr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let alias = match &self.alias {
+            Some(alias) => format!("Some(\"{}\".to_string())", alias),
+            None => "None".to_string(),
+        };
+        let fields = self
+            .fields
+            .split(',')
+            .map(|f| format!("\"{}\".to_string()", f))
             .collect::<Vec<String>>()
-            .join(", ")
-    );
+            .join(",");
 
-    let indices_code = format!(
-        "vec![{}]",
-        table_attr
-            .indices
-            .iter()
-            .map(|field| format!("Rc::new({})", field.to_string()))
-            .collect::<Vec<String>>()
-            .join(", ")
-    );
-    let fields_token: proc_macro2::TokenStream = fields_code.parse().unwrap();
-    let indices_token: proc_macro2::TokenStream = indices_code.parse().unwrap();
-
-    // Generate the code for implementing the trait
-    let expanded = quote! {
-        impl TableManage for #struct_name {
-            fn manager() -> Box<dyn Table> {
-                Box::new(TableManager {
-                    name: #name,
-                    fields: #fields_token,
-                    indices: #indices_token,
-                    comment: #comment,
-                })
-            }
-        }
-    };
-
-    // Return the generated implementation
-    TokenStream::from(expanded)
+        write!(
+            f,
+            "Index {{alias:{}, index_type: {}, fields: vec![{}],sort: {}}}",
+            alias,
+            self.get_index_type(),
+            fields,
+            self.get_sort()
+        )
+    }
 }
 
 #[derive(Debug)]
-struct FieldAttr {
+struct FieldToken {
     name: String,
     token_stream: TokenStream,
 }
 
-fn derive_field_attribute(args: &Attribute, field_name: String) -> FieldAttr {
-    let field_attr = get_field_attr(args);
+#[derive(Debug, FromField)]
+#[darling(attributes(field))]
+struct FieldAttr {
+    ident: Option<syn::Ident>,
+    ty: syn::Type,
+    field_type: String,
+    name: Option<String>,
+    default: Option<String>,
+    nullable: Option<bool>,
+    primary_key: Option<bool>,
+    auto_increment: Option<bool>,
+    unique: Option<bool>,
+    comment: Option<String>,
+    max_digits: Option<u8>,
+    decimal_places: Option<u8>,
+    length: Option<u16>,
+}
+
+fn derive_field_attribute(field_attr: &FieldAttr, field_name: String) -> FieldToken {
+    let FieldAttr {
+        field_type,
+        name,
+        default,
+        nullable,
+        primary_key,
+        auto_increment,
+        unique,
+        comment,
+        max_digits,
+        decimal_places,
+        length,
+        ..
+    } = field_attr;
 
     let snake_field_name = to_snake_case(&field_name.to_string());
     let camel_field_name = to_camel_case(&field_name.to_string());
@@ -139,60 +221,60 @@ fn derive_field_attribute(args: &Attribute, field_name: String) -> FieldAttr {
         name: Self::get_field(),
     };
     // 设置字段名称
-    let args = match field_attr.name.clone() {
+    let args = match name.clone() {
         Some(c) => quote! { name: #c.to_string(), },
         None => quote! { #args },
     };
     // 设置字段默认值
-    let args = match field_attr.default {
+    let args = match default {
         Some(c) => quote! { #args
         default: Some(#c.to_string()), },
         None => quote! { #args },
     };
     // 设置字段是否为空
-    let args = match field_attr.nullable {
+    let args = match nullable {
         Some(c) => quote! { #args
         nullable: #c, },
         None => quote! { #args },
     };
     // 设置字段是否为主键
-    let args = match field_attr.primary_key {
+    let args = match primary_key {
         Some(c) => quote! { #args
         primary_key: #c, },
         None => quote! { #args },
     };
     // 设置字段是否唯一
-    let args = match field_attr.unique {
+    let args = match unique {
         Some(c) => quote! { #args
         unique: #c, },
         None => quote! { #args },
     };
     // 设置字段注释
-    let args = match field_attr.comment {
+    let args = match comment {
         Some(c) => quote! { #args
         comment: Some(#c.to_string()), },
         None => quote! { #args },
     };
     // 设置字段是否自增
-    let args = match field_attr.auto_increment {
+    let args = match auto_increment {
         Some(c) => quote! { #args
         auto_increment: #c, },
         None => quote! { #args },
     };
     // 设置字段最大位数
-    let args = match field_attr.max_digits {
+    let args = match max_digits {
         Some(c) => quote! { #args
         max_digits: #c, },
         None => quote! { #args },
     };
     // 设置字段小数位数
-    let args = match field_attr.decimal_places {
+    let args = match decimal_places {
         Some(c) => quote! { #args
         decimal_places: #c, },
         None => quote! { #args },
     };
     // 设置字段长度
-    let args = match field_attr.length {
+    let args = match length {
         Some(c) => quote! { #args
         length: #c, },
         None => quote! { #args },
@@ -221,12 +303,12 @@ fn derive_field_attribute(args: &Attribute, field_name: String) -> FieldAttr {
     }}
     "#,
         camel_field_name = camel_field_name,
-        field_type = field_attr.field_type,
+        field_type = field_type,
         snake_field_name = snake_field_name,
         args = args
     );
-    FieldAttr {
-        name: field_attr.name.unwrap_or(snake_field_name),
+    FieldToken {
+        name: name.clone().unwrap_or(snake_field_name),
         token_stream: code.parse().unwrap(),
     }
 }

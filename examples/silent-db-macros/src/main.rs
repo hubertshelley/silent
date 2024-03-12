@@ -1,8 +1,8 @@
 use silent_db::mysql::base::TableManager;
 use silent_db::mysql::fields::{Int, VarChar};
 use silent_db::Query;
-use silent_db::Table;
 use silent_db::TableManage;
+use silent_db::TableTrait;
 use std::rc::Rc;
 
 #[allow(dead_code)]
