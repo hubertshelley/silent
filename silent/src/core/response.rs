@@ -63,6 +63,10 @@ impl Response {
     pub fn set_body(&mut self, body: ResBody) {
         self.body = body;
     }
+    /// 获取响应体
+    pub fn body(&self) -> &ResBody {
+        &self.body
+    }
     /// 设置响应header
     pub fn set_header(mut self, key: header::HeaderName, value: header::HeaderValue) -> Self {
         self.headers.insert(key, value);

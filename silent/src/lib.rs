@@ -52,7 +52,7 @@ pub mod prelude {
     pub use crate::core::form::{FilePart, FormData};
     pub use crate::core::{
         path_param::PathParam, request::Request, res_body::full, res_body::stream_body,
-        response::Response,
+        res_body::ResBody, response::Response,
     };
     pub use crate::error::{SilentError, SilentResult as Result};
     #[cfg(feature = "static")]

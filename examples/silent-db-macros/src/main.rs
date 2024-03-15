@@ -7,7 +7,11 @@ use std::rc::Rc;
 
 #[allow(dead_code)]
 #[derive(Table)]
-#[table(name = "test_name", comment = "test_comment")]
+#[table(
+    name = "test_name",
+    comment = "test_comment",
+    index(index_type = "unique", fields = "name,age")
+)]
 struct TestTable {
     #[field(field_type = "Int", primary_key, auto_increment, comment = "ID")]
     id: u32,

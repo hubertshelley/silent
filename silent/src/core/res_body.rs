@@ -10,6 +10,7 @@ use std::io::{Error as IoError, ErrorKind};
 use std::pin::Pin;
 use std::task::{self, Context, Poll};
 
+/// 响应体
 pub enum ResBody {
     /// None body.
     None,

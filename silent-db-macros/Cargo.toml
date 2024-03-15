@@ -21,3 +21,4 @@ quote = "1.0.35"
 syn = { version = "2.0.51", features = ["full"] }
 log = "0.4.20"
 proc-macro2 = "1.0.78"
+darling = "0.20.8"

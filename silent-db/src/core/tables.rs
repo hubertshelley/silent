@@ -1,5 +1,6 @@
 use crate::core::dsl::SqlStatement;
 use crate::core::fields::Field;
+use crate::core::indices::IndexTrait;
 use anyhow::Result;
 use std::path::Path;
 use std::rc::Rc;
@@ -86,6 +87,9 @@ impl From<(u8, u8)> for DetectFieldLength {
 pub trait Table {
     fn get_name(&self) -> String;
     fn get_fields(&self) -> Vec<Rc<dyn Field>>;
+    fn get_indices(&self) -> Vec<Rc<dyn IndexTrait>> {
+        vec![]
+    }
     fn get_comment(&self) -> Option<String> {
         None
     }
@@ -97,6 +101,15 @@ pub trait Table {
             .map(|field| field.get_create_sql())
             .collect();
         sql.push_str(&fields.join(", "));
+        if !self.get_indices().is_empty() {
+            sql.push_str(", ");
+            let indices: Vec<String> = self
+                .get_indices()
+                .iter()
+                .map(|index| index.get_create_sql())
+                .collect();
+            sql.push_str(&indices.join(", "));
+        }
         sql.push(')');
         if let Some(comment) = self.get_comment() {
             sql.push_str(&format!(" COMMENT='{}'", comment));
@@ -137,7 +150,7 @@ mod tests {
 
     impl Field for IntField {
         fn get_name(&self) -> String {
-            format!("`{}`", self.name)
+            self.name.clone()
         }
         fn get_type(&self) -> Box<dyn FieldType> {
             Box::new(IntType)
@@ -196,13 +209,13 @@ mod tests {
         let table = TestTable;
         assert_eq!(
             table.get_create_sql(),
-            "CREATE TABLE test_table (`id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT) COMMENT='Test Table';"
+            "CREATE TABLE `test_table` (`id` INT NOT NULL PRIMARY KEY AUTO_INCREMENT) COMMENT='Test Table';"
         );
     }
 
     #[test]
     fn test_get_drop_sql() {
         let table = TestTable;
-        assert_eq!(table.get_drop_sql(), "DROP TABLE test_table;");
+        assert_eq!(table.get_drop_sql(), "DROP TABLE `test_table`;");
     }
 }
