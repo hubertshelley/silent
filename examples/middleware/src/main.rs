@@ -32,7 +32,7 @@ impl MiddleWareHandler for MiddleWare {
         }
         Ok(())
     }
-    async fn after_response(&self, _res: &mut Response) -> Result<()> {
+    async fn after_response(&self, res: &mut Response) -> Result<()> {
         let count = self.count.load(std::sync::atomic::Ordering::SeqCst);
         info!("after_response count: {}", count);
         if count % 3 == 0 {
@@ -41,6 +41,9 @@ impl MiddleWareHandler for MiddleWare {
                 code: StatusCode::BAD_REQUEST,
                 msg: "bad request:after_response".to_string(),
             });
+        }
+        if let ResBody::Once(body) = res.body() {
+            println!("body: {:?}", body);
         }
         Ok(())
     }
