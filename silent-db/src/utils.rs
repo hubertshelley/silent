@@ -1,4 +1,5 @@
 /// 字符串转换为驼峰命名
+#[allow(dead_code)]
 pub fn to_camel_case(s: &str) -> String {
     let mut result = String::new();
     let mut next_upper = true;
@@ -19,6 +20,7 @@ pub fn to_camel_case(s: &str) -> String {
 }
 
 /// 字符串转换为蛇形命名
+#[allow(dead_code)]
 pub fn to_snake_case(s: &str) -> String {
     let mut result = String::new();
     for c in s.chars() {

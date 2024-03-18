@@ -12,3 +12,4 @@ version.workspace = true
 
 [dependencies]
 silent-db = { path = "../../silent-db", features = ["mysql"] }
+serde = { version = "1.0.197", features = ["derive"] }

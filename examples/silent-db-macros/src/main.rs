@@ -1,9 +1,9 @@
-use silent_db::mysql::base::TableManager;
-use silent_db::mysql::fields::{Int, VarChar};
-use silent_db::Query;
-use silent_db::Table;
-use silent_db::TableManage;
 use std::rc::Rc;
+
+use silent_db::mysql::base::*;
+use silent_db::mysql::fields::*;
+use silent_db::mysql::indices::*;
+use silent_db::*;
 
 #[allow(dead_code)]
 #[derive(Table)]
