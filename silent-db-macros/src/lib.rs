@@ -136,8 +136,12 @@ struct IndexAttr {
 
 impl IndexAttr {
     fn get_index_type(&self) -> String {
-        // TODO: add more index type
-        self.index_type.clone()
+        match self.index_type.as_str() {
+            "unique" => "IndexType::Unique".to_string(),
+            "fulltext" => "IndexType::FullText".to_string(),
+            "spatial" => "IndexType::Spatial".to_string(),
+            _ => "IndexType::Index".to_string(),
+        }
     }
 
     fn get_sort(&self) -> String {
