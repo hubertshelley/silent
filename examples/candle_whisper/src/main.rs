@@ -1,3 +1,4 @@
+#![allow(dead_code, unreachable_code)]
 mod handlers;
 mod pcm_decode;
 mod types;

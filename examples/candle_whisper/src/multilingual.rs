@@ -1,9 +1,10 @@
-use crate::handlers::token_id;
-use crate::model::Model;
 use candle_core::{IndexOp, Result, Tensor, D};
 use candle_nn::ops::softmax;
-use candle_transformers::models::whisper::{self as m, audio, Config};
+use candle_transformers::models::whisper::{self as m};
 use tokenizers::Tokenizer;
+
+use crate::handlers::token_id;
+use crate::model::Model;
 
 const LANGUAGES: [(&str, &str); 99] = [
     ("en", "english"),

@@ -80,7 +80,7 @@ pub(crate) fn init_model(args: Args) -> Result<WhisperModel> {
 
 fn handle(
     req: CreateTranscriptionRequest,
-    mut whisper_model: WhisperModel,
+    whisper_model: WhisperModel,
 ) -> Result<CreateTranscriptionResponse> {
     let input = req.file.path().clone();
 

@@ -7,7 +7,7 @@ use silent::prelude::{FilePart, FormData};
 use silent::{Response, SilentError, StatusCode};
 
 #[derive(Debug, Deserialize, Clone)]
-pub(crate) enum ResponseFormat {
+pub enum ResponseFormat {
     Json,
     Text,
     Srt,

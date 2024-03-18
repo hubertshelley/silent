@@ -21,7 +21,7 @@ struct DecodingResult {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Segment {
+pub struct Segment {
     start: f64,
     duration: f64,
     dr: DecodingResult,

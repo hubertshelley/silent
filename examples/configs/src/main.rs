@@ -6,7 +6,7 @@ fn main() {
     configs.insert(1i32);
     let route = Route::new("")
         .get(|req| async move {
-            let num = req.configs().get::<i32>().unwrap();
+            let num = req.get_config::<i32>()?;
             Ok(*num)
         })
         .append(Route::new("check").get(|req| async move {
