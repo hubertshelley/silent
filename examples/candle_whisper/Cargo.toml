@@ -21,11 +21,11 @@ bindgen_cuda = { version = "0.1.4", optional = true }
 
 
 [dependencies]
-clap = { version = "4.5.1", features = ["derive"] }
+clap = { version = "4.5.3", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 silent = { path = "../../silent", features = ["full"] }
 symphonia = { version = "0.5.4", features = ["all"] }
-anyhow = "1.0.80"
+anyhow = "1.0.81"
 tokio = { version = "1.36.0", features = ["full"] }
 
 #candle-core = { version = "0.3.2" }
