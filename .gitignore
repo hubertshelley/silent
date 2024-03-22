@@ -8,3 +8,4 @@ py_env/
 build_rs_cov.profraw
 migrations/
 /src
+examples/silent-admin-backend

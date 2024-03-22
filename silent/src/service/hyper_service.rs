@@ -1,6 +1,6 @@
 use crate::core::{adapt::RequestAdapt, res_body::ResBody};
 use crate::route::RootRoute;
-use crate::{Request, Response};
+use crate::{Request, Response, SilentError};
 use hyper::body::Incoming;
 use hyper::service::Service as HyperService;
 use hyper::{Request as HyperRequest, Response as HyperResponse};
@@ -36,7 +36,14 @@ impl HyperServiceHandler {
                 .handle(req, remote_addr)
                 .await
                 .unwrap_or_else(|err| {
-                    tracing::error!("Failed to handle request: {:?}", err);
+                    match &err {
+                        SilentError::Response(_) => {
+                            tracing::info!("Handle request: {:?}", err);
+                        }
+                        _ => {
+                            tracing::error!("Failed to handle request: {:?}", err);
+                        }
+                    }
                     err.into()
                 })
         }
