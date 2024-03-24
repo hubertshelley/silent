@@ -151,88 +151,89 @@ impl Cors {
 
 #[async_trait]
 impl MiddleWareHandler for Cors {
-    async fn pre_request(&self, req: &mut Request, _res: &mut Response) -> Result<()> {
+    async fn pre_request(&self, req: &mut Request, res: &mut Response) -> Result<()> {
+        let req_origin = req
+            .headers()
+            .get("origin")
+            .map_or("", |v| v.to_str().unwrap_or(""))
+            .to_string();
+        if let Some(ref origin) = self.origin {
+            let origin = origin.get_value(&req_origin);
+            if origin.is_empty() {
+                return Err(SilentError::business_error(
+                    http::StatusCode::FORBIDDEN,
+                    format!("Cors: Origin \"{}\" is not allowed", req_origin),
+                ));
+            }
+            res.headers_mut().insert(
+                "Access-Control-Allow-Origin",
+                origin.parse().map_err(|e| {
+                    SilentError::business_error(
+                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Cors: Failed to parse cors allow origin: {}", e),
+                    )
+                })?,
+            );
+        }
+        if let Some(ref methods) = self.methods {
+            res.headers_mut().insert(
+                "Access-Control-Allow-Methods",
+                methods.get_value().parse().map_err(|e| {
+                    SilentError::business_error(
+                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Cors: Failed to parse cors allow methods: {}", e),
+                    )
+                })?,
+            );
+        }
+        if let Some(ref headers) = self.headers {
+            res.headers_mut().insert(
+                "Access-Control-Allow-Headers",
+                headers.get_value().parse().map_err(|e| {
+                    SilentError::business_error(
+                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Cors: Failed to parse cors allow headers: {}", e),
+                    )
+                })?,
+            );
+        }
+        if let Some(ref credentials) = self.credentials {
+            res.headers_mut().insert(
+                "Access-Control-Allow-Credentials",
+                credentials.to_string().parse().map_err(|e| {
+                    SilentError::business_error(
+                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Cors: Failed to parse cors allow credentials: {}", e),
+                    )
+                })?,
+            );
+        }
+        if let Some(ref max_age) = self.max_age {
+            res.headers_mut().insert(
+                "Access-Control-Max-Age",
+                max_age.to_string().parse().map_err(|e| {
+                    SilentError::business_error(
+                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Cors: Failed to parse cors max age: {}", e),
+                    )
+                })?,
+            );
+        }
+        if let Some(ref expose) = self.expose {
+            res.headers_mut().insert(
+                "Access-Control-Expose-Headers",
+                expose.get_value().parse().map_err(|e| {
+                    SilentError::business_error(
+                        http::StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Cors: Failed to parse cors expose headers: {}", e),
+                    )
+                })?,
+            );
+        }
         if req.method() == Method::OPTIONS {
-            let mut res = Response::empty();
-            let req_origin = req
-                .headers()
-                .get("origin")
-                .map_or("", |v| v.to_str().unwrap_or(""))
-                .to_string();
-            if let Some(ref origin) = self.origin {
-                let origin = origin.get_value(&req_origin);
-                if origin.is_empty() {
-                    return Err(SilentError::business_error(
-                        http::StatusCode::FORBIDDEN,
-                        format!("Cors: Origin \"{}\" is not allowed", req_origin),
-                    ));
-                }
-                res.headers_mut().insert(
-                    "Access-Control-Allow-Origin",
-                    origin.parse().map_err(|e| {
-                        SilentError::business_error(
-                            http::StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Cors: Failed to parse cors allow origin: {}", e),
-                        )
-                    })?,
-                );
-            }
-            if let Some(ref methods) = self.methods {
-                res.headers_mut().insert(
-                    "Access-Control-Allow-Methods",
-                    methods.get_value().parse().map_err(|e| {
-                        SilentError::business_error(
-                            http::StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Cors: Failed to parse cors allow methods: {}", e),
-                        )
-                    })?,
-                );
-            }
-            if let Some(ref headers) = self.headers {
-                res.headers_mut().insert(
-                    "Access-Control-Allow-Headers",
-                    headers.get_value().parse().map_err(|e| {
-                        SilentError::business_error(
-                            http::StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Cors: Failed to parse cors allow headers: {}", e),
-                        )
-                    })?,
-                );
-            }
-            if let Some(ref credentials) = self.credentials {
-                res.headers_mut().insert(
-                    "Access-Control-Allow-Credentials",
-                    credentials.to_string().parse().map_err(|e| {
-                        SilentError::business_error(
-                            http::StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Cors: Failed to parse cors allow credentials: {}", e),
-                        )
-                    })?,
-                );
-            }
-            if let Some(ref max_age) = self.max_age {
-                res.headers_mut().insert(
-                    "Access-Control-Max-Age",
-                    max_age.to_string().parse().map_err(|e| {
-                        SilentError::business_error(
-                            http::StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Cors: Failed to parse cors max age: {}", e),
-                        )
-                    })?,
-                );
-            }
-            if let Some(ref expose) = self.expose {
-                res.headers_mut().insert(
-                    "Access-Control-Expose-Headers",
-                    expose.get_value().parse().map_err(|e| {
-                        SilentError::business_error(
-                            http::StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Cors: Failed to parse cors expose headers: {}", e),
-                        )
-                    })?,
-                );
-            }
-            return Err(SilentError::Response(res));
+            let mut option_res = Response::empty();
+            option_res.headers = res.headers().clone();
+            return Err(SilentError::Response(option_res));
         }
         Ok(())
     }

@@ -1,12 +1,14 @@
-use crate::core::{adapt::RequestAdapt, res_body::ResBody};
-use crate::route::RootRoute;
-use crate::{Request, Response, SilentError};
-use hyper::body::Incoming;
-use hyper::service::Service as HyperService;
-use hyper::{Request as HyperRequest, Response as HyperResponse};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
+
+use hyper::body::Incoming;
+use hyper::service::Service as HyperService;
+use hyper::{Request as HyperRequest, Response as HyperResponse};
+
+use crate::core::{adapt::RequestAdapt, res_body::ResBody};
+use crate::route::RootRoute;
+use crate::{Request, Response};
 
 #[doc(hidden)]
 #[derive(Clone)]
@@ -30,23 +32,7 @@ impl HyperServiceHandler {
             remote_addr,
             routes,
         } = self.clone();
-        async move {
-            routes
-                .clone()
-                .handle(req, remote_addr)
-                .await
-                .unwrap_or_else(|err| {
-                    match &err {
-                        SilentError::Response(_) => {
-                            tracing::info!("Handle request: {:?}", err);
-                        }
-                        _ => {
-                            tracing::error!("Failed to handle request: {:?}", err);
-                        }
-                    }
-                    err.into()
-                })
-        }
+        async move { routes.clone().handle(req, remote_addr).await }
     }
 }
 
