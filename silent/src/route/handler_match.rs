@@ -294,7 +294,6 @@ mod tests {
             routes
                 .handle(req, "127.0.0.1:8000".parse().unwrap())
                 .await
-                .unwrap()
                 .body
                 .frame()
                 .await
@@ -319,7 +318,6 @@ mod tests {
             routes
                 .handle(req, "127.0.0.1:8000".parse().unwrap())
                 .await
-                .unwrap()
                 .body
                 .frame()
                 .await
