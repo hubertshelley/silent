@@ -25,6 +25,7 @@ pub struct Migrate {
 #[derive(Debug, FromRow)]
 struct TableName(String);
 
+#[allow(dead_code)]
 #[derive(Debug, FromRow)]
 struct TableCreate(String, String);
 

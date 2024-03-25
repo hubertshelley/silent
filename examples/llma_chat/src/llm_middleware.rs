@@ -1,7 +1,7 @@
 use llm::models::Llama;
 use llm::Model;
 use silent::prelude::{info, warn};
-use silent::{MiddleWareHandler, Request, Response, Result};
+use silent::{MiddleWareHandler, MiddlewareResult, Request, Response, Result};
 use std::fmt::Debug;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -79,9 +79,13 @@ impl LLMMiddleware {
 
 #[async_trait::async_trait]
 impl MiddleWareHandler for LLMMiddleware {
-    async fn pre_request(&self, req: &mut Request, _res: &mut Response) -> Result<()> {
+    async fn pre_request(
+        &self,
+        req: &mut Request,
+        _res: &mut Response,
+    ) -> Result<MiddlewareResult> {
         let llm = self.llm.clone();
         req.extensions_mut().insert(llm);
-        Ok(())
+        Ok(MiddlewareResult::Continue)
     }
 }

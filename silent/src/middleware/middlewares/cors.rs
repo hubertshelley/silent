@@ -1,4 +1,4 @@
-use crate::{MiddleWareHandler, Request, Response, Result, SilentError};
+use crate::{MiddleWareHandler, MiddlewareResult, Request, Response, Result, SilentError};
 use async_trait::async_trait;
 use http::{header, Method};
 
@@ -151,7 +151,7 @@ impl Cors {
 
 #[async_trait]
 impl MiddleWareHandler for Cors {
-    async fn pre_request(&self, req: &mut Request, res: &mut Response) -> Result<()> {
+    async fn pre_request(&self, req: &mut Request, res: &mut Response) -> Result<MiddlewareResult> {
         let req_origin = req
             .headers()
             .get("origin")
@@ -233,8 +233,8 @@ impl MiddleWareHandler for Cors {
         if req.method() == Method::OPTIONS {
             let mut option_res = Response::empty();
             option_res.headers = res.headers().clone();
-            return Err(SilentError::Response(option_res));
+            return Ok(MiddlewareResult::Break(option_res));
         }
-        Ok(())
+        Ok(MiddlewareResult::Continue)
     }
 }

@@ -7,7 +7,9 @@ use crate::session::SessionMiddleware;
 use crate::templates::TemplateMiddleware;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
-use crate::{Configs, MiddleWareHandler, Request, Response, SilentError, StatusCode};
+use crate::{
+    Configs, MiddleWareHandler, MiddlewareResult, Request, Response, SilentError, StatusCode,
+};
 #[cfg(feature = "session")]
 use async_session::{Session, SessionStore};
 use chrono::Utc;
@@ -106,7 +108,11 @@ impl RootRoute {
             }
         }
         for middleware in root_middlewares.clone() {
-            middleware.pre_request(&mut req, &mut pre_res).await?
+            match middleware.pre_request(&mut req, &mut pre_res).await? {
+                MiddlewareResult::Continue => {}
+                MiddlewareResult::Break(res) => return Ok(res),
+                MiddlewareResult::Error(err) => return Err(err),
+            }
         }
         match self.handler_match(&mut req, path.as_str()) {
             RouteMatched::Matched(route) => match route.handler.get(req.method()) {
@@ -125,7 +131,11 @@ impl RootRoute {
                         }
                     }
                     for middleware in active_middlewares.clone() {
-                        middleware.pre_request(&mut req, &mut pre_res).await?
+                        match middleware.pre_request(&mut req, &mut pre_res).await? {
+                            MiddlewareResult::Continue => {}
+                            MiddlewareResult::Break(res) => return Ok(res),
+                            MiddlewareResult::Error(err) => return Err(err),
+                        }
                     }
                     #[cfg(feature = "cookie")]
                     {
@@ -140,7 +150,11 @@ impl RootRoute {
                     pre_res.copy_from_response(handler.call(req).await?);
                     active_middlewares.reverse();
                     for middleware in active_middlewares {
-                        middleware.after_response(&mut pre_res).await?
+                        match middleware.after_response(&mut pre_res).await? {
+                            MiddlewareResult::Continue => {}
+                            MiddlewareResult::Break(res) => return Ok(res),
+                            MiddlewareResult::Error(err) => return Err(err),
+                        }
                     }
                 }
             },
@@ -153,7 +167,11 @@ impl RootRoute {
         };
         root_middlewares.reverse();
         for middleware in root_middlewares {
-            middleware.after_response(&mut pre_res).await?
+            match middleware.after_response(&mut pre_res).await? {
+                MiddlewareResult::Continue => {}
+                MiddlewareResult::Break(res) => return Ok(res),
+                MiddlewareResult::Error(err) => return Err(err),
+            }
         }
         Ok(pre_res)
     }
@@ -191,9 +209,6 @@ impl RootRoute {
                 res
             }
             Err(e) => {
-                if let SilentError::Response(res) = e {
-                    return res;
-                }
                 tracing::error!(
                     "{} {} {} {:?} {} {:?} {} {}",
                     peer_addr,
