@@ -1,4 +1,4 @@
-use crate::error::{ExceptionHandler, ExceptionHandlerWrapper, SilentResult};
+use crate::error::{ExceptionHandler, ExceptionHandlerWrapper};
 use crate::route::handler_match::{Match, RouteMatched};
 use crate::route::Route;
 #[cfg(feature = "session")]
@@ -7,7 +7,9 @@ use crate::session::SessionMiddleware;
 use crate::templates::TemplateMiddleware;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
-use crate::{Configs, MiddleWareHandler, Request, Response, SilentError, StatusCode};
+use crate::{
+    Configs, MiddleWareHandler, MiddlewareResult, Request, Response, SilentError, StatusCode,
+};
 #[cfg(feature = "session")]
 use async_session::{Session, SessionStore};
 use chrono::Utc;
@@ -92,11 +94,88 @@ impl RootRoute {
 }
 
 impl RootRoute {
-    pub async fn handle(
+    async fn handle_request(
         &self,
-        req: Request,
-        peer_addr: SocketAddr,
+        mut req: Request,
+        path: String,
     ) -> Result<Response, SilentError> {
+        let configs = self.configs.clone().unwrap_or_default();
+        let mut pre_res = Response::empty();
+        let mut root_middlewares = vec![];
+        for middleware in self.middlewares.iter() {
+            if middleware.match_req(&req).await {
+                root_middlewares.push(middleware);
+            }
+        }
+        for middleware in root_middlewares.clone() {
+            match middleware.pre_request(&mut req, &mut pre_res).await? {
+                MiddlewareResult::Continue => {}
+                MiddlewareResult::Break(res) => return Ok(res),
+                MiddlewareResult::Error(err) => return Err(err),
+            }
+        }
+        match self.handler_match(&mut req, path.as_str()) {
+            RouteMatched::Matched(route) => match route.handler.get(req.method()) {
+                None => {
+                    return Err(SilentError::business_error(
+                        StatusCode::METHOD_NOT_ALLOWED,
+                        "method not allowed".to_string(),
+                    ))
+                }
+                Some(handler) => {
+                    pre_res.configs = configs.clone();
+                    let mut active_middlewares = vec![];
+                    for middleware in route.middlewares.iter() {
+                        if middleware.match_req(&req).await {
+                            active_middlewares.push(middleware);
+                        }
+                    }
+                    for middleware in active_middlewares.clone() {
+                        match middleware.pre_request(&mut req, &mut pre_res).await? {
+                            MiddlewareResult::Continue => {}
+                            MiddlewareResult::Break(res) => return Ok(res),
+                            MiddlewareResult::Error(err) => return Err(err),
+                        }
+                    }
+                    #[cfg(feature = "cookie")]
+                    {
+                        *pre_res.cookies_mut() = req.cookies().clone();
+                    }
+                    #[cfg(feature = "session")]
+                    let session = req.extensions().get::<Session>().cloned();
+                    #[cfg(feature = "session")]
+                    if let Some(session) = session {
+                        pre_res.extensions.insert(session);
+                    }
+                    pre_res.copy_from_response(handler.call(req).await?);
+                    active_middlewares.reverse();
+                    for middleware in active_middlewares {
+                        match middleware.after_response(&mut pre_res).await? {
+                            MiddlewareResult::Continue => {}
+                            MiddlewareResult::Break(res) => return Ok(res),
+                            MiddlewareResult::Error(err) => return Err(err),
+                        }
+                    }
+                }
+            },
+            RouteMatched::Unmatched => {
+                return Err(SilentError::business_error(
+                    StatusCode::NOT_FOUND,
+                    "Server not found".to_string(),
+                ))
+            }
+        };
+        root_middlewares.reverse();
+        for middleware in root_middlewares {
+            match middleware.after_response(&mut pre_res).await? {
+                MiddlewareResult::Continue => {}
+                MiddlewareResult::Break(res) => return Ok(res),
+                MiddlewareResult::Error(err) => return Err(err),
+            }
+        }
+        Ok(pre_res)
+    }
+    pub async fn handle(&self, req: Request, peer_addr: SocketAddr) -> Response {
         tracing::debug!("{:?}", req);
         let exception_handler = self.exception_handler.clone();
         let (mut req, path) = req.split_url();
@@ -110,120 +189,24 @@ impl RootRoute {
         let url = req.uri().to_string().clone();
         let http_version = req.version();
         let start_time = Utc::now().time();
-        let mut root_middlewares = vec![];
-        for middleware in self.middlewares.iter() {
-            if middleware.match_req(&req).await {
-                root_middlewares.push(middleware);
-            }
-        }
         #[cfg(feature = "scheduler")]
         req.extensions_mut().insert(self.scheduler.clone());
-        let mut pre_res = Response::empty();
-        let mut exception_str = None;
-        let res: SilentResult<Response> = {
-            for middleware in root_middlewares.clone() {
-                middleware.pre_request(&mut req, &mut pre_res).await?
-            }
-            let res = match self.handler_match(&mut req, path.as_str()) {
-                RouteMatched::Matched(route) => match route.handler.get(req.method()) {
-                    None => Err(SilentError::business_error(
-                        StatusCode::METHOD_NOT_ALLOWED,
-                        "method not allowed".to_string(),
-                    )),
-                    Some(handler) => {
-                        pre_res.configs = configs.clone();
-                        let mut active_middlewares = vec![];
-                        for middleware in route.middlewares.iter() {
-                            if middleware.match_req(&req).await {
-                                active_middlewares.push(middleware);
-                            }
-                        }
-                        for middleware in active_middlewares.clone() {
-                            middleware.pre_request(&mut req, &mut pre_res).await?
-                        }
-                        #[cfg(feature = "cookie")]
-                        {
-                            *pre_res.cookies_mut() = req.cookies().clone();
-                        }
-                        #[cfg(feature = "session")]
-                        let session = req.extensions().get::<Session>().cloned();
-                        #[cfg(feature = "session")]
-                        if let Some(session) = session {
-                            pre_res.extensions.insert(session);
-                        }
-                        match handler.call(req).await {
-                            Ok(res) => {
-                                pre_res.copy_from_response(res);
-                            }
-                            Err(e) => {
-                                exception_str = Some(e.to_string());
-                                pre_res.copy_from_response(e.into());
-                            }
-                        };
-                        active_middlewares.reverse();
-                        for middleware in active_middlewares {
-                            middleware.after_response(&mut pre_res).await?
-                        }
-                        Ok(())
-                    }
-                },
-                RouteMatched::Unmatched => Err(SilentError::business_error(
-                    StatusCode::NOT_FOUND,
-                    "Server not found".to_string(),
-                )),
-            };
-            root_middlewares.reverse();
-            match res {
-                Ok(()) => {
-                    for middleware in root_middlewares {
-                        middleware.after_response(&mut pre_res).await?
-                    }
-                }
-                Err(err) => {
-                    exception_str = match exception_str {
-                        None => Some(err.to_string()),
-                        Some(exception_str) => Some(format!("{};{:?}", exception_str, err)),
-                    };
-                    pre_res.copy_from_response(err.into());
-                    for middleware in root_middlewares {
-                        middleware.after_response(&mut pre_res).await?
-                    }
-                }
-            };
-            Ok(pre_res)
-        };
+        let res = self.handle_request(req, path).await;
         let end_time = Utc::now().time();
         let req_time = end_time - start_time;
         match res {
             Ok(res) => {
-                match exception_str {
-                    None => {
-                        tracing::info!(
-                            "{} {} {} {:?} {} {:?} {}",
-                            peer_addr,
-                            method,
-                            url,
-                            http_version,
-                            res.status_code.as_u16(),
-                            res.content_length().lower(),
-                            req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
-                        );
-                    }
-                    Some(exception_str) => {
-                        tracing::error!(
-                            "{} {} {} {:?} {} {:?} {} {}",
-                            peer_addr,
-                            method,
-                            url,
-                            http_version,
-                            res.status_code.as_u16(),
-                            0,
-                            req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
-                            exception_str
-                        );
-                    }
-                }
-                Ok(res)
+                tracing::info!(
+                    "{} {} {} {:?} {} {:?} {}",
+                    peer_addr,
+                    method,
+                    url,
+                    http_version,
+                    res.status_code.as_u16(),
+                    res.content_length().lower(),
+                    req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
+                );
+                res
             }
             Err(e) => {
                 tracing::error!(
@@ -238,8 +221,8 @@ impl RootRoute {
                     e.to_string()
                 );
                 match exception_handler {
-                    Some(handler) => Ok(handler.call(e, configs.clone()).await),
-                    None => Err(e),
+                    Some(handler) => handler.call(e, configs.clone()).await,
+                    None => e.into(),
                 }
             }
         }

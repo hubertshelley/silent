@@ -28,9 +28,13 @@ struct MiddleWare {
 
 #[async_trait]
 impl MiddleWareHandler for MiddleWare {
-    async fn pre_request(&self, req: &mut Request, _res: &mut Response) -> Result<()> {
+    async fn pre_request(
+        &self,
+        req: &mut Request,
+        _res: &mut Response,
+    ) -> Result<MiddlewareResult> {
         req.extensions_mut().insert(self.db.clone());
-        Ok(())
+        Ok(MiddlewareResult::Continue)
     }
 }
 

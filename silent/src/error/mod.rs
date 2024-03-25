@@ -67,9 +67,6 @@ pub enum SilentError {
         /// 错误信息
         msg: String,
     },
-    /// 业务响应
-    #[error("response: {0}")]
-    Response(Response),
 }
 
 pub type SilentResult<T> = Result<T, SilentError>;
@@ -104,18 +101,13 @@ impl SilentError {
 
 impl From<SilentError> for Response {
     fn from(value: SilentError) -> Self {
-        match value {
-            SilentError::Response(res) => res,
-            _ => {
-                let mut res = Response::empty();
-                res.set_status(value.status_code());
-                if serde_json::from_str::<Value>(&value.message()).is_ok() {
-                    res.set_typed_header(ContentType::json());
-                }
-                res.set_body(value.message().into());
-                res
-            }
+        let mut res = Response::empty();
+        res.set_status(value.status_code());
+        if serde_json::from_str::<Value>(&value.message()).is_ok() {
+            res.set_typed_header(ContentType::json());
         }
+        res.set_body(value.message().into());
+        res
     }
 }
 

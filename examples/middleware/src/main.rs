@@ -19,7 +19,11 @@ struct MiddleWare {
 
 #[async_trait]
 impl MiddleWareHandler for MiddleWare {
-    async fn pre_request(&self, _req: &mut Request, _res: &mut Response) -> Result<()> {
+    async fn pre_request(
+        &self,
+        _req: &mut Request,
+        _res: &mut Response,
+    ) -> Result<MiddlewareResult> {
         self.count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let count = self.count.load(std::sync::atomic::Ordering::SeqCst);
         info!("pre_request count: {}", count);
@@ -30,9 +34,9 @@ impl MiddleWareHandler for MiddleWare {
                 msg: "bad request:pre_request".to_string(),
             });
         }
-        Ok(())
+        Ok(MiddlewareResult::Continue)
     }
-    async fn after_response(&self, res: &mut Response) -> Result<()> {
+    async fn after_response(&self, res: &mut Response) -> Result<MiddlewareResult> {
         let count = self.count.load(std::sync::atomic::Ordering::SeqCst);
         info!("after_response count: {}", count);
         if count % 3 == 0 {
@@ -45,6 +49,6 @@ impl MiddleWareHandler for MiddleWare {
         if let ResBody::Once(body) = res.body() {
             println!("body: {:?}", body);
         }
-        Ok(())
+        Ok(MiddlewareResult::Continue)
     }
 }

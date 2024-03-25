@@ -1,4 +1,6 @@
-use crate::{MiddleWareHandler, Request, Response, Result, SilentError, StatusCode};
+use crate::{
+    MiddleWareHandler, MiddlewareResult, Request, Response, Result, SilentError, StatusCode,
+};
 use async_session::{MemoryStore, Session, SessionStore};
 use async_trait::async_trait;
 use cookie::Cookie;
@@ -34,12 +36,16 @@ impl<T> MiddleWareHandler for SessionMiddleware<T>
 where
     T: SessionStore,
 {
-    async fn pre_request(&self, req: &mut Request, _res: &mut Response) -> Result<()> {
+    async fn pre_request(
+        &self,
+        req: &mut Request,
+        _res: &mut Response,
+    ) -> Result<MiddlewareResult> {
         let cookies = req.cookies().clone();
         let cookie = cookies.get("silent-web-session");
         if cookie.is_none() {
             req.extensions_mut().insert(Session::new());
-            return Ok(());
+            return Ok(MiddlewareResult::Continue);
         }
         let cookie = cookie.unwrap();
         let session = self
@@ -59,9 +65,9 @@ where
         } else {
             req.extensions_mut().insert(Session::new());
         }
-        Ok(())
+        Ok(MiddlewareResult::Continue)
     }
-    async fn after_response(&self, res: &mut Response) -> Result<()> {
+    async fn after_response(&self, res: &mut Response) -> Result<MiddlewareResult> {
         let session_store = self.session_store.read().await;
         let session = res.extensions.remove::<Session>();
         let cookie = res.cookies().get("silent-web-session");
@@ -88,6 +94,6 @@ where
                 );
             }
         }
-        Ok(())
+        Ok(MiddlewareResult::Continue)
     }
 }

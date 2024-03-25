@@ -1,4 +1,4 @@
-use crate::{MiddleWareHandler, Response, Result, SilentError, StatusCode};
+use crate::{MiddleWareHandler, MiddlewareResult, Response, Result, SilentError, StatusCode};
 use async_trait::async_trait;
 use serde::Serialize;
 use serde_json::Value;
@@ -40,7 +40,7 @@ impl TemplateMiddleware {
 
 #[async_trait]
 impl MiddleWareHandler for TemplateMiddleware {
-    async fn after_response(&self, res: &mut Response) -> Result<()> {
+    async fn after_response(&self, res: &mut Response) -> Result<MiddlewareResult> {
         let template = res.extensions.get::<TemplateResponse>().unwrap();
         res.set_body(
             self.template
@@ -61,7 +61,7 @@ impl MiddleWareHandler for TemplateMiddleware {
                 })?
                 .into(),
         );
-        Ok(())
+        Ok(MiddlewareResult::Continue)
     }
 }
 
@@ -102,7 +102,6 @@ mod tests {
             routes
                 .handle(req, "127.0.0.1:8000".parse().unwrap())
                 .await
-                .unwrap()
                 .body
                 .frame()
                 .await

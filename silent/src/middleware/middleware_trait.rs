@@ -1,16 +1,26 @@
-use crate::{Request, Response, Result};
+use crate::{Request, Response, Result, SilentError};
 use async_trait::async_trait;
+
+pub enum MiddlewareResult {
+    Continue,
+    Break(Response),
+    Error(SilentError),
+}
 
 #[async_trait]
 pub trait MiddleWareHandler: Send + Sync + 'static {
     async fn match_req(&self, _req: &Request) -> bool {
         true
     }
-    async fn pre_request(&self, _req: &mut Request, _res: &mut Response) -> Result<()> {
-        Ok(())
+    async fn pre_request(
+        &self,
+        _req: &mut Request,
+        _res: &mut Response,
+    ) -> Result<MiddlewareResult> {
+        Ok(MiddlewareResult::Continue)
     }
-    async fn after_response(&self, _res: &mut Response) -> Result<()> {
-        Ok(())
+    async fn after_response(&self, _res: &mut Response) -> Result<MiddlewareResult> {
+        Ok(MiddlewareResult::Continue)
     }
 }
 

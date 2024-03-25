@@ -77,7 +77,8 @@ mod tests {
     #[test]
     fn test_process_time() {
         let datetime = Local::now();
-        let process_time = ProcessTime::Datetime(datetime + chrono::Duration::seconds(10));
+        let process_time =
+            ProcessTime::Datetime(datetime + chrono::TimeDelta::try_seconds(10).unwrap());
         assert!(!process_time.is_active());
         let process_time = ProcessTime::try_from(datetime).unwrap();
         assert!(process_time.is_active());
