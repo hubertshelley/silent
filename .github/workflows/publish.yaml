@@ -34,7 +34,7 @@ jobs:
       - name: Install publish-action
         if: steps.cache-publish-action.outputs.cache-hit != 'true'
         run:
-          cargo install publish-action-p --version=0.2.0
+          cargo install publish-action-p
 
       - name: Run publish-action
         id: publish-action
