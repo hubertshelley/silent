@@ -41,6 +41,7 @@ jobs:
         run:
           publish-action-p
         env:
+          GITHUB_WORKSPACE: /home/runner/work/silent/
           # This can help you tagging the github repository
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # This can help you publish to crates.io
