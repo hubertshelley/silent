@@ -2,11 +2,11 @@ name: Publish to Cargo
 
 on:
   push:
-    # branches: [ main ]
-    # paths:
-    #   - 'src/'
-    tags:
-      - '**'
+    branches: [ main ]
+    paths:
+      - 'Cargo.toml'
+    # tags:
+    #   - '**'
 
 jobs:
   publish:
