@@ -85,12 +85,16 @@ impl SilentError {
     pub fn status_code(&self) -> StatusCode {
         match self {
             Self::BusinessError { code, .. } => *code,
+            Self::SerdeDeError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::SerdeJsonError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
     pub fn message(&self) -> String {
         match self {
             Self::BusinessError { msg, .. } => msg.clone(),
+            Self::SerdeDeError(e) => e.to_string(),
+            Self::SerdeJsonError(e) => e.to_string(),
             _ => self.to_string(),
         }
     }
