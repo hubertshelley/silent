@@ -34,15 +34,15 @@ scheduler = []
 [dependencies]
 thiserror = "1.0.58"
 hyper = { version = "1.2.0", features = ["full"] }
-tokio = { version = "1.36.0", optional = true }
-bytes = "1.5.0"
+tokio = { version = "1.37.0", optional = true }
+bytes = "1.6.0"
 http-body-util = "0.1.1"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["local-time"] }
-async-trait = "0.1.78"
+async-trait = "0.1.79"
 serde = { version = "1.0.197", features = ["derive"] }
-serde_json = "1.0.114"
-uuid = "1.7.0"
+serde_json = "1.0.115"
+uuid = "1.8.0"
 url = "2.5.0"
 serde_urlencoded = "0.7.1"
 multimap = { version = "0.10.0", features = ["serde"] }
@@ -50,11 +50,9 @@ mime = "0.3.17"
 tempfile = "3.10.1"
 textnonce = "1.0.0"
 multer = "3.0.0"
-#silent-multer = "0.1.0"
 futures-util = "0.3.30"
-chrono = { version = "0.4.35", default-features = false, features = ["clock"] }
+chrono = { version = "0.4.37", default-features = false, features = ["clock"] }
 tokio-tungstenite = "0.21.0"
-#silent-tokio-tungstenite = "0.1.0"
 headers = "0.4.0"
 tokio-stream = { version = "0.1.15", features = ["net"] }
 pin-project = "1.1"
@@ -64,8 +62,8 @@ aes-gcm = "0.10.3"
 aes = "0.8"
 # remove rsa because it's not save
 #rsa = "0.9.6"
-cookie = { version = "0.18.0", features = ["secure", "percent-encode"] }
-pin-project-lite = "0.2.13"
+cookie = { version = "0.18.1", features = ["secure", "percent-encode"] }
+pin-project-lite = "0.2.14"
 async-session = "3.0.0"
 tera = "1.19.1"
 http = "1.1.0"
