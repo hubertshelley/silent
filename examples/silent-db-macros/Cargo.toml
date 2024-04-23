@@ -12,4 +12,4 @@ version = "0.1.0"
 
 [dependencies]
 silent-db = { path = "../../silent-db", features = ["mysql"] }
-serde = { version = "1.0.197", features = ["derive"] }
+serde = { version = "1.0.198", features = ["derive"] }
