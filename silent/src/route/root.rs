@@ -59,7 +59,7 @@ impl RootRoute {
     }
 
     pub fn push(&mut self, route: Route) {
-        self.middlewares = route.middlewares.clone();
+        self.middlewares.clone_from(&route.middlewares);
         self.children.push(route);
     }
 
