@@ -51,8 +51,8 @@ pub mod prelude {
     #[cfg(feature = "multipart")]
     pub use crate::core::form::{FilePart, FormData};
     pub use crate::core::{
-        path_param::PathParam, request::Request, res_body::full, res_body::stream_body,
-        res_body::ResBody, response::Response,
+        path_param::PathParam, req_body::ReqBody, request::Request, res_body::full,
+        res_body::stream_body, res_body::ResBody, response::Response,
     };
     pub use crate::error::{SilentError, SilentResult as Result};
     #[cfg(feature = "static")]
@@ -65,7 +65,7 @@ pub mod prelude {
     #[cfg(feature = "ws")]
     pub use crate::route::handler_append::WSHandlerAppend;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
-    pub use crate::route::{Route, RouteService};
+    pub use crate::route::{Route, RouteService, RouterAdapt};
     #[cfg(feature = "scheduler")]
     pub use crate::scheduler::Task;
     #[cfg(feature = "security")]

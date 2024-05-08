@@ -230,6 +230,30 @@ impl Response {
     }
 }
 
+impl Response {
+    #[doc(hidden)]
+    #[inline]
+    pub fn merge_hyper<B>(&mut self, hyper_res: hyper::Response<B>)
+    where
+        B: Into<ResBody>,
+    {
+        let (
+            http::response::Parts {
+                status,
+                headers,
+                extensions,
+                ..
+            },
+            body,
+        ) = hyper_res.into_parts();
+
+        self.status_code = status;
+        self.headers = headers;
+        self.extensions = extensions;
+        self.body = body.into();
+    }
+}
+
 impl<S: Serialize> From<S> for Response {
     fn from(value: S) -> Self {
         let mut res = Response::empty();

@@ -22,6 +22,8 @@ pub enum ResBody {
     Incoming(Incoming),
     /// Stream body.
     Stream(BoxStream<'static, Result<Bytes, BoxedError>>),
+    /// Boxed body.
+    Boxed(Pin<Box<dyn Body<Data = Bytes, Error = BoxedError> + Send + Sync + 'static>>),
 }
 
 /// 转换数据为响应Body
@@ -68,6 +70,14 @@ impl Stream for ResBody {
                 .as_mut()
                 .poll_next(cx)
                 .map_err(|e| IoError::new(ErrorKind::Other, e)),
+            ResBody::Boxed(body) => match Body::poll_frame(Pin::new(body), cx) {
+                Poll::Ready(Some(Ok(frame))) => Poll::Ready(frame.into_data().map(Ok).ok()),
+                Poll::Ready(Some(Err(e))) => {
+                    Poll::Ready(Some(Err(IoError::new(ErrorKind::Other, e))))
+                }
+                Poll::Ready(None) => Poll::Ready(None),
+                Poll::Pending => Poll::Pending,
+            },
         }
     }
 }
@@ -94,6 +104,7 @@ impl Body for ResBody {
             ResBody::Once(bytes) => bytes.is_empty(),
             ResBody::Chunks(chunks) => chunks.is_empty(),
             ResBody::Incoming(body) => body.is_end_stream(),
+            ResBody::Boxed(body) => body.is_end_stream(),
             ResBody::Stream(_) => false,
         }
     }
@@ -107,6 +118,7 @@ impl Body for ResBody {
                 SizeHint::with_exact(size)
             }
             ResBody::Incoming(recv) => recv.size_hint(),
+            ResBody::Boxed(recv) => recv.size_hint(),
             ResBody::Stream(_) => SizeHint::default(),
         }
     }

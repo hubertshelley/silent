@@ -8,6 +8,7 @@ use crate::header::CONTENT_TYPE;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
 use crate::{Configs, SilentError};
+use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use http::request::Parts;
@@ -44,6 +45,13 @@ pub struct Request {
     #[cfg(feature = "cookie")]
     pub(crate) cookies: CookieJar,
     pub(crate) configs: Configs,
+}
+
+impl Request {
+    /// 从http请求体创建请求
+    pub fn into_http(self) -> http::Request<ReqBody> {
+        http::Request::from_parts(self.parts, self.body)
+    }
 }
 
 impl Default for Request {

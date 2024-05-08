@@ -7,8 +7,11 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 #[derive(Debug)]
+/// 请求体
 pub enum ReqBody {
+    /// Empty body.
     Empty,
+    /// Incoming default body.
     Incoming(Incoming),
 }
 
