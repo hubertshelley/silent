@@ -4,8 +4,10 @@ use crate::{header, Configs, Result, SilentError, StatusCode};
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
+use http::response::Parts;
 use http::Extensions;
 use http_body::{Body, SizeHint};
+use http_body_util::BodyExt;
 use serde::Serialize;
 use serde_json::Value;
 use std::fmt;
@@ -26,6 +28,23 @@ pub struct Response {
     pub(crate) cookies: CookieJar,
     pub(crate) extensions: Extensions,
     pub(crate) configs: Configs,
+}
+
+impl Response {
+    /// 合并axum响应
+    pub async fn merge_axum(&mut self, res: axum::response::Response) {
+        let (parts, mut body) = res.into_parts();
+        let Parts {
+            status,
+            headers,
+            extensions,
+            ..
+        } = parts;
+        self.status_code = status;
+        self.headers = headers;
+        self.extensions = extensions;
+        self.body = full(body.frame().await.unwrap().unwrap().into_data().unwrap());
+    }
 }
 
 impl fmt::Debug for Response {

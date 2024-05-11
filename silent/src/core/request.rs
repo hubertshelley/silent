@@ -12,10 +12,11 @@ use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use http::request::Parts;
-use http::Request as BaseRequest;
 use http::{Extensions, HeaderMap, HeaderValue, Method, Uri, Version};
+use http::{Request as BaseRequest, StatusCode};
 use http_body_util::BodyExt;
 use mime::Mime;
+use serde::de::StdError;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -51,6 +52,53 @@ impl Request {
     /// 从http请求体创建请求
     pub fn into_http(self) -> http::Request<ReqBody> {
         http::Request::from_parts(self.parts, self.body)
+    }
+    /// Strip the request to [`hyper::Request`].
+    #[doc(hidden)]
+    pub fn strip_to_hyper<QB>(&mut self) -> Result<hyper::Request<QB>, SilentError>
+    where
+        QB: TryFrom<ReqBody>,
+        <QB as TryFrom<ReqBody>>::Error: StdError + Send + Sync + 'static,
+    {
+        let mut builder = http::request::Builder::new()
+            .method(self.method().clone())
+            .uri(self.uri().clone())
+            .version(self.version());
+        if let Some(headers) = builder.headers_mut() {
+            *headers = std::mem::take(&mut self.headers_mut());
+        }
+        if let Some(extensions) = builder.extensions_mut() {
+            *extensions = std::mem::take(&mut self.extensions_mut());
+        }
+
+        let body = self.take_body();
+        builder
+            .body(body.try_into().map_err(|e| {
+                SilentError::business_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("request strip to hyper failed: {e}"),
+                )
+            })?)
+            .map_err(|e| SilentError::business_error(StatusCode::BAD_REQUEST, e.to_string()))
+    }
+    /// Strip the request to [`hyper::Request`].
+    #[doc(hidden)]
+    pub async fn strip_to_bytes_hyper(&mut self) -> Result<hyper::Request<Bytes>, SilentError> {
+        let mut builder = http::request::Builder::new()
+            .method(self.method().clone())
+            .uri(self.uri().clone())
+            .version(self.version());
+        if let Some(headers) = builder.headers_mut() {
+            *headers = std::mem::take(&mut self.headers_mut());
+        }
+        if let Some(extensions) = builder.extensions_mut() {
+            *extensions = std::mem::take(&mut self.extensions_mut());
+        }
+
+        let mut body = self.take_body();
+        builder
+            .body(body.frame().await.unwrap().unwrap().into_data().unwrap())
+            .map_err(|e| SilentError::business_error(StatusCode::BAD_REQUEST, e.to_string()))
     }
 }
 
