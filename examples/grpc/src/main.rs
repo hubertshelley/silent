@@ -1,22 +1,11 @@
-use std::error::Error as StdError;
-use std::fmt;
-use std::future::Future;
-use std::marker::PhantomData;
-use std::sync::Arc;
-
 use async_trait::async_trait;
-use axum::body::Bytes;
-use http_body_util::BodyExt;
-use tonic::codegen::{Body, Service};
+use std::sync::Arc;
+use tonic::codegen::Service;
 use tonic::{transport::Server as TonicServer, Request, Response, Status};
-use tower::ServiceExt;
 
 use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
-use silent::prelude::{
-    error, full, logger, HandlerAppend, HandlerGetter, Level, ReqBody, ResBody, Route, RouterAdapt,
-    Server,
-};
+use silent::prelude::{error, logger, HandlerAppend, HandlerGetter, Level, Route, Server};
 use silent::{Handler, Method, SilentError, StatusCode};
 
 pub mod hello_world {
@@ -43,72 +32,43 @@ impl Greeter for MyGreeter {
     }
 }
 
-pub struct GrpcHandler<Svc, QB>(Svc, PhantomData<QB>);
+pub struct AxumRouterHandler(axum::Router<()>);
 
 #[async_trait]
-impl<Svc, QB, SB, E, Fut> Handler for GrpcHandler<Svc, QB>
-where
-    QB: TryFrom<ReqBody> + Body + Send + Sync + 'static,
-    <QB as TryFrom<ReqBody>>::Error: StdError + Send + Sync + 'static,
-    SB: Body + Send + Sync + 'static,
-    SB::Data: Into<Bytes> + Send + fmt::Debug + 'static,
-    SB::Error: StdError + Send + Sync + 'static,
-    E: StdError + Send + Sync + 'static,
-    Svc: Service<hyper::Request<QB>, Response = hyper::Response<SB>, Future = Fut>
-        + Send
-        + Sync
-        + Clone
-        + 'static,
-    Svc::Error: StdError + Send + Sync + 'static,
-    Fut: Future<Output = Result<hyper::Response<SB>, E>> + Send + 'static,
-{
+impl Handler for AxumRouterHandler {
     async fn call(&self, req: silent::Request) -> silent::Result<silent::Response> {
-        let mut svc = self.0.clone();
-        if svc.ready().await.is_err() {
-            error!("tower service not ready.");
-            return Err(SilentError::business_error(
+        let req = req.into_http();
+        let mut handler = self.0.clone();
+        let axum_res = handler.call(req).await.map_err(|e| {
+            error!(error = ?e, "call axum router failed: {}", e);
+            SilentError::business_error(
                 StatusCode::INTERNAL_SERVER_ERROR,
-                "tower service not ready.".to_string(),
-            ));
-        }
-        let hyper_req = req.into_http();
-
-        let hyper_res = match svc.call(hyper_req).await {
-            Ok(hyper_res) => hyper_res,
-            Err(e) => {
-                error!(error = ?e, "call tower service failed: {}", e);
-                return Err(SilentError::business_error(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("call tower service failed: {}", e),
-                ));
-            }
-        }
-        .map(|res| {
-            ResBody::Boxed(Box::pin(
-                res.map_frame(|f| f.map_data(|data| data.into()))
-                    .map_err(|e| e.into()),
-            ))
-        });
+                format!("call axum router failed: {}", e),
+            )
+        })?;
         let mut res = silent::Response::empty();
-        res.merge_hyper(hyper_res);
+        res.merge_axum(axum_res).await;
         Ok(res)
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    logger::fmt().with_max_level(Level::INFO).init();
     let greeter = MyGreeter::default();
+    logger::fmt().with_max_level(Level::INFO).init();
     let greeter_server = GreeterServer::new(greeter);
-    let grpc_handler = GrpcHandler(greeter_server);
+    let grpc = AxumRouterHandler(
+        TonicServer::builder()
+            // Wrap all services in the middleware stack
+            .add_service(greeter_server)
+            .into_router(),
+    );
     let route = Route::new("")
-        .handler(Method::GET, Arc::new(grpc_handler))
+        .handler(Method::GET, Arc::new(grpc))
         .get(|_req| async { Ok("hello world") });
-    Server::new().serve(route).await;
-    let addr = "[::1]:50051".parse().unwrap();
-    TonicServer::builder()
-        .add_service(GreeterServer::new(greeter))
-        .serve(addr)
-        .await?;
+    Server::new()
+        .bind("0.0.0.0:50051".parse().unwrap())
+        .serve(route)
+        .await;
     Ok(())
 }
