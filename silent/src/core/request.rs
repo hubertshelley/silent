@@ -65,10 +65,10 @@ impl Request {
             .uri(self.uri().clone())
             .version(self.version());
         if let Some(headers) = builder.headers_mut() {
-            *headers = std::mem::take(&mut self.headers_mut());
+            *headers = std::mem::take(self.headers_mut());
         }
         if let Some(extensions) = builder.extensions_mut() {
-            *extensions = std::mem::take(&mut self.extensions_mut());
+            *extensions = std::mem::take(self.extensions_mut());
         }
 
         let body = self.take_body();
@@ -89,10 +89,10 @@ impl Request {
             .uri(self.uri().clone())
             .version(self.version());
         if let Some(headers) = builder.headers_mut() {
-            *headers = std::mem::take(&mut self.headers_mut());
+            *headers = std::mem::take(self.headers_mut());
         }
         if let Some(extensions) = builder.extensions_mut() {
-            *extensions = std::mem::take(&mut self.extensions_mut());
+            *extensions = std::mem::take(self.extensions_mut());
         }
 
         let mut body = self.take_body();

@@ -1,7 +1,5 @@
 mod configs;
 /// The `silent` library.
-#[cfg(feature = "server")]
-mod conn;
 #[warn(missing_docs)]
 mod core;
 mod error;

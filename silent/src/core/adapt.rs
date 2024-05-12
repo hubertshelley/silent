@@ -12,6 +12,7 @@ pub trait RequestAdapt {
     fn tran_to_request(self) -> Request;
 }
 
+#[allow(dead_code)]
 pub trait ResponseAdapt<T> {
     fn tran_from_response(res: Response) -> Self;
 }

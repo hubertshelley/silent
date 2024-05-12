@@ -1,4 +1,3 @@
-use crate::conn::support::TokioIo;
 use crate::log::debug;
 use crate::tokio_tungstenite::tungstenite::protocol;
 use crate::tokio_tungstenite::WebSocketStream;
@@ -11,6 +10,7 @@ use futures_util::sink::{Sink, SinkExt};
 use futures_util::stream::{Stream, StreamExt};
 use futures_util::{future, ready};
 use hyper::upgrade::Upgraded as HyperUpgraded;
+use hyper_util::rt::TokioIo;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
