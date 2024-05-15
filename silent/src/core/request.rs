@@ -365,6 +365,13 @@ impl Request {
                     .await?;
                 Ok(serde_json::from_value(value.to_owned())?)
             }
+            ReqBody::Once(bytes) => match content_type.subtype() {
+                mime::WWW_FORM_URLENCODED => {
+                    serde_urlencoded::from_bytes(&bytes).map_err(SilentError::from)
+                }
+                mime::JSON => serde_json::from_slice(&bytes).map_err(|e| e.into()),
+                _ => Err(SilentError::JsonEmpty),
+            },
             ReqBody::Empty => Err(SilentError::BodyEmpty),
         }
     }

@@ -9,7 +9,7 @@ use crate::Scheduler;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio::signal;
-
+use tokio::task::JoinSet;
 pub struct Server {
     addr: Option<SocketAddr>,
     listener: Option<TcpListener>,
@@ -102,7 +102,7 @@ impl Server {
         tokio::spawn(async move {
             Scheduler::schedule(scheduler).await;
         });
-
+        let mut join_set = JoinSet::new();
         loop {
             #[cfg(unix)]
             let terminate = async {
@@ -130,7 +130,7 @@ impl Server {
                         Ok((stream, peer_addr)) => {
                             tracing::info!("Accepting from: {}", stream.peer_addr().unwrap());
                             let routes = root_route.clone();
-                            tokio::task::spawn(async move {
+                            join_set.spawn(async move {
                                 if let Err(err) = Serve::new(routes).call(stream,peer_addr).await {
                                     tracing::error!("Failed to serve connection: {:?}", err);
                                 }

@@ -3,6 +3,8 @@ mod configs;
 #[warn(missing_docs)]
 mod core;
 mod error;
+#[cfg(feature = "grpc")]
+mod grpc;
 mod handler;
 mod log;
 pub mod middleware;

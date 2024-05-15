@@ -7,15 +7,19 @@ use crate::session::SessionMiddleware;
 use crate::templates::TemplateMiddleware;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
+#[cfg(feature = "grpc")]
+use crate::{grpc::GrpcHandler, Handler};
 use crate::{
     Configs, MiddleWareHandler, MiddlewareResult, Request, Response, SilentError, StatusCode,
 };
 #[cfg(feature = "session")]
 use async_session::{Session, SessionStore};
 use chrono::Utc;
+use mime::Mime;
 use std::fmt;
 use std::future::Future;
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
 #[cfg(feature = "scheduler")]
 use tokio::sync::Mutex;
@@ -30,6 +34,8 @@ pub struct RootRoute {
     pub(crate) configs: Option<Configs>,
     #[cfg(feature = "scheduler")]
     pub(crate) scheduler: Arc<Mutex<Scheduler>>,
+    #[cfg(feature = "grpc")]
+    pub(crate) grpc: Option<GrpcHandler>,
 }
 
 impl fmt::Debug for RootRoute {
@@ -55,7 +61,20 @@ impl RootRoute {
             configs: None,
             #[cfg(feature = "scheduler")]
             scheduler: Arc::new(Mutex::new(Scheduler::new())),
+            #[cfg(feature = "grpc")]
+            grpc: None,
         }
+    }
+
+    #[cfg(feature = "grpc")]
+    pub fn grpc(&mut self, grpc: GrpcHandler) {
+        self.grpc = Some(grpc);
+    }
+
+    #[cfg(feature = "grpc")]
+    pub fn with_grpc(mut self, grpc: GrpcHandler) -> Self {
+        self.grpc = Some(grpc);
+        self
     }
 
     pub fn push(&mut self, route: Route) {
@@ -112,6 +131,26 @@ impl RootRoute {
                 MiddlewareResult::Continue => {}
                 MiddlewareResult::Break(res) => return Ok(res),
                 MiddlewareResult::Error(err) => return Err(err),
+            }
+        }
+        if req.content_type() == Some(Mime::from_str("application/grpc").unwrap()) {
+            #[cfg(feature = "grpc")]
+            {
+                return if let Some(grpc) = self.grpc.clone() {
+                    grpc.call(req).await
+                } else {
+                    Err(SilentError::business_error(
+                        StatusCode::NOT_IMPLEMENTED,
+                        "grpc handler not set".to_string(),
+                    ))
+                };
+            }
+            #[cfg(not(feature = "grpc"))]
+            {
+                return Err(SilentError::business_error(
+                    StatusCode::NOT_IMPLEMENTED,
+                    "grpc not enabled".to_string(),
+                ));
             }
         }
         match self.handler_match(&mut req, path.as_str()) {

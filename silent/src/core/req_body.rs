@@ -1,16 +1,19 @@
+use std::io::{Error as IoError, ErrorKind};
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
 use bytes::Bytes;
 use futures_util::Stream;
 use http_body::{Body, Frame, SizeHint};
 use hyper::body::Incoming;
-use std::io::{Error as IoError, ErrorKind};
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 #[derive(Debug)]
 /// 请求体
 pub enum ReqBody {
     /// Empty body.
     Empty,
+    /// Once bytes body.
+    Once(Bytes),
     /// Incoming default body.
     Incoming(Incoming),
 }
@@ -37,6 +40,7 @@ impl Body for ReqBody {
     ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
         match &mut *self {
             ReqBody::Empty => Poll::Ready(None),
+            ReqBody::Once(bytes) => Poll::Ready(Some(Ok(Frame::data(bytes.clone())))),
             ReqBody::Incoming(body) => Pin::new(body)
                 .poll_frame(cx)
                 .map_err(|e| IoError::new(ErrorKind::Other, e)),
@@ -46,6 +50,7 @@ impl Body for ReqBody {
     fn is_end_stream(&self) -> bool {
         match self {
             ReqBody::Empty => true,
+            ReqBody::Once(bytes) => bytes.is_empty(),
             ReqBody::Incoming(body) => body.is_end_stream(),
         }
     }
@@ -53,6 +58,7 @@ impl Body for ReqBody {
     fn size_hint(&self) -> SizeHint {
         match self {
             ReqBody::Empty => SizeHint::with_exact(0),
+            ReqBody::Once(bytes) => SizeHint::with_exact(bytes.len() as u64),
             ReqBody::Incoming(body) => body.size_hint(),
         }
     }

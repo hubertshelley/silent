@@ -1,5 +1,6 @@
 use crate::core::res_body::{full, ResBody};
 use crate::headers::{ContentType, Header, HeaderMap, HeaderMapExt};
+use crate::prelude::stream_body;
 use crate::{header, Configs, Result, SilentError, StatusCode};
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
@@ -7,7 +8,6 @@ use cookie::{Cookie, CookieJar};
 use http::response::Parts;
 use http::Extensions;
 use http_body::{Body, SizeHint};
-use http_body_util::BodyExt;
 use serde::Serialize;
 use serde_json::Value;
 use std::fmt;
@@ -18,12 +18,12 @@ use std::fmt::{Display, Formatter};
 /// use silent::Response;
 /// let req = Response::empty();
 /// ```
-pub struct Response {
+pub struct Response<B: Body = ResBody> {
     /// The HTTP status code.
     pub(crate) status_code: StatusCode,
     /// The HTTP headers.
     pub(crate) headers: HeaderMap,
-    pub(crate) body: ResBody,
+    pub(crate) body: B,
     #[cfg(feature = "cookie")]
     pub(crate) cookies: CookieJar,
     pub(crate) extensions: Extensions,
@@ -32,8 +32,9 @@ pub struct Response {
 
 impl Response {
     /// 合并axum响应
+    #[inline]
     pub async fn merge_axum(&mut self, res: axum::response::Response) {
-        let (parts, mut body) = res.into_parts();
+        let (parts, body) = res.into_parts();
         let Parts {
             status,
             headers,
@@ -41,9 +42,33 @@ impl Response {
             ..
         } = parts;
         self.status_code = status;
+        headers.iter().for_each(|(key, value)| {
+            self.headers.insert(key.clone(), value.clone());
+        });
+        self.extensions.extend(extensions);
+        self.body = stream_body(body.into_data_stream());
+    }
+
+    /// 合并hyper响应
+    #[inline]
+    pub fn merge_hyper<B>(&mut self, hyper_res: hyper::Response<B>)
+    where
+        B: Into<ResBody>,
+    {
+        let (
+            Parts {
+                status,
+                headers,
+                extensions,
+                ..
+            },
+            body,
+        ) = hyper_res.into_parts();
+
+        self.status_code = status;
         self.headers = headers;
         self.extensions = extensions;
-        self.body = full(body.frame().await.unwrap().unwrap().into_data().unwrap());
+        self.body = body.into();
     }
 }
 
@@ -246,30 +271,6 @@ impl Response {
         self.status_code = res.status_code;
         self.extensions.extend(res.extensions);
         self.set_body(res.body);
-    }
-}
-
-impl Response {
-    #[doc(hidden)]
-    #[inline]
-    pub fn merge_hyper<B>(&mut self, hyper_res: hyper::Response<B>)
-    where
-        B: Into<ResBody>,
-    {
-        let (
-            http::response::Parts {
-                status,
-                headers,
-                extensions,
-                ..
-            },
-            body,
-        ) = hyper_res.into_parts();
-
-        self.status_code = status;
-        self.headers = headers;
-        self.extensions = extensions;
-        self.body = body.into();
     }
 }
 
