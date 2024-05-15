@@ -1,5 +1,6 @@
 use crate::core::res_body::{full, ResBody};
 use crate::headers::{ContentType, Header, HeaderMap, HeaderMapExt};
+#[cfg(feature = "grpc")]
 use crate::prelude::stream_body;
 use crate::{header, Configs, Result, SilentError, StatusCode};
 use bytes::Bytes;
@@ -31,6 +32,7 @@ pub struct Response<B: Body = ResBody> {
 }
 
 impl Response {
+    #[cfg(feature = "grpc")]
     /// 合并axum响应
     #[inline]
     pub async fn merge_axum(&mut self, res: axum::response::Response) {

@@ -15,6 +15,7 @@ use crate::{
 #[cfg(feature = "session")]
 use async_session::{Session, SessionStore};
 use chrono::Utc;
+use http::{header, HeaderValue};
 use mime::Mime;
 use std::fmt;
 use std::future::Future;
@@ -133,7 +134,9 @@ impl RootRoute {
                 MiddlewareResult::Error(err) => return Err(err),
             }
         }
-        if req.content_type() == Some(Mime::from_str("application/grpc").unwrap()) {
+        if req.content_type() == Some(Mime::from_str("application/grpc").unwrap())
+            || req.headers().get(header::UPGRADE) == Some(&HeaderValue::from_static("h2c"))
+        {
             #[cfg(feature = "grpc")]
             {
                 return if let Some(grpc) = self.grpc.clone() {

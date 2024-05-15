@@ -1,5 +1,5 @@
 [package]
-name = "example-grpc"
+name = "example-grpc-h2c"
 edition.workspace = true
 authors.workspace = true
 homepage.workspace = true
@@ -27,6 +27,7 @@ pin-project-lite = "0.2.13"
 http-body = "1.0.0"
 http = "1.1.0"
 http-body-util = "0.1.1"
+tower = "0.4.13"
 
 [build-dependencies]
 tonic-build = { git = "https://github.com/alexrudy/tonic", branch = "hyper-1.0" }

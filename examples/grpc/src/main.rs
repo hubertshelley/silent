@@ -35,11 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let greeter = MyGreeter::default();
     logger::fmt().with_max_level(Level::INFO).init();
     let greeter_server = GreeterServer::new(greeter);
-    let reflection_service = tonic_reflection::server::Builder::configure()
-        .build()
-        .unwrap();
     let grpc = TonicServer::builder()
-        .add_service(reflection_service)
         // Wrap all services in the middleware stack
         .add_service(greeter_server)
         .into_router();

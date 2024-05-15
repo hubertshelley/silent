@@ -1,6 +1,9 @@
+use crate::grpc::service::GrpcService;
 use crate::{Handler, Response, SilentError};
 use async_trait::async_trait;
-use http::{header, Method, StatusCode};
+use http::{header, HeaderValue, StatusCode};
+use hyper::upgrade::OnUpgrade;
+use hyper_util::rt::TokioExecutor;
 use tower_service::Service;
 use tracing::error;
 
@@ -15,43 +18,34 @@ impl From<axum::Router<()>> for GrpcHandler {
 
 #[async_trait]
 impl Handler for GrpcHandler {
-    async fn call(&self, req: crate::Request) -> crate::Result<Response> {
-        if Method::CONNECT == req.method() {
-            // println!("req body: {:?}", req.body());
-            // let on_upgrade = req.extensions_mut().get::<OnUpgrade>().cloned();
-            // // let conn = match req.extensions_mut().remove::<OnUpgrade>() {
-            // let conn = if let Some(conn) = on_upgrade {
-            //     conn
-            // } else {
-            //     return Err(SilentError::business_error(
-            //         StatusCode::INTERNAL_SERVER_ERROR,
-            //         format!("error during upgrade: {}", "no on_upgrade"),
-            //     ));
-            // };
-            // // let conn = match hyper::upgrade::on(req).await {
-            // let conn = match conn.await {
-            //     Ok(conn) => conn,
-            //     Err(e) => {
-            //         eprintln!("error during upgrade: {}", e);
-            //         return Err(SilentError::business_error(
-            //             StatusCode::INTERNAL_SERVER_ERROR,
-            //             format!("error during upgrade: {}", e),
-            //         ));
-            //     }
-            // };
-            // tokio::spawn(async move {
-            //     let http = hyper::server::conn::http2::Builder::new(TokioExecutor::new());
-            //     match http
-            //         .serve_connection(conn, Http2ServiceHandler::new(handler))
-            //         .await
-            //     {
-            //         Ok(_) => eprintln!("finished gracefully"),
-            //         Err(err) => println!("ERROR: {err}"),
-            //     }
-            // });
-            // let mut res = silent::Response::empty()
-            //     .set_header(header::CONTENT_TYPE, "application/grpc".parse().unwrap());
-            Ok(Response::empty())
+    async fn call(&self, mut req: crate::Request) -> crate::Result<Response> {
+        println!("req: {:?}", req);
+        if let Some(on_upgrade) = req.extensions_mut().remove::<OnUpgrade>() {
+            let handler = self.0.clone();
+            tokio::spawn(async move {
+                println!("on_upgrade: {:?}", on_upgrade);
+                let conn = on_upgrade.await;
+                if conn.is_err() {
+                    eprintln!("upgrade error: {:?}", conn.err());
+                    return;
+                }
+                let upgraded_io = conn.unwrap();
+                println!("conn: {:?}", upgraded_io);
+                println!("start serve connection");
+                let http = hyper::server::conn::http2::Builder::new(TokioExecutor::new());
+                match http
+                    .serve_connection(upgraded_io, GrpcService::new(handler))
+                    .await
+                {
+                    Ok(_) => eprintln!("finished gracefully"),
+                    Err(err) => println!("ERROR: {err}"),
+                }
+            });
+            let mut res = Response::empty();
+            res.set_status(StatusCode::SWITCHING_PROTOCOLS);
+            res.headers_mut()
+                .insert(header::UPGRADE, HeaderValue::from_static("h2c"));
+            Ok(res)
         } else {
             let mut handler = self.0.clone();
             let req = req.into_http();
