@@ -25,7 +25,7 @@ clap = { version = "4.5.4", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 silent = { path = "../../silent", features = ["full"] }
 symphonia = { version = "0.5.4", features = ["all"] }
-anyhow = "1.0.82"
+anyhow = "1.0.83"
 tokio = { version = "1.37.0", features = ["full"] }
 
 #candle-core = { version = "0.3.2" }
@@ -38,5 +38,5 @@ candle-transformers = { git = "https://github.com/huggingface/candle" }
 
 tokenizers = { version = "0.19.1", features = ["onig"] }
 rand = "0.8.5"
-serde_json = "1.0.116"
+serde_json = "1.0.117"
 byteorder = "1.5.0"

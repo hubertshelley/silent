@@ -10,6 +10,6 @@ async-trait = "0.1.80"
 llm = "0.1.1"
 once_cell = "1.19.0"
 rand = "0.8.5"
-serde = { version = "1.0.200", features = ["derive"] }
+serde = { version = "1.0.202", features = ["derive"] }
 silent = { path = "../../silent", features = ["ws"] }
 tokio = { version = "1.37.0", features = ["full"] }

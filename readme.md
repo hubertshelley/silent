@@ -33,6 +33,7 @@ Silent 是一个简单的基于Hyper的Web框架，它的目标是提供一个�
 - [x] 安全
 - [ ] 测试
 - [ ] 文档
+- [x] GRPC
 
 ## security
 
@@ -58,7 +59,7 @@ re-export rsa
 
 ```rust
 use silent::Configs;
-let mut configs = Configs::default();
+let mut configs = Configs::default ();
 configs.insert(1i32);
 ```
 
