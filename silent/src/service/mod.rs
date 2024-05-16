@@ -1,21 +1,18 @@
 mod hyper_service;
 mod serve;
 
-use crate::conn::SilentConnection;
 use crate::route::RouteService;
 use crate::service::serve::Serve;
 use crate::Configs;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::signal;
-
+use tokio::task::JoinSet;
 pub struct Server {
     addr: Option<SocketAddr>,
     listener: Option<TcpListener>,
-    conn: Arc<SilentConnection>,
     shutdown_callback: Option<Box<dyn Fn() + Send + Sync>>,
     configs: Option<Configs>,
 }
@@ -31,7 +28,6 @@ impl Server {
         Self {
             addr: None,
             listener: None,
-            conn: Arc::new(SilentConnection::default()),
             shutdown_callback: None,
             configs: None,
         }
@@ -74,7 +70,6 @@ impl Server {
         S: RouteService,
     {
         let Self {
-            conn,
             listener,
             configs,
             addr,
@@ -107,7 +102,7 @@ impl Server {
         tokio::spawn(async move {
             Scheduler::schedule(scheduler).await;
         });
-
+        let mut join_set = JoinSet::new();
         loop {
             #[cfg(unix)]
             let terminate = async {
@@ -135,9 +130,8 @@ impl Server {
                         Ok((stream, peer_addr)) => {
                             tracing::info!("Accepting from: {}", stream.peer_addr().unwrap());
                             let routes = root_route.clone();
-                            let conn = conn.clone();
-                            tokio::task::spawn(async move {
-                                if let Err(err) = Serve::new(routes, conn).call(stream,peer_addr).await {
+                            join_set.spawn(async move {
+                                if let Err(err) = Serve::new(routes).call(stream,peer_addr).await {
                                     tracing::error!("Failed to serve connection: {:?}", err);
                                 }
                             });

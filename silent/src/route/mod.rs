@@ -15,6 +15,10 @@ pub use root::RootRoute;
 use crate::prelude::HandlerGetter;
 pub use route_service::RouteService;
 
+pub trait RouterAdapt {
+    fn into_router(self) -> Route;
+}
+
 #[derive(Clone)]
 pub struct Route {
     pub path: String,
@@ -23,6 +27,12 @@ pub struct Route {
     pub middlewares: Vec<Arc<dyn MiddleWareHandler>>,
     special_match: bool,
     create_path: String,
+}
+
+impl RouterAdapt for Route {
+    fn into_router(self) -> Route {
+        self
+    }
 }
 
 impl Default for Route {
@@ -95,7 +105,8 @@ impl Route {
             route.get_append_real_route(last_path)
         }
     }
-    pub fn append(mut self, mut route: Route) -> Self {
+    pub fn append<R: RouterAdapt>(mut self, route: R) -> Self {
+        let mut route = route.into_router();
         self.middlewares
             .iter()
             .cloned()

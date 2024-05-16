@@ -1,0 +1,49 @@
+use async_trait::async_trait;
+use hello_world::greeter_server::{Greeter, GreeterServer};
+use hello_world::{HelloReply, HelloRequest};
+use silent::prelude::{logger, HandlerAppend, Level, Route, RouteService, Server};
+use tonic::{transport::Server as TonicServer, Request, Response, Status};
+
+mod client;
+
+pub mod hello_world {
+    tonic::include_proto!("helloworld"); // The string specified here must match the proto package name
+}
+
+#[derive(Debug, Default)]
+pub struct MyGreeter {}
+
+#[async_trait]
+impl Greeter for MyGreeter {
+    async fn say_hello(
+        &self,
+        request: Request<HelloRequest>, // Accept request of type HelloRequest
+    ) -> Result<Response<HelloReply>, Status> {
+        // Return an instance of type HelloReply
+        println!("Got a request: {:?}", request);
+
+        let reply = HelloReply {
+            message: format!("Hello {}!", request.into_inner().name), // We must use .into_inner() as the fields of gRPC requests and responses are private
+        };
+
+        Ok(Response::new(reply)) // Send back our formatted greeting
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let greeter = MyGreeter::default();
+    logger::fmt().with_max_level(Level::INFO).init();
+    let greeter_server = GreeterServer::new(greeter);
+    let grpc = TonicServer::builder()
+        // Wrap all services in the middleware stack
+        .add_service(greeter_server)
+        .into_router();
+    let route = Route::new("").get(|_req| async { Ok("hello world") });
+    let root = route.route().with_grpc(grpc.into());
+    Server::new()
+        .bind("0.0.0.0:50051".parse().unwrap())
+        .serve(root)
+        .await;
+    Ok(())
+}

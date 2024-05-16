@@ -1,9 +1,12 @@
 use crate::core::res_body::{full, ResBody};
 use crate::headers::{ContentType, Header, HeaderMap, HeaderMapExt};
+#[cfg(feature = "grpc")]
+use crate::prelude::stream_body;
 use crate::{header, Configs, Result, SilentError, StatusCode};
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
+use http::response::Parts;
 use http::Extensions;
 use http_body::{Body, SizeHint};
 use serde::Serialize;
@@ -16,16 +19,59 @@ use std::fmt::{Display, Formatter};
 /// use silent::Response;
 /// let req = Response::empty();
 /// ```
-pub struct Response {
+pub struct Response<B: Body = ResBody> {
     /// The HTTP status code.
     pub(crate) status_code: StatusCode,
     /// The HTTP headers.
     pub(crate) headers: HeaderMap,
-    pub(crate) body: ResBody,
+    pub(crate) body: B,
     #[cfg(feature = "cookie")]
     pub(crate) cookies: CookieJar,
     pub(crate) extensions: Extensions,
     pub(crate) configs: Configs,
+}
+
+impl Response {
+    #[cfg(feature = "grpc")]
+    /// 合并axum响应
+    #[inline]
+    pub async fn merge_axum(&mut self, res: axum::response::Response) {
+        let (parts, body) = res.into_parts();
+        let Parts {
+            status,
+            headers,
+            extensions,
+            ..
+        } = parts;
+        self.status_code = status;
+        headers.iter().for_each(|(key, value)| {
+            self.headers.insert(key.clone(), value.clone());
+        });
+        self.extensions.extend(extensions);
+        self.body = stream_body(body.into_data_stream());
+    }
+
+    /// 合并hyper响应
+    #[inline]
+    pub fn merge_hyper<B>(&mut self, hyper_res: hyper::Response<B>)
+    where
+        B: Into<ResBody>,
+    {
+        let (
+            Parts {
+                status,
+                headers,
+                extensions,
+                ..
+            },
+            body,
+        ) = hyper_res.into_parts();
+
+        self.status_code = status;
+        self.headers = headers;
+        self.extensions = extensions;
+        self.body = body.into();
+    }
 }
 
 impl fmt::Debug for Response {
@@ -56,19 +102,40 @@ impl Response {
         }
     }
     /// 设置响应状态
+    #[inline]
     pub fn set_status(&mut self, status: StatusCode) {
         self.status_code = status;
     }
+    /// 包含响应状态
+    #[inline]
+    pub fn with_status(mut self, status: StatusCode) -> Self {
+        self.status_code = status;
+        self
+    }
     /// 设置响应body
+    #[inline]
     pub fn set_body(&mut self, body: ResBody) {
         self.body = body;
     }
+    /// 包含响应body
+    #[inline]
+    pub fn with_body(mut self, body: ResBody) -> Self {
+        self.body = body;
+        self
+    }
     /// 获取响应体
+    #[inline]
     pub fn body(&self) -> &ResBody {
         &self.body
     }
     /// 设置响应header
-    pub fn set_header(mut self, key: header::HeaderName, value: header::HeaderValue) -> Self {
+    #[inline]
+    pub fn set_header(&mut self, key: header::HeaderName, value: header::HeaderValue) {
+        self.headers.insert(key, value);
+    }
+    /// 包含响应header
+    #[inline]
+    pub fn with_header(mut self, key: header::HeaderName, value: header::HeaderValue) -> Self {
         self.headers.insert(key, value);
         self
     }
@@ -145,37 +212,14 @@ impl Response {
     {
         self.headers.typed_insert(header);
     }
-
     #[inline]
-    pub(crate) fn into_hyper(self) -> hyper::Response<ResBody> {
-        #[cfg(feature = "cookie")]
-        let Self {
-            status_code,
-            headers,
-            body,
-            cookies,
-            ..
-        } = self;
-        #[cfg(not(feature = "cookie"))]
-        let Self {
-            status_code,
-            headers,
-            body,
-            ..
-        } = self;
-
-        let mut res = hyper::Response::new(body);
-        *res.headers_mut() = headers;
-        #[cfg(feature = "cookie")]
-        for cookie in cookies.delta() {
-            if let Ok(hv) = cookie.encoded().to_string().parse() {
-                res.headers_mut().append(header::SET_COOKIE, hv);
-            }
-        }
-        // Default to a 404 if no response code was set
-        *res.status_mut() = status_code;
-
-        res
+    /// 包含响应header
+    pub fn with_typed_header<H>(mut self, header: H) -> Self
+    where
+        H: Header,
+    {
+        self.headers.typed_insert(header);
+        self
     }
 
     #[cfg(feature = "cookie")]
