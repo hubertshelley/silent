@@ -1,8 +1,7 @@
 use std::error::Error as StdError;
 use std::net::SocketAddr;
 
-use hyper_util::rt::TokioExecutor;
-use hyper_util::rt::TokioIo;
+use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;
 use tokio::net::TcpStream;
 

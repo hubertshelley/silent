@@ -19,19 +19,16 @@ impl From<axum::Router<()>> for GrpcHandler {
 #[async_trait]
 impl Handler for GrpcHandler {
     async fn call(&self, mut req: crate::Request) -> crate::Result<Response> {
-        println!("req: {:?}", req);
         if let Some(on_upgrade) = req.extensions_mut().remove::<OnUpgrade>() {
             let handler = self.0.clone();
             tokio::spawn(async move {
-                println!("on_upgrade: {:?}", on_upgrade);
                 let conn = on_upgrade.await;
                 if conn.is_err() {
                     eprintln!("upgrade error: {:?}", conn.err());
                     return;
                 }
                 let upgraded_io = conn.unwrap();
-                println!("conn: {:?}", upgraded_io);
-                println!("start serve connection");
+
                 let http = hyper::server::conn::http2::Builder::new(TokioExecutor::new());
                 match http
                     .serve_connection(upgraded_io, GrpcService::new(handler))

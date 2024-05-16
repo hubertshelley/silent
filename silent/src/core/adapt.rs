@@ -1,4 +1,5 @@
 use crate::core::req_body::ReqBody;
+use crate::prelude::ResBody;
 #[cfg(feature = "cookie")]
 use crate::SilentError;
 use crate::{Request, Response};
@@ -7,13 +8,13 @@ use cookie::{Cookie, CookieJar};
 #[cfg(feature = "cookie")]
 use http::{header, StatusCode};
 use hyper::Request as HyperRequest;
+use hyper::Response as HyperResponse;
 
 pub trait RequestAdapt {
     fn tran_to_request(self) -> Request;
 }
 
-#[allow(dead_code)]
-pub trait ResponseAdapt<T> {
+pub trait ResponseAdapt {
     fn tran_from_response(res: Response) -> Self;
 }
 
@@ -53,5 +54,38 @@ impl RequestAdapt for HyperRequest<ReqBody> {
     fn tran_to_request(self) -> Request {
         let (parts, body) = self.into_parts();
         Request::from_parts(parts, body)
+    }
+}
+
+impl ResponseAdapt for HyperResponse<ResBody> {
+    fn tran_from_response(res: Response) -> Self {
+        #[cfg(feature = "cookie")]
+        let Response {
+            status_code,
+            headers,
+            body,
+            cookies,
+            ..
+        } = res;
+        #[cfg(not(feature = "cookie"))]
+        let Response {
+            status_code,
+            headers,
+            body,
+            ..
+        } = res;
+
+        let mut res = hyper::Response::new(body);
+        *res.headers_mut() = headers;
+        #[cfg(feature = "cookie")]
+        for cookie in cookies.delta() {
+            if let Ok(hv) = cookie.encoded().to_string().parse() {
+                res.headers_mut().append(header::SET_COOKIE, hv);
+            }
+        }
+        // Default to a 404 if no response code was set
+        *res.status_mut() = status_code;
+
+        res
     }
 }

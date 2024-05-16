@@ -56,7 +56,6 @@ impl Stream for GrpcStream {
                                 )
                             })?;
                             let mut body = axum_res.into_body();
-                            println!("axum_res: {:?}", body);
                             if let Some(Ok(chunk)) = body.frame().await {
                                 if let Ok(chunk) = chunk.into_data() {
                                     eprintln!("stream chunk: {:#?}", chunk);
