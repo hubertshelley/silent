@@ -1,4 +1,3 @@
-use crate::tokio_tungstenite::tungstenite::protocol;
 use crate::ws::handler::websocket_handler;
 use crate::ws::websocket::{WebSocket, WebSocketHandlerTrait};
 use crate::ws::websocket_handler::WebSocketHandler;
@@ -9,6 +8,7 @@ use std::future::Future;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
+use tokio_tungstenite::tungstenite::protocol;
 use tracing::error;
 
 #[allow(clippy::type_complexity)]

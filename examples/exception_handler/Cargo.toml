@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-silent = { path = "../../silent", features = ["full"] }
+silent = { path = "../../silent" }
 serde = { version = "1.0.202", features = ["derive"] }

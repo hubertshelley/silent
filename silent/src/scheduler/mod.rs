@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use std::sync::Arc;
 use std::thread;
 use tokio::sync::Mutex;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 pub use process_time::ProcessTime;
 pub use task::Task;
@@ -69,14 +69,14 @@ impl Scheduler {
             if task.is_async {
                 tokio::spawn(async move {
                     match task.clone().run_async().await {
-                        Ok(_) => info!("task: ID:{:?} Description:{:?} ProcessTime:{:?} run success!", task.id, task.description, task.process_time),
+                        Ok(_) => debug!("task: ID:{:?} Description:{:?} ProcessTime:{:?} activate success!", task.id, task.description, task.process_time),
                         Err(e) => error!("task: ID:{:?} Description:{:?} ProcessTime:{:?} run failed! error: {:?}", task.id, task.description, task.process_time, e),
                     }
                 });
             } else {
                 thread::spawn(move || match task.clone().run() {
-                    Ok(_) => info!(
-                        "task: ID:{:?} Description:{:?} ProcessTime:{:?} run success!",
+                    Ok(_) => debug!(
+                        "task: ID:{:?} Description:{:?} ProcessTime:{:?} activate success!",
                         task.id, task.description, task.process_time
                     ),
                     Err(e) => error!(

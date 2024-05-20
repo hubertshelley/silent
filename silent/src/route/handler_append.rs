@@ -1,16 +1,16 @@
 use super::Route;
-#[cfg(feature = "ws")]
-use crate::tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
-#[cfg(feature = "ws")]
+#[cfg(feature = "upgrade")]
 use crate::ws::{HandlerWrapperWebSocket, Message, WebSocketHandler, WebSocketParts};
 use crate::{Handler, HandlerWrapper, Method, Request, Response, Result};
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
-#[cfg(feature = "ws")]
+#[cfg(feature = "upgrade")]
 use tokio::sync::mpsc::UnboundedSender;
-#[cfg(feature = "ws")]
+#[cfg(feature = "upgrade")]
 use tokio::sync::RwLock;
+#[cfg(feature = "upgrade")]
+use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 pub trait HandlerGetter {
     fn get_handler_mut(&mut self) -> &mut HashMap<Method, Arc<dyn Handler>>;
@@ -36,7 +36,7 @@ where
     }
 }
 
-#[cfg(feature = "ws")]
+#[cfg(feature = "upgrade")]
 pub trait WSHandlerAppend<
     FnOnConnect,
     FnOnConnectFut,
@@ -155,7 +155,7 @@ where
     }
 }
 
-#[cfg(feature = "ws")]
+#[cfg(feature = "upgrade")]
 impl<
         FnOnConnect,
         FnOnConnectFut,

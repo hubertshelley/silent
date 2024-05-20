@@ -1,4 +1,6 @@
-use crate::handler::{static_handler, Handler};
+#[cfg(feature = "static")]
+use crate::handler::static_handler;
+use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
 use crate::Method;
 use std::collections::HashMap;
@@ -12,6 +14,7 @@ mod route_service;
 
 pub use root::RootRoute;
 
+#[cfg(feature = "static")]
 use crate::prelude::HandlerGetter;
 pub use route_service::RouteService;
 
@@ -133,6 +136,7 @@ impl Route {
             .for_each(|r| r.middleware_hook_first(handler.clone()));
     }
 
+    #[cfg(feature = "static")]
     pub fn with_static(self, path: &str) -> Self {
         self.append(
             Route::new("<path:**>").insert_handler(Method::GET, Arc::new(static_handler(path))),

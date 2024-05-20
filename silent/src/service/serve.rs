@@ -27,7 +27,10 @@ impl Serve {
     ) -> Result<(), Box<dyn StdError + Send + Sync>> {
         let io = TokioIo::new(stream);
         self.builder
-            .serve_connection(io, HyperServiceHandler::new(peer_addr, self.routes.clone()))
+            .serve_connection_with_upgrades(
+                io,
+                HyperServiceHandler::new(peer_addr, self.routes.clone()),
+            )
             .await
     }
 }

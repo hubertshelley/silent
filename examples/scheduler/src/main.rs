@@ -1,11 +1,11 @@
-use chrono::Utc;
+use chrono::{Local, Utc};
 use silent::prelude::*;
 use std::sync::Arc;
 
 fn main() {
     logger::fmt().with_max_level(Level::INFO).init();
     let route = Route::new("").get(|req| async move {
-        let process_time = Utc::now() + chrono::TimeDelta::try_seconds(5).unwrap();
+        let process_time = Local::now() + chrono::TimeDelta::try_seconds(5).unwrap();
         let task = Task::create_with_action_async(
             "task_id".to_string(),
             process_time.try_into().unwrap(),

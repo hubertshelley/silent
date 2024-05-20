@@ -1,8 +1,8 @@
-use crate::tokio_tungstenite::tungstenite::protocol;
 use crate::{Result, SilentError};
 use std::borrow::Cow;
 use std::fmt;
 use std::fmt::Formatter;
+use tokio_tungstenite::tungstenite::protocol;
 
 #[derive(Eq, PartialEq, Clone)]
 pub struct Message {

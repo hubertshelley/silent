@@ -10,7 +10,7 @@ pub mod hello_world {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let origin = Uri::from_static("http://[::1]:50051");
+    let origin = Uri::from_static("http://0.0.0.0:50051");
     let h2c_client = h2c::H2cChannel {
         client: Client::builder(TokioExecutor::new()).build_http(),
     };

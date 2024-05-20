@@ -20,9 +20,10 @@ pub enum SilentError {
     /// IO 错误
     #[error("io error")]
     IOError(#[from] io::Error),
-    /// IO 错误
+    #[cfg(feature = "upgrade")]
+    /// Websocket IO 错误
     #[error("io error")]
-    TungsteniteError(#[from] crate::tokio_tungstenite::tungstenite::Error),
+    TungsteniteError(#[from] tokio_tungstenite::tungstenite::Error),
     /// 反序列化 错误
     #[error("serde_json error `{0}`")]
     SerdeJsonError(#[from] serde_json::Error),
@@ -32,6 +33,7 @@ pub enum SilentError {
     /// Hyper 错误
     #[error("the data for key `{0}` is not available")]
     HyperError(#[from] hyper::Error),
+    #[cfg(feature = "multipart")]
     /// 上传文件读取 错误
     #[error("upload file read error `{0}`")]
     FileEmpty(#[from] multer::Error),

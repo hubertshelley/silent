@@ -23,16 +23,14 @@ mod session;
 mod sse;
 #[cfg(feature = "template")]
 mod templates;
-#[cfg(feature = "ws")]
+#[cfg(feature = "upgrade")]
 mod ws;
 
 // use silent_multer as multer;
+#[cfg(feature = "multipart")]
 #[allow(unused_imports)]
 #[allow(clippy::single_component_path_imports)]
 use multer;
-// use silent_tokio_tungstenite as tokio_tungstenite;
-#[allow(clippy::single_component_path_imports)]
-use tokio_tungstenite;
 
 pub use crate::configs::Configs;
 pub use crate::core::{request::Request, response::Response};
@@ -62,7 +60,7 @@ pub mod prelude {
     pub use crate::log::*;
     pub use crate::middleware::MiddleWareHandler;
     pub use crate::middleware::MiddlewareResult;
-    #[cfg(feature = "ws")]
+    #[cfg(feature = "upgrade")]
     pub use crate::route::handler_append::WSHandlerAppend;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
     pub use crate::route::{Route, RouteService, RouterAdapt};
@@ -76,11 +74,11 @@ pub mod prelude {
     pub use crate::sse::{sse_reply, SSEEvent};
     #[cfg(feature = "template")]
     pub use crate::templates::*;
-    #[cfg(feature = "ws")]
+    #[cfg(feature = "upgrade")]
     pub use crate::ws::{
         FnOnClose, FnOnConnect, FnOnNoneResultFut, FnOnReceive, FnOnSend, FnOnSendFut,
     };
-    #[cfg(feature = "ws")]
+    #[cfg(feature = "upgrade")]
     pub use crate::ws::{Message, WebSocket, WebSocketHandler, WebSocketParts};
     #[cfg(feature = "session")]
     pub use async_session::{Session, SessionStore};
