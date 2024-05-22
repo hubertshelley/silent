@@ -28,7 +28,7 @@ http-body = "1.0.0"
 http = "1.1.0"
 http-body-util = "0.1.1"
 tokio-stream = "0.1.15"
-h2 = "0.4.4"
+h2 = "0.4.5"
 
 [build-dependencies]
 tonic-build = { git = "https://github.com/alexrudy/tonic", branch = "hyper-1.0" }

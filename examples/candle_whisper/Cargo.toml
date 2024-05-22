@@ -25,7 +25,7 @@ clap = { version = "4.5.4", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 silent = { path = "../../silent", features = ["multipart"] }
 symphonia = { version = "0.5.4", features = ["all"] }
-anyhow = "1.0.83"
+anyhow = "1.0.86"
 tokio = { version = "1.37.0", features = ["full"] }
 
 #candle-core = { version = "0.3.2" }
