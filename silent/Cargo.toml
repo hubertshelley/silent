@@ -22,7 +22,7 @@ server = ["tokio/net", "tokio/rt-multi-thread", "tokio/signal"]
 upgrade = ["dep:tokio-tungstenite"]
 multipart = ["tokio/fs", "dep:multer", "dep:multimap", "dep:tempfile", "dep:textnonce"]
 sse = ["dep:pin-project", "dep:tokio-stream"]
-security = ["dep:argon2", "dep:pbkdf2", "dep:aes-gcm", "dep:aes"]
+security = ["dep:argon2", "dep:pbkdf2", "dep:aes-gcm", "dep:aes", "dep:rsa"]
 static = ["tokio/fs"]
 session = ["cookie", "dep:async-session"]
 cookie = ["dep:cookie"]
@@ -88,5 +88,4 @@ argon2 = { version = "0.5.3", optional = true }
 pbkdf2 = { version = "0.12", features = ["simple"], optional = true }
 aes-gcm = { version = "0.10.3", optional = true }
 aes = { version = "0.8", optional = true }
-# remove rsa because it's not save
-#rsa = "0.9.6"
+rsa = { version = "0.9.6", optional = true }
