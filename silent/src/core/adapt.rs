@@ -1,21 +1,23 @@
-use crate::core::req_body::ReqBody;
-use crate::prelude::ResBody;
-#[cfg(feature = "cookie")]
-use crate::SilentError;
-use crate::{Request, Response};
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 #[cfg(feature = "cookie")]
 use http::{header, StatusCode};
+use http_body::Body;
 use hyper::Request as HyperRequest;
 use hyper::Response as HyperResponse;
+
+use crate::core::req_body::ReqBody;
+#[cfg(feature = "cookie")]
+use crate::SilentError;
+use crate::{Request, Response};
 
 pub trait RequestAdapt {
     fn tran_to_request(self) -> Request;
 }
 
 pub trait ResponseAdapt {
-    fn tran_from_response(res: Response) -> Self;
+    type Body: Body;
+    fn tran_from_response(res: Response<Self::Body>) -> Self;
 }
 
 #[cfg(feature = "cookie")]
@@ -57,8 +59,9 @@ impl RequestAdapt for HyperRequest<ReqBody> {
     }
 }
 
-impl ResponseAdapt for HyperResponse<ResBody> {
-    fn tran_from_response(res: Response) -> Self {
+impl<B: Body> ResponseAdapt for HyperResponse<B> {
+    type Body = B;
+    fn tran_from_response(res: Response<B>) -> Self {
         #[cfg(feature = "cookie")]
         let Response {
             status_code,
