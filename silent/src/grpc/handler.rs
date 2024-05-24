@@ -56,12 +56,6 @@ impl Handler for GrpcHandler {
             })?;
             let mut res = Response::empty();
             res.merge_axum(axum_res).await;
-            res.headers_mut()
-                .insert(header::CONTENT_TYPE, "application/grpc".parse().unwrap());
-            res.headers_mut().insert(
-                header::HeaderName::from_static("grpc-status"),
-                "0".parse().unwrap(),
-            );
 
             Ok(res)
         }

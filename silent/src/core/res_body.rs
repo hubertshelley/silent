@@ -1,14 +1,15 @@
-use crate::error::BoxedError;
+use std::collections::VecDeque;
+use std::error::Error as StdError;
+use std::pin::Pin;
+use std::task::{self, Context, Poll};
+
 use bytes::Bytes;
 use futures_util::stream::{BoxStream, Stream};
 use futures_util::TryStreamExt;
 use http_body::{Body, Frame, SizeHint};
 use hyper::body::Incoming;
-use std::collections::VecDeque;
-use std::error::Error as StdError;
-use std::io::{Error as IoError, ErrorKind};
-use std::pin::Pin;
-use std::task::{self, Context, Poll};
+
+use crate::error::BoxedError;
 
 /// 响应体
 pub enum ResBody {
@@ -43,7 +44,7 @@ where
 }
 
 impl Stream for ResBody {
-    type Item = Result<Bytes, IoError>;
+    type Item = Result<Bytes, BoxedError>;
 
     #[inline]
     fn poll_next(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> Poll<Option<Self::Item>> {
@@ -60,21 +61,14 @@ impl Stream for ResBody {
             ResBody::Chunks(chunks) => Poll::Ready(chunks.pop_front().map(Ok)),
             ResBody::Incoming(body) => match Body::poll_frame(Pin::new(body), cx) {
                 Poll::Ready(Some(Ok(frame))) => Poll::Ready(frame.into_data().map(Ok).ok()),
-                Poll::Ready(Some(Err(e))) => {
-                    Poll::Ready(Some(Err(IoError::new(ErrorKind::Other, e))))
-                }
+                Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e.into()))),
                 Poll::Ready(None) => Poll::Ready(None),
                 Poll::Pending => Poll::Pending,
             },
-            ResBody::Stream(stream) => stream
-                .as_mut()
-                .poll_next(cx)
-                .map_err(|e| IoError::new(ErrorKind::Other, e)),
+            ResBody::Stream(stream) => stream.as_mut().poll_next(cx).map_err(Into::into),
             ResBody::Boxed(body) => match Body::poll_frame(Pin::new(body), cx) {
                 Poll::Ready(Some(Ok(frame))) => Poll::Ready(frame.into_data().map(Ok).ok()),
-                Poll::Ready(Some(Err(e))) => {
-                    Poll::Ready(Some(Err(IoError::new(ErrorKind::Other, e))))
-                }
+                Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
                 Poll::Ready(None) => Poll::Ready(None),
                 Poll::Pending => Poll::Pending,
             },
@@ -84,7 +78,7 @@ impl Stream for ResBody {
 
 impl Body for ResBody {
     type Data = Bytes;
-    type Error = IoError;
+    type Error = BoxedError;
 
     fn poll_frame(
         self: Pin<&mut Self>,

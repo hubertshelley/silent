@@ -68,6 +68,8 @@ impl<B: Body> ResponseAdapt for HyperResponse<B> {
             headers,
             body,
             cookies,
+            version,
+            extensions,
             ..
         } = res;
         #[cfg(not(feature = "cookie"))]
@@ -75,11 +77,15 @@ impl<B: Body> ResponseAdapt for HyperResponse<B> {
             status_code,
             headers,
             body,
+            version,
+            extensions,
             ..
         } = res;
 
         let mut res = hyper::Response::new(body);
-        *res.headers_mut() = headers;
+        res.headers_mut().extend(headers);
+        res.extensions_mut().extend(extensions);
+        *res.version_mut() = version;
         #[cfg(feature = "cookie")]
         for cookie in cookies.delta() {
             if let Ok(hv) = cookie.encoded().to_string().parse() {

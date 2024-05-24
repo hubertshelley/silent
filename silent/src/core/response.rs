@@ -7,7 +7,7 @@ use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use http::response::Parts;
-use http::Extensions;
+use http::{Extensions, Version};
 use http_body::{Body, SizeHint};
 use serde::Serialize;
 use serde_json::Value;
@@ -22,6 +22,8 @@ use std::fmt::{Display, Formatter};
 pub struct Response<B: Body = ResBody> {
     /// The HTTP status code.
     pub(crate) status_code: StatusCode,
+    /// The HTTP version.
+    pub(crate) version: Version,
     /// The HTTP headers.
     pub(crate) headers: HeaderMap,
     pub(crate) body: B,
@@ -41,12 +43,12 @@ impl Response {
             status,
             headers,
             extensions,
+            version,
             ..
         } = parts;
         self.status_code = status;
-        headers.iter().for_each(|(key, value)| {
-            self.headers.insert(key.clone(), value.clone());
-        });
+        self.version = version;
+        self.headers.extend(headers);
         self.extensions.extend(extensions);
         self.body = stream_body(body.into_data_stream());
     }
@@ -62,14 +64,16 @@ impl Response {
                 status,
                 headers,
                 extensions,
+                version,
                 ..
             },
             body,
         ) = hyper_res.into_parts();
 
         self.status_code = status;
-        self.headers = headers;
-        self.extensions = extensions;
+        self.headers.extend(headers);
+        self.extensions.extend(extensions);
+        self.version = version;
         self.body = body.into();
     }
 }
@@ -77,7 +81,11 @@ impl Response {
 impl fmt::Debug for Response {
     #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        writeln!(f, "HTTP/1.1 {}\n{:?}", self.status_code, self.headers)
+        writeln!(
+            f,
+            "{:?} {}\n{:?}",
+            self.version, self.status_code, self.headers
+        )
     }
 }
 
@@ -94,6 +102,7 @@ impl Response {
         Self {
             status_code: StatusCode::OK,
             headers: HeaderMap::new(),
+            version: Version::default(),
             body: ResBody::None,
             #[cfg(feature = "cookie")]
             cookies: CookieJar::default(),
@@ -247,11 +256,7 @@ impl Response {
     #[cfg(feature = "cookie")]
     /// move response to from another response
     pub fn copy_from_response(&mut self, res: Response) {
-        for (header_key, header_value) in res.headers.clone().into_iter() {
-            if let Some(key) = header_key {
-                self.headers_mut().insert(key, header_value);
-            }
-        }
+        self.headers.extend(res.headers);
         res.cookies.delta().for_each(|cookie| {
             self.cookies.add(cookie.clone());
         });
@@ -263,11 +268,7 @@ impl Response {
     #[cfg(not(feature = "cookie"))]
     /// move response to from another response
     pub fn copy_from_response(&mut self, res: Response) {
-        for (header_key, header_value) in res.headers.clone().into_iter() {
-            if let Some(key) = header_key {
-                self.headers_mut().insert(key, header_value);
-            }
-        }
+        self.headers.extend(res.headers);
         self.status_code = res.status_code;
         self.extensions.extend(res.extensions);
         self.set_body(res.body);
