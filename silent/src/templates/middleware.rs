@@ -11,8 +11,9 @@ pub struct TemplateResponse {
     data: Value,
 }
 
-impl<T: Serialize> From<(String, T)> for TemplateResponse {
-    fn from((template, data): (String, T)) -> Self {
+impl<T: Serialize, S: Into<String>> From<(S, T)> for TemplateResponse {
+    fn from((template, data): (S, T)) -> Self {
+        let template = template.into();
         serde_json::to_value(data)
             .map(|data| TemplateResponse { template, data })
             .unwrap()
@@ -61,6 +62,7 @@ impl MiddleWareHandler for TemplateMiddleware {
                 })?
                 .into(),
         );
+        res.set_typed_header(headers::ContentType::html());
         Ok(MiddlewareResult::Continue)
     }
 }

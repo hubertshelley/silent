@@ -142,6 +142,14 @@ impl Route {
             Route::new("<path:**>").insert_handler(Method::GET, Arc::new(static_handler(path))),
         )
     }
+
+    #[cfg(feature = "static")]
+    pub fn with_static_in_url(self, url: &str, path: &str) -> Self {
+        self.append(
+            Route::new(format!("{}/<path:**>", url).as_str())
+                .insert_handler(Method::GET, Arc::new(static_handler(path))),
+        )
+    }
 }
 
 #[cfg(test)]

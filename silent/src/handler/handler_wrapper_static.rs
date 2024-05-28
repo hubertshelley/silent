@@ -2,6 +2,7 @@ use crate::prelude::stream_body;
 use crate::{Handler, Request, Response, SilentError, StatusCode};
 use async_trait::async_trait;
 use futures_util::StreamExt;
+use mime::Mime;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 
@@ -38,8 +39,11 @@ impl Handler for HandlerWrapperStatic {
             if path.ends_with('/') {
                 path.push_str("index.html");
             }
-            if let Ok(file) = File::open(path).await {
+            if let Ok(file) = File::open(&path).await {
                 let mut res = Response::empty();
+                if let Some(content_type) = mime_guess::from_path(path).first() {
+                    res.set_typed_header(headers::ContentType::from(content_type));
+                }
                 let reader_stream = ReaderStream::new(file);
                 let stream = reader_stream.boxed();
                 res.set_body(stream_body(stream));

@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use silent::prelude::{logger, HandlerAppend, Level, Route, RouteService, Server};
 
 mod client;

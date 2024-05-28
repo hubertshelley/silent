@@ -63,6 +63,7 @@ async fn bidirectional_streaming_echo_throttle(client: &mut EchoClient<Channel>,
     }
 }
 
+#[allow(dead_code)]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = EchoClient::connect("http://0.0.0.0:50051").await.unwrap();
