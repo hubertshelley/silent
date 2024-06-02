@@ -84,7 +84,7 @@ impl SilentError {
     pub fn business_error(code: StatusCode, msg: String) -> Self {
         Self::BusinessError { code, msg }
     }
-    pub fn status_code(&self) -> StatusCode {
+    pub fn status(&self) -> StatusCode {
         match self {
             Self::BusinessError { code, .. } => *code,
             Self::SerdeDeError(_) => StatusCode::UNPROCESSABLE_ENTITY,
@@ -108,7 +108,7 @@ impl SilentError {
 impl From<SilentError> for Response {
     fn from(value: SilentError) -> Self {
         let mut res = Response::empty();
-        res.set_status(value.status_code());
+        res.set_status(value.status());
         if serde_json::from_str::<Value>(&value.message()).is_ok() {
             res.set_typed_header(ContentType::json());
         }
@@ -141,7 +141,7 @@ mod tests {
         };
         let err = SilentError::business_error_obj(StatusCode::BAD_REQUEST, res_body);
         let mut res: Response = err.into();
-        assert_eq!(res.status_code, StatusCode::BAD_REQUEST);
+        assert_eq!(res.status, StatusCode::BAD_REQUEST);
         println!("{:#?}", res.headers);
         println!(
             "{:#?}",

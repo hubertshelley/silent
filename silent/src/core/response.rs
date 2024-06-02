@@ -21,7 +21,7 @@ use std::fmt::{Display, Formatter};
 /// ```
 pub struct Response<B: Body = ResBody> {
     /// The HTTP status code.
-    pub(crate) status_code: StatusCode,
+    pub(crate) status: StatusCode,
     /// The HTTP version.
     pub(crate) version: Version,
     /// The HTTP headers.
@@ -46,7 +46,7 @@ impl Response {
             version,
             ..
         } = parts;
-        self.status_code = status;
+        self.status = status;
         self.version = version;
         self.headers.extend(headers);
         self.extensions.extend(extensions);
@@ -70,7 +70,7 @@ impl Response {
             body,
         ) = hyper_res.into_parts();
 
-        self.status_code = status;
+        self.status = status;
         self.headers.extend(headers);
         self.extensions.extend(extensions);
         self.version = version;
@@ -81,11 +81,7 @@ impl Response {
 impl fmt::Debug for Response {
     #[inline]
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        writeln!(
-            f,
-            "{:?} {}\n{:?}",
-            self.version, self.status_code, self.headers
-        )
+        writeln!(f, "{:?} {}\n{:?}", self.version, self.status, self.headers)
     }
 }
 
@@ -100,7 +96,7 @@ impl Response {
     /// 创建空响应体
     pub fn empty() -> Self {
         Self {
-            status_code: StatusCode::OK,
+            status: StatusCode::OK,
             headers: HeaderMap::new(),
             version: Version::default(),
             body: ResBody::None,
@@ -113,12 +109,12 @@ impl Response {
     /// 设置响应状态
     #[inline]
     pub fn set_status(&mut self, status: StatusCode) {
-        self.status_code = status;
+        self.status = status;
     }
     /// 包含响应状态
     #[inline]
     pub fn with_status(mut self, status: StatusCode) -> Self {
-        self.status_code = status;
+        self.status = status;
         self
     }
     /// 设置响应body
@@ -162,7 +158,7 @@ impl Response {
     /// 设置响应重定向
     pub fn redirect(url: &str) -> Result<Self> {
         let mut res = Self::empty();
-        res.status_code = StatusCode::MOVED_PERMANENTLY;
+        res.status = StatusCode::MOVED_PERMANENTLY;
         res.headers.insert(
             header::LOCATION,
             url.parse().map_err(|e| {
@@ -260,7 +256,7 @@ impl Response {
         res.cookies.delta().for_each(|cookie| {
             self.cookies.add(cookie.clone());
         });
-        self.status_code = res.status_code;
+        self.status = res.status;
         self.extensions.extend(res.extensions);
         self.set_body(res.body);
     }
@@ -269,7 +265,7 @@ impl Response {
     /// move response to from another response
     pub fn copy_from_response(&mut self, res: Response) {
         self.headers.extend(res.headers);
-        self.status_code = res.status_code;
+        self.status = res.status;
         self.extensions.extend(res.extensions);
         self.set_body(res.body);
     }

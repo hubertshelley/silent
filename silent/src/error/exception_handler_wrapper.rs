@@ -68,7 +68,7 @@ mod tests {
                     configs
                 )
                 .await
-                .status_code,
+                .status,
             StatusCode::OK
         );
     }

@@ -244,7 +244,7 @@ impl RootRoute {
                     method,
                     url,
                     http_version,
-                    res.status_code.as_u16(),
+                    res.status.as_u16(),
                     res.content_length().lower(),
                     req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
                 );
@@ -257,7 +257,7 @@ impl RootRoute {
                     method,
                     url,
                     http_version,
-                    e.status_code().as_u16(),
+                    e.status().as_u16(),
                     0,
                     req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
                     e.to_string()

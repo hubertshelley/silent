@@ -1,10 +1,10 @@
-use crate::prelude::stream_body;
-use crate::{Handler, Request, Response, SilentError, StatusCode};
 use async_trait::async_trait;
 use futures_util::StreamExt;
-use mime::Mime;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
+
+use crate::prelude::stream_body;
+use crate::{Handler, Request, Response, SilentError, StatusCode};
 
 struct HandlerWrapperStatic {
     path: String,
@@ -63,14 +63,16 @@ pub fn static_handler(path: &str) -> impl Handler {
 
 #[cfg(test)]
 mod tests {
-    use super::HandlerWrapperStatic;
+    use bytes::Bytes;
+    use http_body_util::BodyExt;
+
     use crate::prelude::*;
     use crate::Handler;
     use crate::Request;
     use crate::SilentError;
     use crate::StatusCode;
-    use bytes::Bytes;
-    use http_body_util::BodyExt;
+
+    use super::HandlerWrapperStatic;
 
     static CONTENT: &str = r#"<!DOCTYPE html>
 <html>
@@ -110,7 +112,7 @@ mod tests {
         req.set_path_params("path".to_owned(), PathParam::Path("index.html".to_string()));
         let mut res = handler.call(req).await.unwrap();
         clean_static(path);
-        assert_eq!(res.status_code, StatusCode::OK);
+        assert_eq!(res.status, StatusCode::OK);
         assert_eq!(
             res.body.frame().await.unwrap().unwrap().data_ref().unwrap(),
             &Bytes::from(CONTENT)
@@ -126,7 +128,7 @@ mod tests {
         req.set_path_params("path".to_owned(), PathParam::Path("".to_string()));
         let mut res = handler.call(req).await.unwrap();
         clean_static(path);
-        assert_eq!(res.status_code, StatusCode::OK);
+        assert_eq!(res.status, StatusCode::OK);
         assert_eq!(
             res.body.frame().await.unwrap().unwrap().data_ref().unwrap(),
             &Bytes::from(CONTENT)

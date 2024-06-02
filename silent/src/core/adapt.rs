@@ -64,7 +64,7 @@ impl<B: Body> ResponseAdapt for HyperResponse<B> {
     fn tran_from_response(res: Response<B>) -> Self {
         #[cfg(feature = "cookie")]
         let Response {
-            status_code,
+            status,
             headers,
             body,
             cookies,
@@ -74,7 +74,7 @@ impl<B: Body> ResponseAdapt for HyperResponse<B> {
         } = res;
         #[cfg(not(feature = "cookie"))]
         let Response {
-            status_code,
+            status,
             headers,
             body,
             version,
@@ -93,7 +93,7 @@ impl<B: Body> ResponseAdapt for HyperResponse<B> {
             }
         }
         // Default to a 404 if no response code was set
-        *res.status_mut() = status_code;
+        *res.status_mut() = status;
 
         res
     }
