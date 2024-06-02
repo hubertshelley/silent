@@ -4,10 +4,8 @@ use std::fmt::{Display, Formatter};
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
-use http::response::Parts;
 use http::{Extensions, Version};
 use http_body::{Body, SizeHint};
-use http_body_util::BodyExt;
 use serde::Serialize;
 use serde_json::Value;
 
@@ -32,51 +30,6 @@ pub struct Response<B: Body = ResBody> {
     pub(crate) cookies: CookieJar,
     pub(crate) extensions: Extensions,
     pub(crate) configs: Configs,
-}
-
-impl Response {
-    #[cfg(feature = "grpc")]
-    /// 合并axum响应
-    #[inline]
-    pub async fn merge_axum(&mut self, res: axum::response::Response) {
-        let (parts, body) = res.into_parts();
-        let Parts {
-            status,
-            headers,
-            extensions,
-            version,
-            ..
-        } = parts;
-        self.status = status;
-        self.version = version;
-        self.headers.extend(headers);
-        self.extensions.extend(extensions);
-        self.body = ResBody::Boxed(Box::pin(body.map_err(|e| e.into())));
-    }
-
-    /// 合并hyper响应
-    #[inline]
-    pub fn merge_hyper<B>(&mut self, hyper_res: hyper::Response<B>)
-    where
-        B: Into<ResBody>,
-    {
-        let (
-            Parts {
-                status,
-                headers,
-                extensions,
-                version,
-                ..
-            },
-            body,
-        ) = hyper_res.into_parts();
-
-        self.status = status;
-        self.headers.extend(headers);
-        self.extensions.extend(extensions);
-        self.version = version;
-        self.body = body.into();
-    }
 }
 
 impl fmt::Debug for Response {
