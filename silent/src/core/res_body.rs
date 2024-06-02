@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::error::Error as StdError;
 use std::pin::Pin;
-use std::task::{self, Context, Poll};
+use std::task::{Context, Poll};
 
 use bytes::Bytes;
 use futures_util::stream::{BoxStream, Stream};
@@ -24,7 +24,7 @@ pub enum ResBody {
     /// Stream body.
     Stream(BoxStream<'static, Result<Bytes, BoxedError>>),
     /// Boxed body.
-    Boxed(Pin<Box<dyn Body<Data = Bytes, Error = BoxedError> + Send + Sync + 'static>>),
+    Boxed(Pin<Box<dyn Body<Data = Bytes, Error = BoxedError> + Send>>),
 }
 
 /// 转换数据为响应Body
@@ -47,7 +47,7 @@ impl Stream for ResBody {
     type Item = Result<Bytes, BoxedError>;
 
     #[inline]
-    fn poll_next(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> Poll<Option<Self::Item>> {
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.get_mut() {
             ResBody::None => Poll::Ready(None),
             ResBody::Once(bytes) => {
@@ -82,13 +82,24 @@ impl Body for ResBody {
 
     fn poll_frame(
         self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
+        cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
-        match self.poll_next(_cx) {
-            Poll::Ready(Some(Ok(bytes))) => Poll::Ready(Some(Ok(Frame::data(bytes)))),
-            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Pending => Poll::Pending,
+        match self.get_mut() {
+            ResBody::None => Poll::Ready(None),
+            ResBody::Once(bytes) => {
+                if bytes.is_empty() {
+                    Poll::Ready(None)
+                } else {
+                    let bytes = std::mem::replace(bytes, Bytes::new());
+                    Poll::Ready(Some(Ok(Frame::data(bytes))))
+                }
+            }
+            ResBody::Chunks(chunks) => {
+                Poll::Ready(chunks.pop_front().map(|bytes| Ok(Frame::data(bytes))))
+            }
+            ResBody::Incoming(body) => Body::poll_frame(Pin::new(body), cx).map_err(Into::into),
+            ResBody::Stream(stream) => stream.as_mut().poll_next(cx).map_ok(Frame::data),
+            ResBody::Boxed(body) => Body::poll_frame(Pin::new(body), cx),
         }
     }
 

@@ -1,18 +1,19 @@
-use crate::core::res_body::{full, ResBody};
-use crate::headers::{ContentType, Header, HeaderMap, HeaderMapExt};
-#[cfg(feature = "grpc")]
-use crate::prelude::stream_body;
-use crate::{header, Configs, Result, SilentError, StatusCode};
+use std::fmt;
+use std::fmt::{Display, Formatter};
+
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use http::response::Parts;
 use http::{Extensions, Version};
 use http_body::{Body, SizeHint};
+use http_body_util::BodyExt;
 use serde::Serialize;
 use serde_json::Value;
-use std::fmt;
-use std::fmt::{Display, Formatter};
+
+use crate::core::res_body::{full, ResBody};
+use crate::headers::{ContentType, Header, HeaderMap, HeaderMapExt};
+use crate::{header, Configs, Result, SilentError, StatusCode};
 
 /// 响应体
 /// ```
@@ -50,7 +51,7 @@ impl Response {
         self.version = version;
         self.headers.extend(headers);
         self.extensions.extend(extensions);
-        self.body = stream_body(body.into_data_stream());
+        self.body = ResBody::Boxed(Box::pin(body.map_err(|e| e.into())));
     }
 
     /// 合并hyper响应
@@ -106,6 +107,25 @@ impl Response {
             configs: Configs::default(),
         }
     }
+    #[inline]
+    /// 设置响应重定向
+    pub fn redirect(url: &str) -> Result<Self> {
+        let mut res = Self::empty();
+        res.status = StatusCode::MOVED_PERMANENTLY;
+        res.headers.insert(
+            header::LOCATION,
+            url.parse().map_err(|e| {
+                SilentError::business_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("redirect error: {}", e),
+                )
+            })?,
+        );
+        Ok(res)
+    }
+}
+
+impl<B: Body> Response<B> {
     /// 设置响应状态
     #[inline]
     pub fn set_status(&mut self, status: StatusCode) {
@@ -119,18 +139,18 @@ impl Response {
     }
     /// 设置响应body
     #[inline]
-    pub fn set_body(&mut self, body: ResBody) {
+    pub fn set_body(&mut self, body: B) {
         self.body = body;
     }
     /// 包含响应body
     #[inline]
-    pub fn with_body(mut self, body: ResBody) -> Self {
+    pub fn with_body(mut self, body: B) -> Self {
         self.body = body;
         self
     }
     /// 获取响应体
     #[inline]
-    pub fn body(&self) -> &ResBody {
+    pub fn body(&self) -> &B {
         &self.body
     }
     /// 设置响应header
@@ -153,22 +173,6 @@ impl Response {
     /// 获取extensions_mut
     pub fn extensions_mut(&mut self) -> &mut Extensions {
         &mut self.extensions
-    }
-    #[inline]
-    /// 设置响应重定向
-    pub fn redirect(url: &str) -> Result<Self> {
-        let mut res = Self::empty();
-        res.status = StatusCode::MOVED_PERMANENTLY;
-        res.headers.insert(
-            header::LOCATION,
-            url.parse().map_err(|e| {
-                SilentError::business_error(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("redirect error: {}", e),
-                )
-            })?,
-        );
-        Ok(res)
     }
 
     /// 获取配置
@@ -251,7 +255,7 @@ impl Response {
 
     #[cfg(feature = "cookie")]
     /// move response to from another response
-    pub fn copy_from_response(&mut self, res: Response) {
+    pub fn copy_from_response(&mut self, res: Response<B>) {
         self.headers.extend(res.headers);
         res.cookies.delta().for_each(|cookie| {
             self.cookies.add(cookie.clone());
@@ -263,7 +267,7 @@ impl Response {
 
     #[cfg(not(feature = "cookie"))]
     /// move response to from another response
-    pub fn copy_from_response(&mut self, res: Response) {
+    pub fn copy_from_response(&mut self, res: Response<B>) {
         self.headers.extend(res.headers);
         self.status = res.status;
         self.extensions.extend(res.extensions);
