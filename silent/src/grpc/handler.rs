@@ -1,3 +1,4 @@
+use super::utils::merge_axum;
 use crate::grpc::service::GrpcService;
 use crate::{Handler, Response, SilentError};
 use async_trait::async_trait;
@@ -55,7 +56,7 @@ impl Handler for GrpcHandler {
                 )
             })?;
             let mut res = Response::empty();
-            res.merge_axum(axum_res).await;
+            merge_axum(&mut res, axum_res).await;
 
             Ok(res)
         }

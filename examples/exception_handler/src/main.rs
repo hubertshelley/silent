@@ -14,7 +14,7 @@ fn main() {
         .route()
         .set_exception_handler(|e, _| async move {
             Exception {
-                code: e.status_code().as_u16(),
+                code: e.status().as_u16(),
                 msg: e.to_string(),
             }
         });
