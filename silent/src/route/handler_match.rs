@@ -42,7 +42,12 @@ impl<'a> From<&'a str> for SpecialPath {
         let mut type_str = value.splitn(2, ':');
         let key = type_str.next().unwrap_or("");
         let path_type = type_str.next().unwrap_or("");
+        println!("key: {}, path_type: {}", key, path_type);
         match path_type {
+            "**" => SpecialPath::FullPath(key.to_string()),
+            "*" => SpecialPath::Path(key.to_string()),
+            "full_path" => SpecialPath::FullPath(key.to_string()),
+            "path" => SpecialPath::Path(key.to_string()),
             "str" => SpecialPath::String(key.to_string()),
             "int" => SpecialPath::Int(key.to_string()),
             "i64" => SpecialPath::I64(key.to_string()),
@@ -50,10 +55,6 @@ impl<'a> From<&'a str> for SpecialPath {
             "u64" => SpecialPath::U64(key.to_string()),
             "u32" => SpecialPath::U32(key.to_string()),
             "uuid" => SpecialPath::UUid(key.to_string()),
-            "path" => SpecialPath::Path(key.to_string()),
-            "full_path" => SpecialPath::FullPath(key.to_string()),
-            "*" => SpecialPath::Path(key.to_string()),
-            "**" => SpecialPath::FullPath(key.to_string()),
             _ => SpecialPath::String(key.to_string()),
         }
     }
@@ -128,13 +129,23 @@ impl Match for Route {
                     self.last_matched(req, last_url)
                 }
                 SpecialPath::FullPath(key) => {
+                    println!("SpecialPath::FullPath: path: {}", path);
                     req.set_path_params(key, PathParam::Path(path.to_string()));
                     match self.last_matched(req, last_url) {
-                        RouteMatched::Matched(route) => RouteMatched::Matched(route),
-                        RouteMatched::Unmatched => match self.handler.is_empty() {
-                            true => RouteMatched::Unmatched,
-                            false => RouteMatched::Matched(self.clone()),
-                        },
+                        RouteMatched::Matched(route) => {
+                            println!("SpecialPath::FullPath: matched: {}", route.path);
+                            RouteMatched::Matched(route)
+                        }
+                        RouteMatched::Unmatched => {
+                            println!(
+                                "SpecialPath::FullPath: Unmatched matched: {}",
+                                self.handler.len()
+                            );
+                            match self.handler.is_empty() {
+                                true => RouteMatched::Unmatched,
+                                false => RouteMatched::Matched(self.clone()),
+                            }
+                        }
                     }
                 }
             }

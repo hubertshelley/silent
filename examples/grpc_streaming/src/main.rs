@@ -1,3 +1,10 @@
+use std::{error::Error, io::ErrorKind, pin::Pin, time::Duration};
+
+use tokio::sync::mpsc;
+use tokio_stream::{wrappers::ReceiverStream, Stream, StreamExt};
+use tonic::{Request, Response, Status, Streaming};
+
+use pb::{EchoRequest, EchoResponse};
 use silent::prelude::{logger, HandlerAppend, Level, Route, RouteService, Server};
 
 mod client;
@@ -5,13 +12,6 @@ mod client;
 pub mod pb {
     tonic::include_proto!("grpc.examples.echo");
 }
-
-use std::{error::Error, io::ErrorKind, pin::Pin, time::Duration};
-use tokio::sync::mpsc;
-use tokio_stream::{wrappers::ReceiverStream, Stream, StreamExt};
-use tonic::{transport::Server as TonicServer, Request, Response, Status, Streaming};
-
-use pb::{EchoRequest, EchoResponse};
 
 type EchoResult<T> = Result<Response<T>, Status>;
 type ResponseStream = Pin<Box<dyn Stream<Item = Result<EchoResponse, Status>> + Send>>;
@@ -149,12 +149,10 @@ impl pb::echo_server::Echo for EchoServer {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     logger::fmt().with_max_level(Level::INFO).init();
     let server = EchoServer {};
-    let grpc = TonicServer::builder()
-        // Wrap all services in the middleware stack
-        .add_service(pb::echo_server::EchoServer::new(server))
-        .into_router();
     let route = Route::new("").get(|_req| async { Ok("hello world") });
-    let root = route.route().with_grpc(grpc.into());
+    let root = route
+        .route()
+        .with_grpc(pb::echo_server::EchoServer::new(server).into());
     Server::new()
         .bind("0.0.0.0:50051".parse().unwrap())
         .serve(root)

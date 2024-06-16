@@ -1,5 +1,5 @@
 // use tonic::transport::server::TowerToHyperService;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status};
 
 use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
@@ -32,11 +32,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let greeter = MyGreeter::default();
     logger::fmt().with_max_level(Level::INFO).init();
 
-    let grpc = Server::builder()
-        .add_service(GreeterServer::new(greeter))
-        .into_router();
     let route = Route::new("").get(|_req| async { Ok("hello world") });
-    let root = route.route().with_grpc(grpc.into());
+    let root = route.route().with_grpc(GreeterServer::new(greeter).into());
     silent::prelude::Server::new()
         .bind("0.0.0.0:50051".parse().unwrap())
         .serve(root)
