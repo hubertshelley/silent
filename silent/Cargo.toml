@@ -30,7 +30,7 @@ template = ["dep:tera"]
 #wasi = ["tokio/sync"]
 test = ["tokio/macros", "tokio/rt"]
 scheduler = ["dep:cron"]
-grpc = ["upgrade", "dep:axum", "dep:tower-service", "dep:pin-project-lite", "dep:pin-project", "dep:tokio-stream"]
+grpc = ["upgrade", "dep:tonic", "dep:pin-project-lite", "dep:pin-project", "dep:tokio-stream"]
 
 [dependencies]
 # Basic dependencies
@@ -80,8 +80,7 @@ async-session = { version = "3.0.0", optional = true }
 cookie = { version = "0.18.1", features = ["secure", "percent-encode"], optional = true }
 
 # Grpc
-axum = { version = "0.7.5", optional = true }
-tower-service = { version = "0.3.2", optional = true }
+tonic = { git = "https://github.com/hyperium/tonic", optional = true }
 
 # Security
 argon2 = { version = "0.5.3", optional = true }

@@ -1,8 +1,9 @@
 use async_trait::async_trait;
+use tonic::{Request, Response, Status};
+
 use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
 use silent::prelude::{logger, HandlerAppend, Level, Route, RouteService, Server};
-use tonic::{transport::Server as TonicServer, Request, Response, Status};
 
 mod client;
 
@@ -35,12 +36,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let greeter = MyGreeter::default();
     logger::fmt().with_max_level(Level::INFO).init();
     let greeter_server = GreeterServer::new(greeter);
-    let grpc = TonicServer::builder()
-        // Wrap all services in the middleware stack
-        .add_service(greeter_server)
-        .into_router();
+    // let grpc = TonicServer::builder()
+    //     // Wrap all services in the middleware stack
+    //     .add_service(greeter_server)
+    //     .into_router();
     let route = Route::new("").get(|_req| async { Ok("hello world") });
-    let root = route.route().with_grpc(grpc.into());
+    let root = route.route().with_grpc(greeter_server.into());
+    println!("route: \n{:?}", root);
     Server::new()
         .bind("0.0.0.0:50051".parse().unwrap())
         .serve(root)
