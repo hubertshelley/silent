@@ -28,6 +28,7 @@ pub struct Route {
     pub handler: HashMap<Method, Arc<dyn Handler>>,
     pub children: Vec<Route>,
     pub middlewares: Vec<Arc<dyn MiddleWareHandler>>,
+    pub root_middlewares: Vec<Arc<dyn MiddleWareHandler>>,
     special_match: bool,
     create_path: String,
 }
@@ -80,6 +81,7 @@ impl Route {
             handler: HashMap::new(),
             children: Vec::new(),
             middlewares: Vec::new(),
+            root_middlewares: Vec::new(),
             special_match: first_path.starts_with('<') && first_path.ends_with('>'),
             create_path: path.to_string(),
         };
@@ -90,6 +92,7 @@ impl Route {
         }
     }
     fn append_route(mut self, route: Route) -> Self {
+        self.root_middlewares.extend(route.root_middlewares.clone());
         self.children.push(route);
         self
     }
@@ -110,12 +113,21 @@ impl Route {
     }
     pub fn append<R: RouterAdapt>(mut self, route: R) -> Self {
         let mut route = route.into_router();
+        self.root_middlewares.extend(route.root_middlewares.clone());
         self.middlewares
             .iter()
             .cloned()
             .for_each(|m| route.middleware_hook(m.clone()));
         let real_route = self.get_append_real_route(&self.create_path.clone());
         real_route.children.push(route);
+        self
+    }
+    pub fn root_hook(mut self, handler: impl MiddleWareHandler + 'static) -> Self {
+        self.root_middlewares.push(Arc::new(handler));
+        self
+    }
+    pub fn root_hook_first(mut self, handler: impl MiddleWareHandler + 'static) -> Self {
+        self.root_middlewares.insert(0, Arc::new(handler));
         self
     }
     pub fn hook(mut self, handler: impl MiddleWareHandler + 'static) -> Self {

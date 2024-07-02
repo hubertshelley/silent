@@ -63,7 +63,7 @@ pub mod prelude {
     #[cfg(feature = "upgrade")]
     pub use crate::route::handler_append::WSHandlerAppend;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
-    pub use crate::route::{Route, RouteService, RouterAdapt};
+    pub use crate::route::{RootRoute, Route, RouteService, RouterAdapt};
     #[cfg(feature = "scheduler")]
     pub use crate::scheduler::Task;
     #[cfg(feature = "security")]
