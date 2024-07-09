@@ -9,8 +9,6 @@ mod handler;
 mod log;
 pub mod middleware;
 mod route;
-#[cfg(feature = "server")]
-mod rt;
 #[cfg(feature = "scheduler")]
 mod scheduler;
 #[cfg(feature = "security")]
