@@ -1,17 +1,15 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-use bytes::Bytes;
+use crate::core::res_body::{full, ResBody};
+use crate::headers::{ContentType, Header, HeaderMap, HeaderMapExt};
+use crate::{header, Configs, Result, SilentError, StatusCode};
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use http::{Extensions, Version};
 use http_body::{Body, SizeHint};
 use serde::Serialize;
 use serde_json::Value;
-
-use crate::core::res_body::{full, ResBody};
-use crate::headers::{ContentType, Header, HeaderMap, HeaderMapExt};
-use crate::{header, Configs, Result, SilentError, StatusCode};
 
 /// 响应体
 /// ```
@@ -75,6 +73,30 @@ impl Response {
             })?,
         );
         Ok(res)
+    }
+    #[inline]
+    /// 生成文本响应
+    pub fn text(text: &str) -> Self {
+        let mut res = Self::empty();
+        res.set_typed_header(ContentType::text_utf8());
+        res.set_body(full(text.as_bytes().to_vec()));
+        res
+    }
+    #[inline]
+    /// 生成html响应
+    pub fn html(html: &str) -> Self {
+        let mut res = Self::empty();
+        res.set_typed_header(ContentType::html());
+        res.set_body(full(html.as_bytes().to_vec()));
+        res
+    }
+    #[inline]
+    /// 生成json响应
+    pub fn json<T: Serialize>(json: &T) -> Self {
+        let mut res = Self::empty();
+        res.set_typed_header(ContentType::json());
+        res.set_body(full(serde_json::to_vec(json).unwrap()));
+        res
     }
 }
 
@@ -230,22 +252,11 @@ impl<B: Body> Response<B> {
 
 impl<S: Serialize> From<S> for Response {
     fn from(value: S) -> Self {
-        let mut res = Response::empty();
-        let result: Bytes = match serde_json::to_value(&value).unwrap() {
-            Value::String(value) => {
-                if value.contains("html") {
-                    res.set_typed_header(ContentType::html());
-                } else {
-                    res.set_typed_header(ContentType::text_utf8());
-                }
-                value.into_bytes().into()
-            }
-            _ => {
-                res.set_typed_header(ContentType::json());
-                serde_json::to_vec(&value).unwrap().into()
-            }
-        };
-        res.set_body(full(result));
-        res
+        match serde_json::to_value(&value).unwrap() {
+            Value::String(value) => Response::empty()
+                .with_typed_header(ContentType::json())
+                .with_body(full(value.as_bytes().to_vec())),
+            _ => Self::json(&value),
+        }
     }
 }
