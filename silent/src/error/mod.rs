@@ -73,6 +73,33 @@ pub enum SilentError {
 
 pub type SilentResult<T> = Result<T, SilentError>;
 
+impl From<(StatusCode, String)> for SilentError {
+    fn from(value: (StatusCode, String)) -> Self {
+        Self::business_error(value.0, value.1)
+    }
+}
+
+impl From<(u16, String)> for SilentError {
+    fn from(value: (u16, String)) -> Self {
+        Self::business_error(
+            StatusCode::from_u16(value.0).expect("invalid status code"),
+            value.1,
+        )
+    }
+}
+
+impl From<String> for SilentError {
+    fn from(value: String) -> Self {
+        Self::business_error(StatusCode::INTERNAL_SERVER_ERROR, value)
+    }
+}
+
+impl From<BoxedError> for SilentError {
+    fn from(value: BoxedError) -> Self {
+        Self::business_error(StatusCode::INTERNAL_SERVER_ERROR, value.to_string())
+    }
+}
+
 impl SilentError {
     pub fn business_error_obj<S>(code: StatusCode, msg: S) -> Self
     where
