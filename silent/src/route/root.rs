@@ -1,4 +1,8 @@
 use crate::error::{ExceptionHandler, ExceptionHandlerWrapper};
+#[cfg(feature = "grpc")]
+use crate::grpc::GrpcHandler;
+#[cfg(feature = "grpc")]
+use crate::prelude::HandlerGetter;
 use crate::route::handler_match::{Match, RouteMatched};
 use crate::route::Route;
 #[cfg(feature = "session")]
@@ -7,23 +11,22 @@ use crate::session::SessionMiddleware;
 use crate::templates::TemplateMiddleware;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
-#[cfg(feature = "grpc")]
-use crate::{grpc::GrpcHandler, Handler};
 use crate::{
     Configs, MiddleWareHandler, MiddlewareResult, Request, Response, SilentError, StatusCode,
 };
 #[cfg(feature = "session")]
 use async_session::{Session, SessionStore};
 use chrono::Utc;
-use http::{header, HeaderValue};
-use mime::Mime;
+use http::Method;
 use std::fmt;
 use std::future::Future;
 use std::net::SocketAddr;
-use std::str::FromStr;
 use std::sync::Arc;
 #[cfg(feature = "scheduler")]
 use tokio::sync::Mutex;
+use tonic::body::BoxBody;
+use tonic::codegen::Service;
+use tonic::server::NamedService;
 
 #[derive(Clone, Default)]
 pub struct RootRoute {
@@ -35,8 +38,6 @@ pub struct RootRoute {
     pub(crate) configs: Option<Configs>,
     #[cfg(feature = "scheduler")]
     pub(crate) scheduler: Arc<Mutex<Scheduler>>,
-    #[cfg(feature = "grpc")]
-    pub(crate) grpc: Option<GrpcHandler>,
 }
 
 impl fmt::Debug for RootRoute {
@@ -62,19 +63,38 @@ impl RootRoute {
             configs: None,
             #[cfg(feature = "scheduler")]
             scheduler: Arc::new(Mutex::new(Scheduler::new())),
-            #[cfg(feature = "grpc")]
-            grpc: None,
         }
     }
 
     #[cfg(feature = "grpc")]
-    pub fn grpc(&mut self, grpc: GrpcHandler) {
-        self.grpc = Some(grpc);
+    pub fn grpc<S>(&mut self, grpc: GrpcHandler<S>)
+    where
+        S: Service<http::Request<BoxBody>, Response = http::Response<BoxBody>> + NamedService,
+        S: Clone + Send + 'static,
+        S: Sync + Send + 'static,
+        S::Future: Send + 'static,
+        S::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send,
+    {
+        let path = grpc.path().to_string();
+        let handler = Arc::new(grpc);
+        let route = Route::new(path.as_str()).append(
+            Route::new("<path:**>")
+                .insert_handler(Method::POST, handler.clone())
+                .insert_handler(Method::GET, handler),
+        );
+        self.push(route)
     }
 
     #[cfg(feature = "grpc")]
-    pub fn with_grpc(mut self, grpc: GrpcHandler) -> Self {
-        self.grpc = Some(grpc);
+    pub fn with_grpc<S>(mut self, grpc: GrpcHandler<S>) -> Self
+    where
+        S: Service<http::Request<BoxBody>, Response = http::Response<BoxBody>> + NamedService,
+        S: Clone + Send + 'static,
+        S: Sync + Send + 'static,
+        S::Future: Send + 'static,
+        S::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send,
+    {
+        self.grpc(grpc);
         self
     }
 
@@ -135,28 +155,7 @@ impl RootRoute {
                 MiddlewareResult::Error(err) => return Err(err),
             }
         }
-        if req.content_type() == Some(Mime::from_str("application/grpc").unwrap())
-            || req.headers().get(header::UPGRADE) == Some(&HeaderValue::from_static("h2c"))
-        {
-            #[cfg(feature = "grpc")]
-            {
-                return if let Some(grpc) = self.grpc.clone() {
-                    grpc.call(req).await
-                } else {
-                    Err(SilentError::business_error(
-                        StatusCode::NOT_IMPLEMENTED,
-                        "grpc handler not set".to_string(),
-                    ))
-                };
-            }
-            #[cfg(not(feature = "grpc"))]
-            {
-                return Err(SilentError::business_error(
-                    StatusCode::NOT_IMPLEMENTED,
-                    "grpc not enabled".to_string(),
-                ));
-            }
-        }
+        println!("path: {}", path);
         match self.handler_match(&mut req, path.as_str()) {
             RouteMatched::Matched(route) => match route.handler.get(req.method()) {
                 None => {
