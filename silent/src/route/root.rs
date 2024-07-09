@@ -17,6 +17,7 @@ use crate::{
 #[cfg(feature = "session")]
 use async_session::{Session, SessionStore};
 use chrono::Utc;
+#[cfg(feature = "grpc")]
 use http::Method;
 use std::fmt;
 use std::future::Future;
@@ -24,8 +25,11 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 #[cfg(feature = "scheduler")]
 use tokio::sync::Mutex;
+#[cfg(feature = "grpc")]
 use tonic::body::BoxBody;
+#[cfg(feature = "grpc")]
 use tonic::codegen::Service;
+#[cfg(feature = "grpc")]
 use tonic::server::NamedService;
 
 #[derive(Clone, Default)]
