@@ -13,11 +13,11 @@ name = "example-grpc-client"
 path = "src/client.rs"
 
 [dependencies]
-tonic = { git = "https://github.com/hyperium/tonic" }
-prost = "0.12"
+tonic = { version = "0.12.0" }
+prost = "0.13"
 tokio = { version = "1.38", features = ["macros", "rt-multi-thread"] }
 silent = { path = "../../silent", features = ["grpc"] }
-async-trait = "0.1.80"
+async-trait = "0.1.81"
 
 [build-dependencies]
-tonic-build = { git = "https://github.com/hyperium/tonic" }
+tonic-build = { version = "0.12.0" }
