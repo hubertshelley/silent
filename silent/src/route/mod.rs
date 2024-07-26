@@ -167,11 +167,17 @@ impl Route {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::middleware::middleware_trait::Next;
+    use crate::{Request, Response};
 
     #[derive(Clone, Eq, PartialEq)]
     struct MiddlewareTest;
-
-    impl MiddleWareHandler for MiddlewareTest {}
+    #[async_trait::async_trait]
+    impl MiddleWareHandler for MiddlewareTest {
+        async fn handle(&self, req: Request, next: &Next) -> crate::error::SilentResult<Response> {
+            next.call(req).await
+        }
+    }
 
     #[test]
     fn middleware_tree_test() {

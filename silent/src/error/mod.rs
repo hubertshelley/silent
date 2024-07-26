@@ -108,8 +108,11 @@ impl SilentError {
         let msg = serde_json::to_string(&msg).unwrap_or_default();
         Self::BusinessError { code, msg }
     }
-    pub fn business_error(code: StatusCode, msg: String) -> Self {
-        Self::BusinessError { code, msg }
+    pub fn business_error<T: Into<String>>(code: StatusCode, msg: T) -> Self {
+        Self::BusinessError {
+            code,
+            msg: msg.into(),
+        }
     }
     pub fn status(&self) -> StatusCode {
         match self {
