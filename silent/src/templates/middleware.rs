@@ -1,4 +1,5 @@
-use crate::{MiddleWareHandler, MiddlewareResult, Response, Result, SilentError, StatusCode};
+use crate::middleware::middleware_trait::Next;
+use crate::{MiddleWareHandler, Request, Response, Result, SilentError, StatusCode};
 use async_trait::async_trait;
 use serde::Serialize;
 use serde_json::Value;
@@ -41,7 +42,8 @@ impl TemplateMiddleware {
 
 #[async_trait]
 impl MiddleWareHandler for TemplateMiddleware {
-    async fn after_response(&self, res: &mut Response) -> Result<MiddlewareResult> {
+    async fn handle(&self, req: Request, next: &Next) -> Result<Response> {
+        let mut res = next.call(req).await?;
         let template = res.extensions.get::<TemplateResponse>().unwrap();
         res.set_body(
             self.template
@@ -63,7 +65,7 @@ impl MiddleWareHandler for TemplateMiddleware {
                 .into(),
         );
         res.set_typed_header(headers::ContentType::html());
-        Ok(MiddlewareResult::Continue)
+        Ok(res)
     }
 }
 

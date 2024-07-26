@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::grpc::service::GrpcService;
+use crate::{Handler, Response, SilentError};
 use async_trait::async_trait;
 use http::{header, HeaderValue, StatusCode};
 use http_body_util::BodyExt;
@@ -10,9 +12,7 @@ use tonic::body::BoxBody;
 use tonic::codegen::Service;
 use tonic::server::NamedService;
 use tonic::Status;
-
-use crate::grpc::service::GrpcService;
-use crate::{Handler, Response, SilentError};
+use tracing::{error, info};
 
 use super::utils::merge_grpc_response;
 
@@ -86,7 +86,7 @@ where
             tokio::spawn(async move {
                 let conn = on_upgrade.await;
                 if conn.is_err() {
-                    eprintln!("upgrade error: {:?}", conn.err());
+                    error!("upgrade error: {:?}", conn.err());
                     return;
                 }
                 let upgraded_io = conn.unwrap();
@@ -96,8 +96,8 @@ where
                     .serve_connection(upgraded_io, GrpcService::new(handler))
                     .await
                 {
-                    Ok(_) => eprintln!("finished gracefully"),
-                    Err(err) => println!("ERROR: {err}"),
+                    Ok(_) => info!("finished gracefully"),
+                    Err(err) => error!("ERROR: {err}"),
                 }
             });
             let mut res = Response::empty();
@@ -116,7 +116,6 @@ where
                     format!("grpc call failed: {}", e.into()),
                 )
             })?;
-            println!("{:?}", grpc_res);
             let mut res = Response::empty();
             merge_grpc_response(&mut res, grpc_res).await;
 

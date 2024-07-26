@@ -108,8 +108,11 @@ impl SilentError {
         let msg = serde_json::to_string(&msg).unwrap_or_default();
         Self::BusinessError { code, msg }
     }
-    pub fn business_error(code: StatusCode, msg: String) -> Self {
-        Self::BusinessError { code, msg }
+    pub fn business_error<T: Into<String>>(code: StatusCode, msg: T) -> Self {
+        Self::BusinessError {
+            code,
+            msg: msg.into(),
+        }
     }
     pub fn status(&self) -> StatusCode {
         match self {
@@ -151,6 +154,7 @@ mod tests {
     use http_body_util::BodyExt;
     use hyper::StatusCode;
     use serde_json::Value;
+    use tracing::info;
 
     #[derive(Serialize)]
     struct ResBody {
@@ -169,8 +173,8 @@ mod tests {
         let err = SilentError::business_error_obj(StatusCode::BAD_REQUEST, res_body);
         let mut res: Response = err.into();
         assert_eq!(res.status, StatusCode::BAD_REQUEST);
-        println!("{:#?}", res.headers);
-        println!(
+        info!("{:#?}", res.headers);
+        info!(
             "{:#?}",
             res.body.frame().await.unwrap().unwrap().data_ref().unwrap()
         );
