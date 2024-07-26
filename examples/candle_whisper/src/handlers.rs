@@ -14,18 +14,18 @@ use crate::decoder::Decoder;
 use crate::device::device;
 use crate::model::Model;
 use crate::multilingual;
+use crate::pcm_decode::pcm_decode;
+use crate::types::{CreateTranscriptionRequest, CreateTranscriptionResponse};
 use anyhow::{Error as E, Result};
 use candle_core::{self as candle, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::whisper::{self as m, audio, Config};
+use silent::prelude::info;
 use silent::{Request, Response, Result as SilentResult, SilentError, StatusCode};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex;
-
-use crate::pcm_decode::pcm_decode;
-use crate::types::{CreateTranscriptionRequest, CreateTranscriptionResponse};
 
 pub fn token_id(tokenizer: &Tokenizer, token: &str) -> candle::Result<u32> {
     match tokenizer.token_to_id(token) {
@@ -98,7 +98,7 @@ fn handle(
         ),
         &whisper_model.device,
     )?;
-    println!("loaded mel: {:?}", mel.dims());
+    info!("loaded mel: {:?}", mel.dims());
     let mut model = whisper_model.model.clone();
     let tokenizer = whisper_model.tokenizer.clone();
     let device = whisper_model.device.clone();
@@ -113,7 +113,7 @@ fn handle(
             anyhow::bail!("a language cannot be set for non-multilingual models")
         }
     };
-    println!("matched language: {:?}", language_token);
+    info!("matched language: {:?}", language_token);
     let mut dc = Decoder::new(
         model,
         tokenizer,

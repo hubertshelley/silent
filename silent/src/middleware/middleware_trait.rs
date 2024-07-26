@@ -39,7 +39,7 @@ impl Next {
 }
 
 impl Next {
-    pub(crate) async fn call(&self, req: Request) -> Result<Response> {
+    pub async fn call(&self, req: Request) -> Result<Response> {
         match &self.inner {
             NextInstance::Middleware(mw) => {
                 mw.handle(req, self.next.clone().unwrap().as_ref()).await
@@ -66,6 +66,7 @@ impl MiddleWareHandler for Next {
 #[cfg(test)]
 mod tests {
     use crate::HandlerWrapper;
+    use tracing::info;
 
     use super::*;
 
@@ -76,7 +77,7 @@ mod tests {
     #[async_trait]
     impl MiddleWareHandler for TestMiddleWare {
         async fn handle(&self, req: Request, next: &Next) -> Result<Response> {
-            println!("{}", self.count);
+            info!("{}", self.count);
             next.call(req).await
         }
     }
@@ -97,7 +98,7 @@ mod tests {
         );
         let res = middlewares.call(req).await;
         assert!(res.is_ok());
-        println!("{:?}", res.unwrap());
+        info!("{:?}", res.unwrap());
         Ok(())
     }
 }

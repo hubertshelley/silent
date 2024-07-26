@@ -1,10 +1,10 @@
+use crate::handlers::token_id;
+use crate::model::Model;
 use candle_core::{IndexOp, Result, Tensor, D};
 use candle_nn::ops::softmax;
 use candle_transformers::models::whisper::{self as m};
+use silent::prelude::info;
 use tokenizers::Tokenizer;
-
-use crate::handlers::token_id;
-use crate::model::Model;
 
 const LANGUAGES: [(&str, &str); 99] = [
     ("en", "english"),
@@ -133,7 +133,7 @@ pub fn detect_language(model: &mut Model, tokenizer: &Tokenizer, mel: &Tensor) -
     let mut probs = LANGUAGES.iter().zip(probs.iter()).collect::<Vec<_>>();
     probs.sort_by(|(_, p1), (_, p2)| p2.total_cmp(p1));
     for ((_, language), p) in probs.iter().take(5) {
-        println!("{language}: {p}")
+        info!("{language}: {p}")
     }
     let language = token_id(tokenizer, &format!("<|{}|>", probs[0].0 .0))?;
     Ok(language)
