@@ -118,10 +118,12 @@ impl Server {
             };
             tokio::select! {
                 _ = signal::ctrl_c() => {
+                    join_set.abort_all();
                     if let Some(ref callback) = self.shutdown_callback { callback() };
                     break;
                 }
                 _ = terminate => {
+                    join_set.abort_all();
                     if let Some(ref callback) = self.shutdown_callback { callback() };
                     break;
                 }
