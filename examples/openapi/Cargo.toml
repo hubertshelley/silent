@@ -1,0 +1,16 @@
+[package]
+name = "openapi"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+silent = { path = "../../silent" }
+schemars = { version = "0.8.16" }
+serde = { version = "1.0.136", features = ["derive"] }
+async-trait = "0.1.79"
+serde_json = "1.0.120"
