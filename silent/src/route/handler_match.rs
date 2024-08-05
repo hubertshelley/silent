@@ -183,7 +183,7 @@ impl Match for RootRoute {
 mod tests {
     use super::*;
     use crate::prelude::HandlerAppend;
-    use crate::SilentError;
+    use crate::{Handler, SilentError};
     use bytes::Bytes;
     use http_body_util::BodyExt;
 
@@ -289,11 +289,13 @@ mod tests {
         let mut routes = RootRoute::new();
         routes.push(route);
         let mut req = Request::empty();
+        req.set_remote("127.0.0.1:8080".parse().unwrap());
         *req.uri_mut() = "/hello/world".parse().unwrap();
         assert_eq!(
             routes
-                .handle(req, "127.0.0.1:8000".parse().unwrap())
+                .call(req)
                 .await
+                .unwrap()
                 .body
                 .frame()
                 .await
@@ -313,11 +315,13 @@ mod tests {
         let mut routes = RootRoute::new();
         routes.push(route);
         let mut req = Request::empty();
+        req.set_remote("127.0.0.1:8080".parse().unwrap());
         *req.uri_mut() = "/hello/world1".parse().unwrap();
         assert_eq!(
             routes
-                .handle(req, "127.0.0.1:8000".parse().unwrap())
+                .call(req)
                 .await
+                .unwrap()
                 .body
                 .frame()
                 .await

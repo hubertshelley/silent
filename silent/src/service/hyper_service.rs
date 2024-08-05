@@ -6,7 +6,7 @@ use hyper::service::Service as HyperService;
 use hyper::{Request as HyperRequest, Response as HyperResponse};
 
 use crate::core::{adapt::RequestAdapt, adapt::ResponseAdapt, res_body::ResBody};
-use crate::prelude::{ReqBody, RootRoute};
+use crate::prelude::ReqBody;
 use crate::{Handler, Request, Response};
 
 #[doc(hidden)]
@@ -16,7 +16,7 @@ pub struct HyperServiceHandler<H: Handler> {
     pub(crate) routes: H,
 }
 
-impl<H: Handler> HyperServiceHandler<H> {
+impl<H: Handler + Clone> HyperServiceHandler<H> {
     #[inline]
     pub fn new(remote_addr: SocketAddr, routes: H) -> Self {
         Self {
@@ -27,20 +27,17 @@ impl<H: Handler> HyperServiceHandler<H> {
     /// Handle [`Request`] and returns [`Response`].
     #[inline]
     pub fn handle(&self, mut req: Request) -> impl Future<Output = Response> {
-        let &Self {
+        let Self {
             remote_addr,
             routes,
-        } = &self.clone();
-        if req.headers().get("x-real-ip").is_none() {
-            req.headers_mut()
-                .insert("x-real-ip", remote_addr.ip().to_string().parse().unwrap());
-        }
-        let res = routes.call(req);
-        async move { res.await.unwrap() }
+        } = self.clone();
+        req.set_remote(remote_addr);
+        let routes = routes.clone();
+        async move { routes.call(req).await.unwrap_or_else(Into::into) }
     }
 }
 
-impl<B, H: Handler> HyperService<HyperRequest<B>> for HyperServiceHandler<H>
+impl<B, H: Handler + Clone> HyperService<HyperRequest<B>> for HyperServiceHandler<H>
 where
     B: Into<ReqBody>,
 {
