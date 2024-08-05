@@ -118,10 +118,12 @@ impl Server {
             };
             tokio::select! {
                 _ = signal::ctrl_c() => {
+                    join_set.abort_all();
                     if let Some(ref callback) = self.shutdown_callback { callback() };
                     break;
                 }
                 _ = terminate => {
+                    join_set.abort_all();
                     if let Some(ref callback) = self.shutdown_callback { callback() };
                     break;
                 }
@@ -131,7 +133,7 @@ impl Server {
                             tracing::info!("Accepting from: {}", stream.peer_addr().unwrap());
                             let routes = root_route.clone();
                             join_set.spawn(async move {
-                                if let Err(err) = Serve::new(routes).call(stream,peer_addr).await {
+                                if let Err(err) = Serve::new(routes, peer_addr).call(stream).await {
                                     tracing::error!("Failed to serve connection: {:?}", err);
                                 }
                             });

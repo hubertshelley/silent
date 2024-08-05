@@ -42,7 +42,6 @@ impl<'a> From<&'a str> for SpecialPath {
         let mut type_str = value.splitn(2, ':');
         let key = type_str.next().unwrap_or("");
         let path_type = type_str.next().unwrap_or("");
-        println!("key: {}, path_type: {}", key, path_type);
         match path_type {
             "**" => SpecialPath::FullPath(key.to_string()),
             "*" => SpecialPath::Path(key.to_string()),
@@ -129,23 +128,13 @@ impl Match for Route {
                     self.last_matched(req, last_url)
                 }
                 SpecialPath::FullPath(key) => {
-                    println!("SpecialPath::FullPath: path: {}", path);
                     req.set_path_params(key, PathParam::Path(path.to_string()));
                     match self.last_matched(req, last_url) {
-                        RouteMatched::Matched(route) => {
-                            println!("SpecialPath::FullPath: matched: {}", route.path);
-                            RouteMatched::Matched(route)
-                        }
-                        RouteMatched::Unmatched => {
-                            println!(
-                                "SpecialPath::FullPath: Unmatched matched: {}",
-                                self.handler.len()
-                            );
-                            match self.handler.is_empty() {
-                                true => RouteMatched::Unmatched,
-                                false => RouteMatched::Matched(self.clone()),
-                            }
-                        }
+                        RouteMatched::Matched(route) => RouteMatched::Matched(route),
+                        RouteMatched::Unmatched => match self.handler.is_empty() {
+                            true => RouteMatched::Unmatched,
+                            false => RouteMatched::Matched(self.clone()),
+                        },
                     }
                 }
             }
@@ -194,7 +183,7 @@ impl Match for RootRoute {
 mod tests {
     use super::*;
     use crate::prelude::HandlerAppend;
-    use crate::SilentError;
+    use crate::{Handler, SilentError};
     use bytes::Bytes;
     use http_body_util::BodyExt;
 
@@ -300,11 +289,13 @@ mod tests {
         let mut routes = RootRoute::new();
         routes.push(route);
         let mut req = Request::empty();
+        req.set_remote("127.0.0.1:8080".parse().unwrap());
         *req.uri_mut() = "/hello/world".parse().unwrap();
         assert_eq!(
             routes
-                .handle(req, "127.0.0.1:8000".parse().unwrap())
+                .call(req)
                 .await
+                .unwrap()
                 .body
                 .frame()
                 .await
@@ -324,11 +315,13 @@ mod tests {
         let mut routes = RootRoute::new();
         routes.push(route);
         let mut req = Request::empty();
+        req.set_remote("127.0.0.1:8080".parse().unwrap());
         *req.uri_mut() = "/hello/world1".parse().unwrap();
         assert_eq!(
             routes
-                .handle(req, "127.0.0.1:8000".parse().unwrap())
+                .call(req)
                 .await
+                .unwrap()
                 .body
                 .frame()
                 .await

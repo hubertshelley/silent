@@ -7,7 +7,7 @@ use crate::core::serde::from_str_multi_val;
 use crate::header::CONTENT_TYPE;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
-use crate::{Configs, SilentError};
+use crate::{Configs, Result, SilentError};
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
@@ -20,7 +20,7 @@ use serde::de::StdError;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 #[cfg(feature = "scheduler")]
 use std::sync::Arc;
 #[cfg(feature = "scheduler")]
@@ -55,7 +55,7 @@ impl Request {
     }
     /// Strip the request to [`hyper::Request`].
     #[doc(hidden)]
-    pub fn strip_to_hyper<QB>(&mut self) -> Result<hyper::Request<QB>, SilentError>
+    pub fn strip_to_hyper<QB>(&mut self) -> Result<hyper::Request<QB>>
     where
         QB: TryFrom<ReqBody>,
         <QB as TryFrom<ReqBody>>::Error: StdError + Send + Sync + 'static,
@@ -83,7 +83,7 @@ impl Request {
     }
     /// Strip the request to [`hyper::Request`].
     #[doc(hidden)]
-    pub async fn strip_to_bytes_hyper(&mut self) -> Result<hyper::Request<Bytes>, SilentError> {
+    pub async fn strip_to_bytes_hyper(&mut self) -> Result<hyper::Request<Bytes>> {
         let mut builder = http::request::Builder::new()
             .method(self.method().clone())
             .uri(self.uri().clone())
@@ -155,6 +155,15 @@ impl Request {
             .unwrap()
     }
 
+    /// 设置访问真实地址
+    #[inline]
+    pub fn set_remote(&mut self, remote_addr: SocketAddr) {
+        if self.headers().get("x-real-ip").is_none() {
+            self.headers_mut()
+                .insert("x-real-ip", remote_addr.ip().to_string().parse().unwrap());
+        }
+    }
+
     /// 获取请求方法
     #[inline]
     pub fn method(&self) -> &Method {
@@ -212,7 +221,7 @@ impl Request {
 
     /// 获取配置
     #[inline]
-    pub fn get_config<T: Send + Sync + 'static>(&self) -> Result<&T, SilentError> {
+    pub fn get_config<T: Send + Sync + 'static>(&self) -> Result<&T> {
         self.configs.get::<T>().ok_or(SilentError::ConfigNotFound)
     }
 
@@ -245,7 +254,7 @@ impl Request {
     }
 
     /// 获取路径参数
-    pub fn get_path_params<'a, T>(&'a self, key: &'a str) -> Result<T, SilentError>
+    pub fn get_path_params<'a, T>(&'a self, key: &'a str) -> Result<T>
     where
         T: TryFrom<&'a PathParam, Error = SilentError>,
     {
@@ -267,7 +276,7 @@ impl Request {
     }
 
     /// 转换query参数
-    pub fn params_parse<T>(&mut self) -> Result<T, SilentError>
+    pub fn params_parse<T>(&mut self) -> Result<T>
     where
         for<'de> T: Deserialize<'de>,
     {
@@ -300,7 +309,7 @@ impl Request {
     /// 获取请求form_data
     #[cfg(feature = "multipart")]
     #[inline]
-    pub async fn form_data(&mut self) -> Result<&FormData, SilentError> {
+    pub async fn form_data(&mut self) -> Result<&FormData> {
         let content_type = self.content_type().unwrap();
         if content_type.subtype() != mime::FORM_DATA {
             return Err(SilentError::ContentTypeError);
@@ -336,7 +345,7 @@ impl Request {
     }
 
     /// 转换body参数按Json匹配
-    pub async fn json_parse<T>(&mut self) -> Result<T, SilentError>
+    pub async fn json_parse<T>(&mut self) -> Result<T>
     where
         for<'de> T: Deserialize<'de>,
     {

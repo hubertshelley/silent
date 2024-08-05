@@ -5,7 +5,7 @@ use tokio_stream::{wrappers::ReceiverStream, Stream, StreamExt};
 use tonic::{Request, Response, Status, Streaming};
 
 use pb::{EchoRequest, EchoResponse};
-use silent::prelude::{logger, HandlerAppend, Level, Route, RouteService, Server};
+use silent::prelude::{info, logger, HandlerAppend, Level, Route, RouteService, Server};
 
 mod client;
 
@@ -54,8 +54,8 @@ impl pb::echo_server::Echo for EchoServer {
         &self,
         req: Request<EchoRequest>,
     ) -> EchoResult<Self::ServerStreamingEchoStream> {
-        println!("EchoServer::server_streaming_echo");
-        println!("\tclient connected from: {:?}", req.remote_addr());
+        info!("EchoServer::server_streaming_echo");
+        info!("\tclient connected from: {:?}", req.remote_addr());
 
         // creating infinite stream with requested message
         let repeat = std::iter::repeat(EchoResponse {
@@ -78,7 +78,7 @@ impl pb::echo_server::Echo for EchoServer {
                     }
                 }
             }
-            println!("\tclient disconnected");
+            info!("\tclient disconnected");
         });
 
         let output_stream = ReceiverStream::new(rx);
@@ -100,7 +100,7 @@ impl pb::echo_server::Echo for EchoServer {
         &self,
         req: Request<Streaming<EchoRequest>>,
     ) -> EchoResult<Self::BidirectionalStreamingEchoStream> {
-        println!("EchoServer::bidirectional_streaming_echo");
+        info!("EchoServer::bidirectional_streaming_echo");
 
         let mut in_stream = req.into_inner();
         let (tx, rx) = mpsc::channel(128);
@@ -121,7 +121,7 @@ impl pb::echo_server::Echo for EchoServer {
                             if io_err.kind() == ErrorKind::BrokenPipe {
                                 // here you can handle special case when client
                                 // disconnected in unexpected way
-                                eprintln!("\tclient disconnected: broken pipe");
+                                info!("\tclient disconnected: broken pipe");
                                 break;
                             }
                         }
@@ -133,7 +133,7 @@ impl pb::echo_server::Echo for EchoServer {
                     }
                 }
             }
-            println!("\tstream ended");
+            info!("\tstream ended");
         });
 
         // echo just write the same data that was received
