@@ -99,7 +99,6 @@ mod tests {
     use crate::scheduler::task::Task;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
-    use tracing::info;
 
     #[test]
     fn test_task() {
@@ -114,7 +113,7 @@ mod tests {
                 Ok(())
             }),
         );
-        info!("{:?}", task);
+        println!("{:?}", task);
         task.run().unwrap();
         assert_eq!(counter.load(Ordering::SeqCst), 0);
         task.process_time = ProcessTime::try_from("2023-01-01T00:00:00Z".to_string()).unwrap();

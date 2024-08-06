@@ -32,7 +32,7 @@ use multer;
 
 pub use crate::configs::Configs;
 pub use crate::core::{request::Request, response::Response};
-pub use crate::middleware::{middlewares, MiddleWareHandler};
+pub use crate::middleware::{middlewares, MiddleWareHandler, MiddlewareResult};
 pub use error::SilentError;
 pub use error::SilentResult as Result;
 pub use handler::Handler;
@@ -56,7 +56,8 @@ pub mod prelude {
     pub use crate::handler::Handler;
     pub use crate::handler::HandlerWrapper;
     pub use crate::log::*;
-    pub use crate::middleware::{MiddleWareHandler, Next};
+    pub use crate::middleware::MiddleWareHandler;
+    pub use crate::middleware::MiddlewareResult;
     #[cfg(feature = "upgrade")]
     pub use crate::route::handler_append::WSHandlerAppend;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};

@@ -3,7 +3,7 @@ use tonic::{Request, Response, Status};
 
 use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
-use silent::prelude::{info, logger, HandlerAppend, Level, Route, RouteService};
+use silent::prelude::{logger, HandlerAppend, Level, Route, RouteService};
 
 pub mod hello_world {
     tonic::include_proto!("helloworld");
@@ -18,7 +18,7 @@ impl Greeter for MyGreeter {
         &self,
         request: Request<HelloRequest>,
     ) -> Result<Response<HelloReply>, Status> {
-        info!("Got a request from {:?}", request.remote_addr());
+        println!("Got a request from {:?}", request.remote_addr());
 
         let reply = hello_world::HelloReply {
             message: format!("Hello {}!", request.into_inner().name),

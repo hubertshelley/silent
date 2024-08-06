@@ -3,7 +3,6 @@ use hello_world::HelloRequest;
 use http::Uri;
 use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
-use silent::prelude::info;
 
 pub mod hello_world {
     tonic::include_proto!("helloworld");
@@ -24,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let response = client.say_hello(request).await?;
 
-    info!("RESPONSE={:?}", response);
+    println!("RESPONSE={:?}", response);
 
     Ok(())
 }
