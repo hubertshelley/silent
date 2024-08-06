@@ -69,8 +69,6 @@ pub enum SilentError {
         /// 错误信息
         msg: String,
     },
-    #[error("not found")]
-    NotFound,
 }
 
 pub type SilentResult<T> = Result<T, SilentError>;
@@ -110,18 +108,14 @@ impl SilentError {
         let msg = serde_json::to_string(&msg).unwrap_or_default();
         Self::BusinessError { code, msg }
     }
-    pub fn business_error<T: Into<String>>(code: StatusCode, msg: T) -> Self {
-        Self::BusinessError {
-            code,
-            msg: msg.into(),
-        }
+    pub fn business_error(code: StatusCode, msg: String) -> Self {
+        Self::BusinessError { code, msg }
     }
     pub fn status(&self) -> StatusCode {
         match self {
             Self::BusinessError { code, .. } => *code,
             Self::SerdeDeError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::SerdeJsonError(_) => StatusCode::UNPROCESSABLE_ENTITY,
-            Self::NotFound => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -157,7 +151,6 @@ mod tests {
     use http_body_util::BodyExt;
     use hyper::StatusCode;
     use serde_json::Value;
-    use tracing::info;
 
     #[derive(Serialize)]
     struct ResBody {
@@ -176,8 +169,8 @@ mod tests {
         let err = SilentError::business_error_obj(StatusCode::BAD_REQUEST, res_body);
         let mut res: Response = err.into();
         assert_eq!(res.status, StatusCode::BAD_REQUEST);
-        info!("{:#?}", res.headers);
-        info!(
+        println!("{:#?}", res.headers);
+        println!(
             "{:#?}",
             res.body.frame().await.unwrap().unwrap().data_ref().unwrap()
         );

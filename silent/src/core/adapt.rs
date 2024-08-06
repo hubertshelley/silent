@@ -92,6 +92,7 @@ impl<B: Body> ResponseAdapt for HyperResponse<B> {
                 res.headers_mut().append(header::SET_COOKIE, hv);
             }
         }
+        // Default to a 404 if no response code was set
         *res.status_mut() = status;
 
         res

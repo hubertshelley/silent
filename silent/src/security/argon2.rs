@@ -31,13 +31,12 @@ pub fn verify_password(password_hash: String, password: String) -> Result<bool> 
 #[cfg(test)]
 mod test {
     use super::*;
-    use tracing::info;
 
     #[test]
     fn hash_test() {
         let password = "hello_password".to_string();
         let password_hash = make_password(password.clone()).unwrap();
-        info!("{}", password_hash);
+        println!("{}", password_hash);
         assert!(verify_password(password_hash, password,).is_ok())
     }
 }

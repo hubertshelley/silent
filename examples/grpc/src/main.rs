@@ -3,7 +3,7 @@ use tonic::{Request, Response, Status};
 
 use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
-use silent::prelude::{info, logger, HandlerAppend, Level, Route, RouteService, Server};
+use silent::prelude::{logger, HandlerAppend, Level, Route, RouteService, Server};
 
 mod client;
 
@@ -21,7 +21,7 @@ impl Greeter for MyGreeter {
         request: Request<HelloRequest>, // Accept request of type HelloRequest
     ) -> Result<Response<HelloReply>, Status> {
         // Return an instance of type HelloReply
-        info!("Got a request: {:?}", request);
+        println!("Got a request: {:?}", request);
 
         let reply = HelloReply {
             message: format!("Hello {}!", request.into_inner().name), // We must use .into_inner() as the fields of gRPC requests and responses are private
@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     .into_router();
     let route = Route::new("").get(|_req| async { Ok("hello world") });
     let root = route.route().with_grpc(greeter_server.into());
-    info!("route: \n{:?}", root);
+    println!("route: \n{:?}", root);
     Server::new()
         .bind("0.0.0.0:50051".parse().unwrap())
         .serve(root)

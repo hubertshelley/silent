@@ -109,13 +109,13 @@ impl Scheduler {
 
 #[cfg(test)]
 mod tests {
-    use crate::scheduler::process_time::ProcessTime;
-    use crate::scheduler::task::Task;
-    use crate::scheduler::Scheduler;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
     use tokio::sync::Mutex;
-    use tracing::info;
+
+    use crate::scheduler::process_time::ProcessTime;
+    use crate::scheduler::task::Task;
+    use crate::scheduler::Scheduler;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_scheduler_async() {
@@ -146,7 +146,7 @@ mod tests {
             }),
         );
         scheduler.add_task(async_task.clone()).unwrap();
-        info!("{:?}", scheduler.get_tasks());
+        println!("{:?}", scheduler.get_tasks());
         assert_eq!(scheduler.get_tasks().len(), 2);
         assert!(scheduler.add_task(async_task.clone()).is_err());
         scheduler.remove_task(&async_task.id);

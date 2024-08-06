@@ -208,14 +208,14 @@ mod tests {
                     let configs = configs.clone();
                     if let Some(my_type) = configs.get::<MyStringType>() {
                         // my_type.0 = i.to_string();
-                        info!("Ok: i:{}, v:{}", i, my_type.0)
+                        println!("Ok: i:{}, v:{}", i, my_type.0)
                     } else {
-                        error!("Err: i:{}", i)
+                        println!("Err: i:{}", i)
                     }
                 } else if let Some(my_type) = configs.get::<MyStringType>() {
-                    info!("Ok: i:{}, v:{}", i, my_type.0)
+                    println!("Ok: i:{}, v:{}", i, my_type.0)
                 } else {
-                    error!("Err: i:{}", i)
+                    println!("Err: i:{}", i)
                 }
             });
         }
