@@ -12,16 +12,15 @@ use crate::session::SessionMiddleware;
 use crate::templates::TemplateMiddleware;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
-use crate::{Configs, Handler, MiddleWareHandler, Request, Response, SilentError, StatusCode};
+use crate::{Configs, Handler, MiddleWareHandler, Request, Response, SilentError};
 #[cfg(feature = "session")]
-use async_session::{Session, SessionStore};
+use async_session::SessionStore;
 use async_trait::async_trait;
 use chrono::Utc;
 #[cfg(feature = "grpc")]
 use http::Method;
 use std::fmt;
 use std::future::Future;
-use std::net::SocketAddr;
 use std::sync::Arc;
 #[cfg(feature = "scheduler")]
 use tokio::sync::Mutex;
@@ -139,77 +138,36 @@ impl RootRoute {
 
 #[async_trait]
 impl Handler for RootRoute {
-    async fn call(&self, req: Request) -> Result<Response, SilentError> {
+    async fn call(&self, mut req: Request) -> Result<Response, SilentError> {
+        tracing::debug!("{:?}", req);
+        let exception_handler = self.exception_handler.clone();
         let configs = self.configs.clone().unwrap_or_default();
-        let (mut req, path) = req.split_url();
-        match self.handler_match(&mut req, path.as_str()) {
-            RouteMatched::Matched(route) => match route.handler.get(req.method()) {
-                None => Err(SilentError::business_error(
-                    StatusCode::METHOD_NOT_ALLOWED,
-                    "method not allowed".to_string(),
-                )),
-                Some(handler) => {
-                    let mut pre_res = Response::empty();
-                    pre_res.configs = configs.clone();
-                    #[cfg(feature = "cookie")]
-                    {
-                        *pre_res.cookies_mut() = req.cookies().clone();
-                    }
-                    #[cfg(feature = "session")]
-                    let session = req.extensions().get::<Session>().cloned();
-                    #[cfg(feature = "session")]
-                    if let Some(session) = session {
-                        pre_res.extensions.insert(session);
-                    }
-                    let mut active_middlewares = vec![];
-                    for middleware in route.middlewares.iter().cloned() {
-                        if middleware.match_req(&req).await {
-                            active_middlewares.push(middleware);
-                        }
-                    }
-                    let next = Next::build(handler.clone(), active_middlewares);
-                    pre_res.copy_from_response(next.call(req).await?);
-                    Ok(pre_res)
-                }
-            },
-            RouteMatched::Unmatched => Err(SilentError::business_error(
-                StatusCode::NOT_FOUND,
-                "Server not found".to_string(),
-            )),
-        }
-    }
-}
+        req.configs = configs.clone();
+        let method = req.method().clone();
+        let url = req.uri().to_string().clone();
+        let http_version = req.version();
+        let peer_addr = req.remote();
+        let start_time = Utc::now().time();
+        #[cfg(feature = "scheduler")]
+        req.extensions_mut().insert(self.scheduler.clone());
 
-impl RootRoute {
-    async fn handle_request(&self, req: Request) -> Result<Response, SilentError> {
         let mut root_middlewares = vec![];
         for middleware in self.middlewares.iter().cloned() {
             if middleware.match_req(&req).await {
                 root_middlewares.push(middleware);
             }
         }
-        let next = Next::build(Arc::new(self.clone()), root_middlewares);
-        next.call(req).await
-    }
-    pub async fn handle(&self, mut req: Request, peer_addr: SocketAddr) -> Response {
-        tracing::debug!("{:?}", req);
-        let exception_handler = self.exception_handler.clone();
-        let configs = self.configs.clone().unwrap_or_default();
-        req.configs = configs.clone();
-        if req.headers().get("x-real-ip").is_none() {
-            req.headers_mut()
-                .insert("x-real-ip", peer_addr.ip().to_string().parse().unwrap());
-        }
-        let method = req.method().clone();
-        let url = req.uri().to_string().clone();
-        let http_version = req.version();
-        let start_time = Utc::now().time();
-        #[cfg(feature = "scheduler")]
-        req.extensions_mut().insert(self.scheduler.clone());
-        let res = self.handle_request(req).await;
+        let (mut req, path) = req.split_url();
+        let res = match self.handler_match(&mut req, path.as_str()) {
+            RouteMatched::Matched(route) => {
+                let next = Next::build(Arc::new(route), root_middlewares);
+                next.call(req).await
+            }
+            RouteMatched::Unmatched => Err(SilentError::NotFound),
+        };
         let end_time = Utc::now().time();
         let req_time = end_time - start_time;
-        match res {
+        Ok(match res {
             Ok(res) => {
                 tracing::info!(
                     "{} {} {} {:?} {} {:?} {}",
@@ -240,7 +198,7 @@ impl RootRoute {
                     None => e.into(),
                 }
             }
-        }
+        })
     }
 }
 
