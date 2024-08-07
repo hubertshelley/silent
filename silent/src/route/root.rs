@@ -1,4 +1,3 @@
-use crate::error::{ExceptionHandler, ExceptionHandlerWrapper};
 #[cfg(feature = "grpc")]
 use crate::grpc::GrpcHandler;
 use crate::middleware::middleware_trait::Next;
@@ -20,7 +19,6 @@ use chrono::Utc;
 #[cfg(feature = "grpc")]
 use http::Method;
 use std::fmt;
-use std::future::Future;
 use std::sync::Arc;
 #[cfg(feature = "scheduler")]
 use tokio::sync::Mutex;
@@ -35,7 +33,6 @@ use tonic::server::NamedService;
 pub struct RootRoute {
     pub(crate) children: Vec<Route>,
     pub(crate) middlewares: Vec<Arc<dyn MiddleWareHandler>>,
-    pub(crate) exception_handler: Option<Arc<dyn ExceptionHandler>>,
     #[cfg(feature = "session")]
     pub(crate) session_set: bool,
     pub(crate) configs: Option<Configs>,
@@ -60,7 +57,6 @@ impl RootRoute {
         Self {
             children: vec![],
             middlewares: vec![],
-            exception_handler: None,
             #[cfg(feature = "session")]
             session_set: false,
             configs: None,
@@ -121,16 +117,6 @@ impl RootRoute {
             .iter_mut()
             .for_each(|r| r.middleware_hook_first(handler.clone()));
     }
-
-    pub fn set_exception_handler<F, T, Fut>(mut self, handler: F) -> Self
-    where
-        Fut: Future<Output = T> + Send + 'static,
-        F: Fn(SilentError, Configs) -> Fut + Send + Sync + 'static,
-        T: Into<Response>,
-    {
-        self.exception_handler = Some(ExceptionHandlerWrapper::new(handler).arc());
-        self
-    }
     pub(crate) fn set_configs(&mut self, configs: Option<Configs>) {
         self.configs = configs;
     }
@@ -140,7 +126,6 @@ impl RootRoute {
 impl Handler for RootRoute {
     async fn call(&self, mut req: Request) -> Result<Response, SilentError> {
         tracing::debug!("{:?}", req);
-        let exception_handler = self.exception_handler.clone();
         let configs = self.configs.clone().unwrap_or_default();
         req.configs = configs.clone();
         let method = req.method().clone();
@@ -193,10 +178,7 @@ impl Handler for RootRoute {
                     req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
                     e.to_string()
                 );
-                match exception_handler {
-                    Some(handler) => handler.call(e, configs.clone()).await,
-                    None => e.into(),
-                }
+                e.into()
             }
         })
     }
