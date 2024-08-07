@@ -1,8 +1,4 @@
-#[cfg(feature = "grpc")]
-use crate::grpc::GrpcHandler;
 use crate::middlewares::RequestTimeLogger;
-#[cfg(feature = "grpc")]
-use crate::prelude::HandlerGetter;
 use crate::route::handler_match::{Match, RouteMatched};
 use crate::route::Route;
 #[cfg(feature = "session")]
@@ -15,18 +11,10 @@ use crate::{Configs, Handler, MiddleWareHandler, Next, Request, Response, Silent
 #[cfg(feature = "session")]
 use async_session::SessionStore;
 use async_trait::async_trait;
-#[cfg(feature = "grpc")]
-use http::Method;
 use std::fmt;
 use std::sync::Arc;
 #[cfg(feature = "scheduler")]
 use tokio::sync::Mutex;
-#[cfg(feature = "grpc")]
-use tonic::body::BoxBody;
-#[cfg(feature = "grpc")]
-use tonic::codegen::Service;
-#[cfg(feature = "grpc")]
-use tonic::server::NamedService;
 
 #[derive(Clone, Default)]
 pub struct RootRoute {
@@ -62,38 +50,6 @@ impl RootRoute {
             #[cfg(feature = "scheduler")]
             scheduler: Arc::new(Mutex::new(Scheduler::new())),
         }
-    }
-
-    #[cfg(feature = "grpc")]
-    pub fn grpc<S>(&mut self, grpc: GrpcHandler<S>)
-    where
-        S: Service<http::Request<BoxBody>, Response = http::Response<BoxBody>> + NamedService,
-        S: Clone + Send + 'static,
-        S: Sync + Send + 'static,
-        S::Future: Send + 'static,
-        S::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send,
-    {
-        let path = grpc.path().to_string();
-        let handler = Arc::new(grpc);
-        let route = Route::new(path.as_str()).append(
-            Route::new("<path:**>")
-                .insert_handler(Method::POST, handler.clone())
-                .insert_handler(Method::GET, handler),
-        );
-        self.push(route)
-    }
-
-    #[cfg(feature = "grpc")]
-    pub fn with_grpc<S>(mut self, grpc: GrpcHandler<S>) -> Self
-    where
-        S: Service<http::Request<BoxBody>, Response = http::Response<BoxBody>> + NamedService,
-        S: Clone + Send + 'static,
-        S: Sync + Send + 'static,
-        S::Future: Send + 'static,
-        S::Error: Into<Box<dyn std::error::Error + Send + Sync>> + Send,
-    {
-        self.grpc(grpc);
-        self
     }
 
     pub fn push(&mut self, route: Route) {
