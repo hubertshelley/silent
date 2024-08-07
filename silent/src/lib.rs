@@ -32,6 +32,8 @@ use multer;
 
 pub use crate::configs::Configs;
 pub use crate::core::{next::Next, request::Request, response::Response};
+#[cfg(feature = "grpc")]
+pub use crate::grpc::{GrpcHandler, GrpcRegister};
 pub use crate::middleware::{middlewares, MiddleWareHandler};
 pub use error::SilentError;
 pub use error::SilentResult as Result;
@@ -51,6 +53,8 @@ pub mod prelude {
         res_body::stream_body, res_body::ResBody, response::Response,
     };
     pub use crate::error::{SilentError, SilentResult as Result};
+    #[cfg(feature = "grpc")]
+    pub use crate::grpc::{GrpcHandler, GrpcRegister};
     #[cfg(feature = "static")]
     pub use crate::handler::static_handler;
     pub use crate::handler::Handler;
