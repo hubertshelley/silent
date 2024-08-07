@@ -11,10 +11,10 @@ use std::sync::Arc;
 #[cfg(feature = "static")]
 use crate::handler::static_handler;
 use crate::handler::Handler;
-use crate::middleware::{MiddleWareHandler, Next};
+use crate::middleware::MiddleWareHandler;
 #[cfg(feature = "static")]
 use crate::prelude::HandlerGetter;
-use crate::{Method, Request, Response, SilentError};
+use crate::{Method, Next, Request, Response, SilentError};
 
 pub(crate) mod handler_append;
 mod handler_match;
@@ -125,6 +125,16 @@ impl Route {
         real_route.children.push(route);
         self
     }
+    pub fn extend<R: RouterAdapt>(&mut self, route: R) {
+        let mut route = route.into_router();
+        self.root_middlewares.extend(route.root_middlewares.clone());
+        self.middlewares
+            .iter()
+            .cloned()
+            .for_each(|m| route.middleware_hook(m.clone()));
+        let real_route = self.get_append_real_route(&self.create_path.clone());
+        real_route.children.push(route);
+    }
     pub fn root_hook(mut self, handler: impl MiddleWareHandler + 'static) -> Self {
         self.root_middlewares.push(Arc::new(handler));
         self
@@ -205,8 +215,7 @@ impl Handler for Route {
 
 #[cfg(test)]
 mod tests {
-    use crate::middleware::middleware_trait::Next;
-    use crate::{Request, Response};
+    use crate::{Next, Request, Response};
 
     use super::*;
 

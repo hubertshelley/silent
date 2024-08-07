@@ -1,5 +1,4 @@
-use crate::middleware::middleware_trait::Next;
-use crate::{MiddleWareHandler, Request, Response, Result, SilentError, StatusCode};
+use crate::{Handler, MiddleWareHandler, Next, Request, Response, Result, SilentError, StatusCode};
 use async_session::{MemoryStore, Session, SessionStore};
 use async_trait::async_trait;
 use cookie::Cookie;

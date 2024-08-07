@@ -1,7 +1,6 @@
 use crate::error::{ExceptionHandler, ExceptionHandlerWrapper};
 #[cfg(feature = "grpc")]
 use crate::grpc::GrpcHandler;
-use crate::middleware::middleware_trait::Next;
 #[cfg(feature = "grpc")]
 use crate::prelude::HandlerGetter;
 use crate::route::handler_match::{Match, RouteMatched};
@@ -12,7 +11,7 @@ use crate::session::SessionMiddleware;
 use crate::templates::TemplateMiddleware;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
-use crate::{Configs, Handler, MiddleWareHandler, Request, Response, SilentError};
+use crate::{Configs, Handler, MiddleWareHandler, Next, Request, Response, SilentError};
 #[cfg(feature = "session")]
 use async_session::SessionStore;
 use async_trait::async_trait;
