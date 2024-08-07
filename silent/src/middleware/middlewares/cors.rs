@@ -1,5 +1,4 @@
-use crate::middleware::middleware_trait::Next;
-use crate::{MiddleWareHandler, Request, Response, Result, SilentError};
+use crate::{Handler, MiddleWareHandler, Next, Request, Response, Result, SilentError};
 use async_trait::async_trait;
 use http::{header, Method};
 

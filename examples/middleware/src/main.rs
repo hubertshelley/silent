@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use silent::middleware::middleware_trait::Next;
 use silent::prelude::*;
 use std::sync::atomic::AtomicUsize;
 
