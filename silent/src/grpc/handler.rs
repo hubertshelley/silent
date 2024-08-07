@@ -2,11 +2,9 @@ use std::sync::Arc;
 
 use super::utils::merge_grpc_response;
 use crate::grpc::service::GrpcService;
-use crate::prelude::HandlerGetter;
-use crate::route::Route;
 use crate::{Handler, Response, SilentError};
 use async_trait::async_trait;
-use http::{header, HeaderValue, Method, StatusCode};
+use http::{header, HeaderValue, StatusCode};
 use http_body_util::BodyExt;
 use hyper::upgrade::OnUpgrade;
 use hyper_util::rt::TokioExecutor;
@@ -54,20 +52,6 @@ where
     }
     pub fn path(&self) -> &str {
         S::NAME
-    }
-
-    pub fn service(self) -> Route {
-        let path = self.path().to_string();
-        let handler = Arc::new(self);
-        Route::new(path.as_str()).append(
-            Route::new("<path:**>")
-                .insert_handler(Method::POST, handler.clone())
-                .insert_handler(Method::GET, handler),
-        )
-    }
-
-    pub fn register(self, route: &mut Route) {
-        route.extend(self.service());
     }
 }
 

@@ -6,6 +6,7 @@ use tonic::{Request, Response, Status, Streaming};
 
 use pb::{EchoRequest, EchoResponse};
 use silent::prelude::{info, logger, HandlerAppend, Level, Route, RouteService, Server};
+use silent::GrpcRegister;
 
 mod client;
 
@@ -150,9 +151,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     logger::fmt().with_max_level(Level::INFO).init();
     let server = EchoServer {};
     let route = Route::new("").get(|_req| async { Ok("hello world") });
-    let root = route
-        .route()
-        .with_grpc(pb::echo_server::EchoServer::new(server).into());
+    let mut root = route.route();
+    root.push(pb::echo_server::EchoServer::new(server).service());
     Server::new()
         .bind("0.0.0.0:50051".parse().unwrap())
         .serve(root)
