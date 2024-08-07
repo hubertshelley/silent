@@ -31,7 +31,7 @@ impl MiddleWareHandler for RequestTimeLogger {
         Ok(match res {
             Ok(res) => {
                 if res.status.as_u16() >= 400 {
-                    tracing::info!(
+                    tracing::warn!(
                         "{} {} {} {:?} {} {:?} {}",
                         peer_addr,
                         method,
@@ -42,7 +42,7 @@ impl MiddleWareHandler for RequestTimeLogger {
                         req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
                     );
                 } else {
-                    tracing::warn!(
+                    tracing::info!(
                         "{} {} {} {:?} {} {:?} {}",
                         peer_addr,
                         method,

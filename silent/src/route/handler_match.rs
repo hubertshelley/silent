@@ -2,6 +2,7 @@ use super::{RootRoute, Route};
 use crate::core::path_param::PathParam;
 use crate::Request;
 
+#[derive(Debug, Clone)]
 pub(crate) enum RouteMatched {
     Matched(Route),
     Unmatched,
