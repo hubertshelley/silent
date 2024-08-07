@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::{Configs, Handler, MiddleWareHandler, Next, Request, Response, Result};
+use crate::middleware::middleware_trait::Next;
+use crate::{Configs, MiddleWareHandler, Request, Response, Result};
 
 /// ExceptionHandler 中间件
 /// ```rust
