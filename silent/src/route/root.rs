@@ -1,6 +1,6 @@
-use crate::error::{ExceptionHandler, ExceptionHandlerWrapper};
 #[cfg(feature = "grpc")]
 use crate::grpc::GrpcHandler;
+use crate::middlewares::RequestTimeLogger;
 #[cfg(feature = "grpc")]
 use crate::prelude::HandlerGetter;
 use crate::route::handler_match::{Match, RouteMatched};
@@ -15,11 +15,9 @@ use crate::{Configs, Handler, MiddleWareHandler, Next, Request, Response, Silent
 #[cfg(feature = "session")]
 use async_session::SessionStore;
 use async_trait::async_trait;
-use chrono::Utc;
 #[cfg(feature = "grpc")]
 use http::Method;
 use std::fmt;
-use std::future::Future;
 use std::sync::Arc;
 #[cfg(feature = "scheduler")]
 use tokio::sync::Mutex;
@@ -34,7 +32,6 @@ use tonic::server::NamedService;
 pub struct RootRoute {
     pub(crate) children: Vec<Route>,
     pub(crate) middlewares: Vec<Arc<dyn MiddleWareHandler>>,
-    pub(crate) exception_handler: Option<Arc<dyn ExceptionHandler>>,
     #[cfg(feature = "session")]
     pub(crate) session_set: bool,
     pub(crate) configs: Option<Configs>,
@@ -59,7 +56,6 @@ impl RootRoute {
         Self {
             children: vec![],
             middlewares: vec![],
-            exception_handler: None,
             #[cfg(feature = "session")]
             session_set: false,
             configs: None,
@@ -121,17 +117,25 @@ impl RootRoute {
             .for_each(|r| r.middleware_hook_first(handler.clone()));
     }
 
-    pub fn set_exception_handler<F, T, Fut>(mut self, handler: F) -> Self
-    where
-        Fut: Future<Output = T> + Send + 'static,
-        F: Fn(SilentError, Configs) -> Fut + Send + Sync + 'static,
-        T: Into<Response>,
-    {
-        self.exception_handler = Some(ExceptionHandlerWrapper::new(handler).arc());
-        self
-    }
     pub(crate) fn set_configs(&mut self, configs: Option<Configs>) {
         self.configs = configs;
+    }
+}
+
+struct RootHandler {
+    inner: RouteMatched,
+    middlewares: Vec<Arc<dyn MiddleWareHandler>>,
+}
+#[async_trait]
+impl Handler for RootHandler {
+    async fn call(&self, req: Request) -> Result<Response, SilentError> {
+        match self.inner.clone() {
+            RouteMatched::Matched(route) => {
+                let next = Next::build(Arc::new(route), self.middlewares.clone());
+                next.call(req).await
+            }
+            RouteMatched::Unmatched => Err(SilentError::NotFound),
+        }
     }
 }
 
@@ -139,14 +143,8 @@ impl RootRoute {
 impl Handler for RootRoute {
     async fn call(&self, mut req: Request) -> Result<Response, SilentError> {
         tracing::debug!("{:?}", req);
-        let exception_handler = self.exception_handler.clone();
         let configs = self.configs.clone().unwrap_or_default();
         req.configs = configs.clone();
-        let method = req.method().clone();
-        let url = req.uri().to_string().clone();
-        let http_version = req.version();
-        let peer_addr = req.remote();
-        let start_time = Utc::now().time();
         #[cfg(feature = "scheduler")]
         req.extensions_mut().insert(self.scheduler.clone());
 
@@ -157,47 +155,12 @@ impl Handler for RootRoute {
             }
         }
         let (mut req, path) = req.split_url();
-        let res = match self.handler_match(&mut req, path.as_str()) {
-            RouteMatched::Matched(route) => {
-                let next = Next::build(Arc::new(route), root_middlewares);
-                next.call(req).await
-            }
-            RouteMatched::Unmatched => Err(SilentError::NotFound),
+        let handler = RootHandler {
+            inner: self.handler_match(&mut req, &path),
+            middlewares: root_middlewares,
         };
-        let end_time = Utc::now().time();
-        let req_time = end_time - start_time;
-        Ok(match res {
-            Ok(res) => {
-                tracing::info!(
-                    "{} {} {} {:?} {} {:?} {}",
-                    peer_addr,
-                    method,
-                    url,
-                    http_version,
-                    res.status.as_u16(),
-                    res.content_length().lower(),
-                    req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0
-                );
-                res
-            }
-            Err(e) => {
-                tracing::error!(
-                    "{} {} {} {:?} {} {:?} {} {}",
-                    peer_addr,
-                    method,
-                    url,
-                    http_version,
-                    e.status().as_u16(),
-                    0,
-                    req_time.num_nanoseconds().unwrap_or(0) as f64 / 1000000.0,
-                    e.to_string()
-                );
-                match exception_handler {
-                    Some(handler) => handler.call(e, configs.clone()).await,
-                    None => e.into(),
-                }
-            }
-        })
+        let next = Next::build(Arc::new(handler), vec![Arc::new(RequestTimeLogger::new())]);
+        next.call(req).await
     }
 }
 
