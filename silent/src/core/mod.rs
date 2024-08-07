@@ -2,6 +2,7 @@ pub mod adapt;
 
 #[cfg(feature = "multipart")]
 pub(crate) mod form;
+pub(crate) mod next;
 pub(crate) mod path_param;
 pub(crate) mod req_body;
 pub(crate) mod request;

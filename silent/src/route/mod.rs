@@ -1,22 +1,25 @@
+#[cfg(feature = "session")]
+use async_session::Session;
+use async_trait::async_trait;
+use http::StatusCode;
+pub use root::RootRoute;
+pub use route_service::RouteService;
+use std::collections::HashMap;
+use std::fmt;
+use std::sync::Arc;
+
 #[cfg(feature = "static")]
 use crate::handler::static_handler;
 use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
-use crate::Method;
-use std::collections::HashMap;
-use std::fmt;
-use std::sync::Arc;
+#[cfg(feature = "static")]
+use crate::prelude::HandlerGetter;
+use crate::{Method, Next, Request, Response, SilentError};
 
 pub(crate) mod handler_append;
 mod handler_match;
 mod root;
 mod route_service;
-
-pub use root::RootRoute;
-
-#[cfg(feature = "static")]
-use crate::prelude::HandlerGetter;
-pub use route_service::RouteService;
 
 pub trait RouterAdapt {
     fn into_router(self) -> Route;
@@ -122,6 +125,16 @@ impl Route {
         real_route.children.push(route);
         self
     }
+    pub fn extend<R: RouterAdapt>(&mut self, route: R) {
+        let mut route = route.into_router();
+        self.root_middlewares.extend(route.root_middlewares.clone());
+        self.middlewares
+            .iter()
+            .cloned()
+            .for_each(|m| route.middleware_hook(m.clone()));
+        let real_route = self.get_append_real_route(&self.create_path.clone());
+        real_route.children.push(route);
+    }
     pub fn root_hook(mut self, handler: impl MiddleWareHandler + 'static) -> Self {
         self.root_middlewares.push(Arc::new(handler));
         self
@@ -164,14 +177,56 @@ impl Route {
     }
 }
 
+#[async_trait]
+impl Handler for Route {
+    async fn call(&self, req: Request) -> crate::error::SilentResult<Response> {
+        let configs = req.configs();
+        match self.handler.get(req.method()) {
+            None => Err(SilentError::business_error(
+                StatusCode::METHOD_NOT_ALLOWED,
+                "method not allowed".to_string(),
+            )),
+            Some(handler) => {
+                let mut pre_res = Response::empty();
+                pre_res.configs = configs;
+                #[cfg(feature = "cookie")]
+                {
+                    *pre_res.cookies_mut() = req.cookies().clone();
+                }
+                #[cfg(feature = "session")]
+                let session = req.extensions().get::<Session>().cloned();
+                #[cfg(feature = "session")]
+                if let Some(session) = session {
+                    pre_res.extensions.insert(session);
+                }
+                let mut active_middlewares = vec![];
+                for middleware in self.middlewares.iter().cloned() {
+                    if middleware.match_req(&req).await {
+                        active_middlewares.push(middleware);
+                    }
+                }
+                let next = Next::build(handler.clone(), active_middlewares);
+                pre_res.copy_from_response(next.call(req).await?);
+                Ok(pre_res)
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::{Next, Request, Response};
+
     use super::*;
 
     #[derive(Clone, Eq, PartialEq)]
     struct MiddlewareTest;
-
-    impl MiddleWareHandler for MiddlewareTest {}
+    #[async_trait::async_trait]
+    impl MiddleWareHandler for MiddlewareTest {
+        async fn handle(&self, req: Request, next: &Next) -> crate::error::SilentResult<Response> {
+            next.call(req).await
+        }
+    }
 
     #[test]
     fn middleware_tree_test() {

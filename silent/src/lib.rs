@@ -31,8 +31,8 @@ mod ws;
 use multer;
 
 pub use crate::configs::Configs;
-pub use crate::core::{request::Request, response::Response};
-pub use crate::middleware::{middlewares, MiddleWareHandler, MiddlewareResult};
+pub use crate::core::{next::Next, request::Request, response::Response};
+pub use crate::middleware::{middlewares, MiddleWareHandler};
 pub use error::SilentError;
 pub use error::SilentResult as Result;
 pub use handler::Handler;
@@ -47,7 +47,7 @@ pub mod prelude {
     #[cfg(feature = "multipart")]
     pub use crate::core::form::{FilePart, FormData};
     pub use crate::core::{
-        path_param::PathParam, req_body::ReqBody, request::Request, res_body::full,
+        next::Next, path_param::PathParam, req_body::ReqBody, request::Request, res_body::full,
         res_body::stream_body, res_body::ResBody, response::Response,
     };
     pub use crate::error::{SilentError, SilentResult as Result};
@@ -57,7 +57,6 @@ pub mod prelude {
     pub use crate::handler::HandlerWrapper;
     pub use crate::log::*;
     pub use crate::middleware::MiddleWareHandler;
-    pub use crate::middleware::MiddlewareResult;
     #[cfg(feature = "upgrade")]
     pub use crate::route::handler_append::WSHandlerAppend;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
