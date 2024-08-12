@@ -234,11 +234,6 @@ impl Request {
         &mut self.configs
     }
 
-    /// 获取可变原请求体
-    // pub fn req_mut(&mut self) -> &mut BaseRequest<ReqBody> {
-    //     &mut self.req
-    // }
-
     /// 获取路径参数集合
     pub fn path_params(&self) -> &HashMap<String, PathParam> {
         &self.path_params
@@ -312,6 +307,18 @@ impl Request {
             .await
     }
 
+    /// 获取请求form_data
+    #[cfg(feature = "multipart")]
+    #[inline]
+    pub async fn form_parse<T>(&mut self) -> Result<T>
+    where
+        for<'de> T: Deserialize<'de>,
+    {
+        let form_data = self.form_data().await?;
+        let value = serde_json::to_value(form_data.fields.clone())?;
+        serde_json::from_value(value).map_err(Into::into)
+    }
+
     /// 转换body参数
     #[cfg(feature = "multipart")]
     pub async fn form_field<T>(&mut self, key: &str) -> Option<T>
@@ -374,6 +381,21 @@ impl Request {
             },
             ReqBody::Empty => Err(SilentError::BodyEmpty),
         }
+    }
+
+    /// 转换body参数按Json匹配
+    pub async fn json_field<T>(&mut self, key: &str) -> Result<T>
+    where
+        for<'de> T: Deserialize<'de>,
+    {
+        let value: Value = self.json_parse().await?;
+        serde_json::from_value(
+            value
+                .get(key)
+                .ok_or(SilentError::ParamsNotFound)?
+                .to_owned(),
+        )
+        .map_err(Into::into)
     }
 
     /// 获取请求body
