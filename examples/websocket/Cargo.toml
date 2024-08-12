@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.81"
 silent = { path = "../../silent", features = ["upgrade"] }
-tokio = { version = "1.38.0", features = ["full"] }
+tokio = { version = "1.39.2", features = ["full"] }
 tokio-tungstenite = "0.23.1"
 futures-util = "0.3.30"
 backtrace = "0.3.73"
