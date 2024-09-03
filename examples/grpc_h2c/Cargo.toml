@@ -13,15 +13,15 @@ name = "example-grpc-client"
 path = "src/client.rs"
 
 [dependencies]
-tonic = { version = "0.12.1" }
+tonic = { version = "0.12.2" }
 prost = "0.13"
-tokio = { version = "1.39", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
 silent = { path = "../../silent", features = ["grpc"] }
-async-trait = "0.1.81"
+async-trait = "0.1.82"
 http = "1.1.0"
 hyper-util = "0.1.7"
 hyper = "1.4.1"
-tower = "0.4.13"
+tower = "0.5.0"
 
 [build-dependencies]
-tonic-build = { version = "0.12.1" }
+tonic-build = { version = "0.12.2" }

@@ -1,0 +1,13 @@
+[package]
+name = "wasm"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+silent = { path = "../../silent" }
+tokio_wasi = { version = "1", features = ["full"] }
