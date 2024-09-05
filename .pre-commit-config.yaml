@@ -39,7 +39,7 @@ repos:
       - id: cargo-check
         name: cargo check
         description: Check the package for errors.
-        entry: bash -c 'cargo check --all'
+        entry: bash -c 'cargo check --all-features '
         language: rust
         files: \.rs$
         pass_filenames: false
