@@ -1,0 +1,16 @@
+[package]
+name = "examples_wasm_test"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+tokio = { version = "1.15.0", features = ["full"] }
+extism = "1.6.0"
+extism-pdk = "1.2.1"
+silent = { path = "../../silent" }
+crossbeam-epoch = "0.9.18"
