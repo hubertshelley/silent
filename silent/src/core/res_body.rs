@@ -7,6 +7,7 @@ use bytes::Bytes;
 use futures_util::stream::{BoxStream, Stream};
 use futures_util::TryStreamExt;
 use http_body::{Body, Frame, SizeHint};
+#[cfg(feature = "server")]
 use hyper::body::Incoming;
 
 use crate::error::BoxedError;
@@ -19,6 +20,7 @@ pub enum ResBody {
     Once(Bytes),
     /// Chunks body.
     Chunks(VecDeque<Bytes>),
+    #[cfg(feature = "server")]
     /// Incoming default body.
     Incoming(Incoming),
     /// Stream body.
@@ -59,6 +61,7 @@ impl Stream for ResBody {
                 }
             }
             ResBody::Chunks(chunks) => Poll::Ready(chunks.pop_front().map(Ok)),
+            #[cfg(feature = "server")]
             ResBody::Incoming(body) => match Body::poll_frame(Pin::new(body), cx) {
                 Poll::Ready(Some(Ok(frame))) => Poll::Ready(frame.into_data().map(Ok).ok()),
                 Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e.into()))),
@@ -97,6 +100,7 @@ impl Body for ResBody {
             ResBody::Chunks(chunks) => {
                 Poll::Ready(chunks.pop_front().map(|bytes| Ok(Frame::data(bytes))))
             }
+            #[cfg(feature = "server")]
             ResBody::Incoming(body) => Body::poll_frame(Pin::new(body), cx).map_err(Into::into),
             ResBody::Stream(stream) => stream.as_mut().poll_next(cx).map_ok(Frame::data),
             ResBody::Boxed(body) => Body::poll_frame(Pin::new(body), cx),
@@ -108,6 +112,7 @@ impl Body for ResBody {
             ResBody::None => true,
             ResBody::Once(bytes) => bytes.is_empty(),
             ResBody::Chunks(chunks) => chunks.is_empty(),
+            #[cfg(feature = "server")]
             ResBody::Incoming(body) => body.is_end_stream(),
             ResBody::Boxed(body) => body.is_end_stream(),
             ResBody::Stream(_) => false,
@@ -122,6 +127,7 @@ impl Body for ResBody {
                 let size = chunks.iter().map(|bytes| bytes.len() as u64).sum();
                 SizeHint::with_exact(size)
             }
+            #[cfg(feature = "server")]
             ResBody::Incoming(recv) => recv.size_hint(),
             ResBody::Boxed(recv) => recv.size_hint(),
             ResBody::Stream(_) => SizeHint::default(),
@@ -135,6 +141,7 @@ impl From<Bytes> for ResBody {
     }
 }
 
+#[cfg(feature = "server")]
 impl From<Incoming> for ResBody {
     fn from(value: Incoming) -> ResBody {
         ResBody::Incoming(value)

@@ -5,6 +5,7 @@ use std::task::{Context, Poll};
 use bytes::Bytes;
 use futures_util::Stream;
 use http_body::{Body, Frame, SizeHint};
+#[cfg(feature = "server")]
 use hyper::body::Incoming;
 
 #[derive(Debug)]
@@ -14,10 +15,12 @@ pub enum ReqBody {
     Empty,
     /// Once bytes body.
     Once(Bytes),
+    #[cfg(feature = "server")]
     /// Incoming default body.
     Incoming(Incoming),
 }
 
+#[cfg(feature = "server")]
 impl From<Incoming> for ReqBody {
     fn from(incoming: Incoming) -> Self {
         Self::Incoming(incoming)
@@ -38,9 +41,12 @@ impl Body for ReqBody {
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Frame<Self::Data>, Self::Error>>> {
+        #[cfg(not(feature = "server"))]
+        let _ = cx;
         match &mut *self {
             ReqBody::Empty => Poll::Ready(None),
             ReqBody::Once(bytes) => Poll::Ready(Some(Ok(Frame::data(bytes.clone())))),
+            #[cfg(feature = "server")]
             ReqBody::Incoming(body) => Pin::new(body)
                 .poll_frame(cx)
                 .map_err(|e| IoError::new(ErrorKind::Other, e)),
@@ -51,6 +57,7 @@ impl Body for ReqBody {
         match self {
             ReqBody::Empty => true,
             ReqBody::Once(bytes) => bytes.is_empty(),
+            #[cfg(feature = "server")]
             ReqBody::Incoming(body) => body.is_end_stream(),
         }
     }
@@ -59,6 +66,7 @@ impl Body for ReqBody {
         match self {
             ReqBody::Empty => SizeHint::with_exact(0),
             ReqBody::Once(bytes) => SizeHint::with_exact(bytes.len() as u64),
+            #[cfg(feature = "server")]
             ReqBody::Incoming(body) => body.size_hint(),
         }
     }

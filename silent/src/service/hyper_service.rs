@@ -5,7 +5,8 @@ use std::pin::Pin;
 use hyper::service::Service as HyperService;
 use hyper::{Request as HyperRequest, Response as HyperResponse};
 
-use crate::core::{adapt::RequestAdapt, adapt::ResponseAdapt, res_body::ResBody};
+use crate::core::res_body::ResBody;
+use crate::core::{adapt::RequestAdapt, adapt::ResponseAdapt};
 use crate::prelude::ReqBody;
 use crate::{Handler, Request, Response};
 

@@ -1,3 +1,10 @@
+#[cfg(feature = "static")]
+use crate::handler::static_handler;
+use crate::handler::Handler;
+use crate::middleware::MiddleWareHandler;
+#[cfg(feature = "static")]
+use crate::prelude::HandlerGetter;
+use crate::{Method, Next, Request, Response, SilentError};
 #[cfg(feature = "session")]
 use async_session::Session;
 use async_trait::async_trait;
@@ -7,14 +14,6 @@ pub use route_service::RouteService;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
-
-#[cfg(feature = "static")]
-use crate::handler::static_handler;
-use crate::handler::Handler;
-use crate::middleware::MiddleWareHandler;
-#[cfg(feature = "static")]
-use crate::prelude::HandlerGetter;
-use crate::{Method, Next, Request, Response, SilentError};
 
 pub(crate) mod handler_append;
 mod handler_match;

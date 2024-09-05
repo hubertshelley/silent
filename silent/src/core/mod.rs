@@ -1,3 +1,4 @@
+#[cfg(not(feature = "wasm"))]
 pub mod adapt;
 
 #[cfg(feature = "multipart")]

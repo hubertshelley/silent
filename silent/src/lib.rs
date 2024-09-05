@@ -13,7 +13,7 @@ mod route;
 mod scheduler;
 #[cfg(feature = "security")]
 mod security;
-#[cfg(feature = "server")]
+#[cfg(all(feature = "server", not(feature = "wasm")))]
 mod service;
 #[cfg(feature = "session")]
 mod session;
@@ -40,7 +40,7 @@ pub use error::SilentResult as Result;
 pub use handler::Handler;
 pub use handler::HandlerWrapper;
 pub use headers;
-pub use hyper::{header, Method, StatusCode};
+pub use http::{header, Method, StatusCode};
 #[cfg(feature = "scheduler")]
 pub use scheduler::{ProcessTime, Scheduler, Task};
 
@@ -61,20 +61,20 @@ pub mod prelude {
     pub use crate::handler::HandlerWrapper;
     pub use crate::log::*;
     pub use crate::middleware::MiddleWareHandler;
-    #[cfg(feature = "upgrade")]
-    pub use crate::route::handler_append::WSHandlerAppend;
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
     pub use crate::route::{RootRoute, Route, RouteService, RouterAdapt};
     #[cfg(feature = "scheduler")]
     pub use crate::scheduler::Task;
     #[cfg(feature = "security")]
     pub use crate::security::{argon2, pbkdf2};
-    #[cfg(feature = "server")]
+    #[cfg(all(feature = "server", not(feature = "wasm")))]
     pub use crate::service::Server;
     #[cfg(feature = "sse")]
     pub use crate::sse::{sse_reply, SSEEvent};
     #[cfg(feature = "template")]
     pub use crate::templates::*;
+    #[cfg(feature = "upgrade")]
+    pub use crate::ws::WSHandlerAppend;
     #[cfg(feature = "upgrade")]
     pub use crate::ws::{
         FnOnClose, FnOnConnect, FnOnNoneResultFut, FnOnReceive, FnOnSend, FnOnSendFut,
@@ -86,5 +86,8 @@ pub mod prelude {
     #[cfg(feature = "cookie")]
     pub use cookie::{time as CookieTime, Cookie};
     pub use headers;
-    pub use hyper::{header, upgrade, Method, StatusCode};
+    #[cfg(feature = "upgrade")]
+    pub use hyper::upgrade;
+
+    pub use http::{header, Method, StatusCode};
 }

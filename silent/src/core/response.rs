@@ -253,9 +253,7 @@ impl<B: Body> Response<B> {
 impl<S: Serialize> From<S> for Response {
     fn from(value: S) -> Self {
         match serde_json::to_value(&value).unwrap() {
-            Value::String(value) => Response::empty()
-                .with_typed_header(ContentType::json())
-                .with_body(full(value.as_bytes().to_vec())),
+            Value::String(value) => Self::text(&value),
             _ => Self::json(&value),
         }
     }

@@ -64,7 +64,7 @@ impl RootRoute {
             .iter_mut()
             .for_each(|r| r.middleware_hook(handler.clone()));
     }
-    #[allow(dead_code)]
+    #[cfg(feature = "session")]
     pub(crate) fn hook_first(&mut self, handler: impl MiddleWareHandler + 'static) {
         let handler = Arc::new(handler);
         self.middlewares.insert(0, handler.clone());
@@ -72,7 +72,7 @@ impl RootRoute {
             .iter_mut()
             .for_each(|r| r.middleware_hook_first(handler.clone()));
     }
-
+    #[cfg(all(feature = "server", not(feature = "wasm")))]
     pub(crate) fn set_configs(&mut self, configs: Option<Configs>) {
         self.configs = configs;
     }

@@ -25,6 +25,7 @@ pub enum SilentError {
     /// 反序列化 错误
     #[error("serde de error `{0}`")]
     SerdeDeError(#[from] serde::de::value::Error),
+    #[cfg(feature = "server")]
     /// Hyper 错误
     #[error("the data for key `{0}` is not available")]
     HyperError(#[from] hyper::Error),

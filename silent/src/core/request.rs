@@ -8,14 +8,19 @@ use crate::header::CONTENT_TYPE;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
 use crate::{Configs, Result, SilentError};
+#[cfg(feature = "server")]
 use bytes::Bytes;
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 use http::request::Parts;
+use http::Request as BaseRequest;
+#[cfg(feature = "server")]
+use http::StatusCode;
 use http::{Extensions, HeaderMap, HeaderValue, Method, Uri, Version};
-use http::{Request as BaseRequest, StatusCode};
+#[cfg(feature = "server")]
 use http_body_util::BodyExt;
 use mime::Mime;
+#[cfg(feature = "server")]
 use serde::de::StdError;
 use serde::Deserialize;
 use serde_json::Value;
@@ -53,8 +58,8 @@ impl Request {
     pub fn into_http(self) -> http::Request<ReqBody> {
         http::Request::from_parts(self.parts, self.body)
     }
+    #[cfg(feature = "server")]
     /// Strip the request to [`hyper::Request`].
-    #[doc(hidden)]
     pub fn strip_to_hyper<QB>(&mut self) -> Result<hyper::Request<QB>>
     where
         QB: TryFrom<ReqBody>,
@@ -81,8 +86,9 @@ impl Request {
             })?)
             .map_err(|e| SilentError::business_error(StatusCode::BAD_REQUEST, e.to_string()))
     }
+
+    #[cfg(feature = "server")]
     /// Strip the request to [`hyper::Request`].
-    #[doc(hidden)]
     pub async fn strip_to_bytes_hyper(&mut self) -> Result<hyper::Request<Bytes>> {
         let mut builder = http::request::Builder::new()
             .method(self.method().clone())
@@ -117,10 +123,6 @@ impl Request {
             .unwrap()
             .into_parts();
         Self {
-            // req: BaseRequest::builder()
-            //     .method("GET")
-            //     .body(().into())
-            //     .unwrap(),
             parts,
             path_params: HashMap::new(),
             params: HashMap::new(),
@@ -361,35 +363,34 @@ impl Request {
         if content_type.subtype() == mime::FORM_DATA {
             return Err(SilentError::ContentTypeError);
         }
-        match body {
-            ReqBody::Incoming(body) => {
-                let value = self
-                    .json_data
-                    .get_or_try_init(|| async {
-                        match content_type.subtype() {
-                            mime::WWW_FORM_URLENCODED => {
-                                let bytes = body.collect().await.unwrap().to_bytes();
-                                serde_urlencoded::from_bytes(&bytes).map_err(SilentError::from)
-                            }
-                            mime::JSON => {
-                                let bytes = body.collect().await.unwrap().to_bytes();
-                                serde_json::from_slice(&bytes).map_err(|e| e.into())
-                            }
-                            _ => Err(SilentError::JsonEmpty),
+        let value = self
+            .json_data
+            .get_or_try_init(|| async {
+                match body {
+                    #[cfg(feature = "server")]
+                    ReqBody::Incoming(body) => match content_type.subtype() {
+                        mime::WWW_FORM_URLENCODED => {
+                            let bytes = body.collect().await.unwrap().to_bytes();
+                            serde_urlencoded::from_bytes(&bytes).map_err(SilentError::from)
                         }
-                    })
-                    .await?;
-                Ok(serde_json::from_value(value.to_owned())?)
-            }
-            ReqBody::Once(bytes) => match content_type.subtype() {
-                mime::WWW_FORM_URLENCODED => {
-                    serde_urlencoded::from_bytes(&bytes).map_err(SilentError::from)
+                        mime::JSON => {
+                            let bytes = body.collect().await.unwrap().to_bytes();
+                            serde_json::from_slice(&bytes).map_err(|e| e.into())
+                        }
+                        _ => Err(SilentError::JsonEmpty),
+                    },
+                    ReqBody::Once(bytes) => match content_type.subtype() {
+                        mime::WWW_FORM_URLENCODED => {
+                            serde_urlencoded::from_bytes(&bytes).map_err(SilentError::from)
+                        }
+                        mime::JSON => serde_json::from_slice(&bytes).map_err(|e| e.into()),
+                        _ => Err(SilentError::JsonEmpty),
+                    },
+                    ReqBody::Empty => Err(SilentError::BodyEmpty),
                 }
-                mime::JSON => serde_json::from_slice(&bytes).map_err(|e| e.into()),
-                _ => Err(SilentError::JsonEmpty),
-            },
-            ReqBody::Empty => Err(SilentError::BodyEmpty),
-        }
+            })
+            .await?;
+        Ok(serde_json::from_value(value.to_owned())?)
     }
 
     /// 转换body参数按Json匹配
