@@ -1,6 +1,5 @@
 mod configs;
 /// The `silent` library.
-#[warn(missing_docs)]
 mod core;
 mod error;
 #[cfg(feature = "grpc")]
@@ -31,6 +30,8 @@ mod ws;
 use multer;
 
 pub use crate::configs::Configs;
+#[cfg(feature = "cookie")]
+pub use crate::core::cookie::CookieExt;
 pub use crate::core::{next::Next, request::Request, response::Response};
 #[cfg(feature = "grpc")]
 pub use crate::grpc::{GrpcHandler, GrpcRegister};
@@ -46,6 +47,8 @@ pub use scheduler::{ProcessTime, Scheduler, SchedulerExt, Task};
 
 pub mod prelude {
     pub use crate::configs::Configs;
+    #[cfg(feature = "cookie")]
+    pub use crate::core::cookie::CookieExt;
     #[cfg(feature = "multipart")]
     pub use crate::core::form::{FilePart, FormData};
     pub use crate::core::{

@@ -8,6 +8,8 @@ use hyper::Response as HyperResponse;
 
 use crate::core::req_body::ReqBody;
 #[cfg(feature = "cookie")]
+use crate::CookieExt;
+#[cfg(feature = "cookie")]
 use crate::SilentError;
 use crate::{Request, Response};
 
@@ -58,6 +60,8 @@ impl RequestAdapt for HyperRequest<ReqBody> {
 impl<B: Body> ResponseAdapt for HyperResponse<B> {
     type Body = B;
     fn tran_from_response(res: Response<B>) -> Self {
+        #[cfg(feature = "cookie")]
+        let cookies = res.cookies();
         let Response {
             status,
             headers,
@@ -70,7 +74,7 @@ impl<B: Body> ResponseAdapt for HyperResponse<B> {
         let mut res = hyper::Response::new(body);
         res.headers_mut().extend(headers);
         #[cfg(feature = "cookie")]
-        for cookie in extensions.get::<CookieJar>().unwrap().delta() {
+        for cookie in cookies.delta() {
             if let Ok(hv) = cookie.encoded().to_string().parse() {
                 res.headers_mut().append(header::SET_COOKIE, hv);
             }
