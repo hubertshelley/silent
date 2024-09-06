@@ -5,12 +5,8 @@ use crate::core::req_body::ReqBody;
 #[cfg(feature = "multipart")]
 use crate::core::serde::from_str_multi_val;
 use crate::header::CONTENT_TYPE;
-#[cfg(feature = "scheduler")]
-use crate::Scheduler;
-use crate::{Configs, SilentError};
+use crate::{Configs, Result, SilentError};
 use bytes::Bytes;
-#[cfg(feature = "cookie")]
-use cookie::{Cookie, CookieJar};
 use http::request::Parts;
 use http::{Extensions, HeaderMap, HeaderValue, Method, Uri, Version};
 use http::{Request as BaseRequest, StatusCode};
@@ -20,11 +16,7 @@ use serde::de::StdError;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::net::IpAddr;
-#[cfg(feature = "scheduler")]
-use std::sync::Arc;
-#[cfg(feature = "scheduler")]
-use tokio::sync::Mutex;
+use std::net::{IpAddr, SocketAddr};
 use tokio::sync::OnceCell;
 use url::form_urlencoded;
 
@@ -43,8 +35,6 @@ pub struct Request {
     #[cfg(feature = "multipart")]
     form_data: OnceCell<FormData>,
     json_data: OnceCell<Value>,
-    #[cfg(feature = "cookie")]
-    pub(crate) cookies: CookieJar,
     pub(crate) configs: Configs,
 }
 
@@ -55,7 +45,7 @@ impl Request {
     }
     /// Strip the request to [`hyper::Request`].
     #[doc(hidden)]
-    pub fn strip_to_hyper<QB>(&mut self) -> Result<hyper::Request<QB>, SilentError>
+    pub fn strip_to_hyper<QB>(&mut self) -> Result<hyper::Request<QB>>
     where
         QB: TryFrom<ReqBody>,
         <QB as TryFrom<ReqBody>>::Error: StdError + Send + Sync + 'static,
@@ -83,7 +73,7 @@ impl Request {
     }
     /// Strip the request to [`hyper::Request`].
     #[doc(hidden)]
-    pub async fn strip_to_bytes_hyper(&mut self) -> Result<hyper::Request<Bytes>, SilentError> {
+    pub async fn strip_to_bytes_hyper(&mut self) -> Result<hyper::Request<Bytes>> {
         let mut builder = http::request::Builder::new()
             .method(self.method().clone())
             .uri(self.uri().clone())
@@ -128,8 +118,6 @@ impl Request {
             #[cfg(feature = "multipart")]
             form_data: OnceCell::new(),
             json_data: OnceCell::new(),
-            #[cfg(feature = "cookie")]
-            cookies: CookieJar::default(),
             configs: Configs::default(),
         }
     }
@@ -153,6 +141,15 @@ impl Request {
             .unwrap()
             .parse()
             .unwrap()
+    }
+
+    /// 设置访问真实地址
+    #[inline]
+    pub fn set_remote(&mut self, remote_addr: SocketAddr) {
+        if self.headers().get("x-real-ip").is_none() {
+            self.headers_mut()
+                .insert("x-real-ip", remote_addr.ip().to_string().parse().unwrap());
+        }
     }
 
     /// 获取请求方法
@@ -212,7 +209,7 @@ impl Request {
 
     /// 获取配置
     #[inline]
-    pub fn get_config<T: Send + Sync + 'static>(&self) -> Result<&T, SilentError> {
+    pub fn get_config<T: Send + Sync + 'static>(&self) -> Result<&T> {
         self.configs.get::<T>().ok_or(SilentError::ConfigNotFound)
     }
 
@@ -240,7 +237,7 @@ impl Request {
     }
 
     /// 获取路径参数
-    pub fn get_path_params<'a, T>(&'a self, key: &'a str) -> Result<T, SilentError>
+    pub fn get_path_params<'a, T>(&'a self, key: &'a str) -> Result<T>
     where
         T: TryFrom<&'a PathParam, Error = SilentError>,
     {
@@ -262,7 +259,7 @@ impl Request {
     }
 
     /// 转换query参数
-    pub fn params_parse<T>(&mut self) -> Result<T, SilentError>
+    pub fn params_parse<T>(&mut self) -> Result<T>
     where
         for<'de> T: Deserialize<'de>,
     {
@@ -295,7 +292,7 @@ impl Request {
     /// 获取请求form_data
     #[cfg(feature = "multipart")]
     #[inline]
-    pub async fn form_data(&mut self) -> Result<&FormData, SilentError> {
+    pub async fn form_data(&mut self) -> Result<&FormData> {
         let content_type = self.content_type().unwrap();
         if content_type.subtype() != mime::FORM_DATA {
             return Err(SilentError::ContentTypeError);
@@ -343,7 +340,7 @@ impl Request {
     }
 
     /// 转换body参数按Json匹配
-    pub async fn json_parse<T>(&mut self) -> Result<T, SilentError>
+    pub async fn json_parse<T>(&mut self) -> Result<T>
     where
         for<'de> T: Deserialize<'de>,
     {
@@ -414,34 +411,6 @@ impl Request {
     pub(crate) fn split_url(self) -> (Self, String) {
         let url = self.uri().path().to_string();
         (self, url)
-    }
-
-    #[cfg(feature = "cookie")]
-    /// Get `CookieJar` reference.
-    #[inline]
-    pub fn cookies(&self) -> &CookieJar {
-        &self.cookies
-    }
-    #[cfg(feature = "cookie")]
-    /// Get `CookieJar` mutable reference.
-    #[inline]
-    pub fn cookies_mut(&mut self) -> &mut CookieJar {
-        &mut self.cookies
-    }
-    #[cfg(feature = "cookie")]
-    /// Get `Cookie` from cookies.
-    #[inline]
-    pub fn cookie<T>(&self, name: T) -> Option<&Cookie<'static>>
-    where
-        T: AsRef<str>,
-    {
-        self.cookies.get(name.as_ref())
-    }
-    #[cfg(feature = "scheduler")]
-    #[inline]
-    /// Get `Scheduler` from extensions.
-    pub fn scheduler(&self) -> &Arc<Mutex<Scheduler>> {
-        self.extensions().get().unwrap()
     }
 }
 

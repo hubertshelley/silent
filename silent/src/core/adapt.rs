@@ -44,35 +44,20 @@ fn get_cookie(req: &HyperRequest<ReqBody>) -> Result<CookieJar, SilentError> {
 }
 
 impl RequestAdapt for HyperRequest<ReqBody> {
-    #[cfg(feature = "cookie")]
     fn tran_to_request(self) -> Request {
+        #[cfg(feature = "cookie")]
         let cookies = get_cookie(&self).unwrap_or_default();
         let (parts, body) = self.into_parts();
         let mut req = Request::from_parts(parts, body);
-        *req.cookies_mut() = cookies;
+        #[cfg(feature = "cookie")]
+        req.extensions_mut().insert(cookies);
         req
-    }
-    #[cfg(not(feature = "cookie"))]
-    fn tran_to_request(self) -> Request {
-        let (parts, body) = self.into_parts();
-        Request::from_parts(parts, body)
     }
 }
 
 impl<B: Body> ResponseAdapt for HyperResponse<B> {
     type Body = B;
     fn tran_from_response(res: Response<B>) -> Self {
-        #[cfg(feature = "cookie")]
-        let Response {
-            status,
-            headers,
-            body,
-            cookies,
-            version,
-            extensions,
-            ..
-        } = res;
-        #[cfg(not(feature = "cookie"))]
         let Response {
             status,
             headers,
@@ -84,15 +69,14 @@ impl<B: Body> ResponseAdapt for HyperResponse<B> {
 
         let mut res = hyper::Response::new(body);
         res.headers_mut().extend(headers);
-        res.extensions_mut().extend(extensions);
-        *res.version_mut() = version;
         #[cfg(feature = "cookie")]
-        for cookie in cookies.delta() {
+        for cookie in extensions.get::<CookieJar>().unwrap().delta() {
             if let Ok(hv) = cookie.encoded().to_string().parse() {
                 res.headers_mut().append(header::SET_COOKIE, hv);
             }
         }
-        // Default to a 404 if no response code was set
+        res.extensions_mut().extend(extensions);
+        *res.version_mut() = version;
         *res.status_mut() = status;
 
         res
