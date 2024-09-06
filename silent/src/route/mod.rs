@@ -14,6 +14,8 @@ use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
 #[cfg(feature = "static")]
 use crate::prelude::HandlerGetter;
+#[cfg(feature = "cookie")]
+use crate::CookieExt;
 use crate::{Method, Next, Request, Response, SilentError};
 
 pub(crate) mod handler_append;
@@ -191,7 +193,7 @@ impl Handler for Route {
                 pre_res.configs = configs;
                 #[cfg(feature = "cookie")]
                 {
-                    *pre_res.cookies_mut() = req.cookies().clone();
+                    pre_res.extensions_mut().insert(req.cookies().clone());
                 }
                 #[cfg(feature = "session")]
                 let session = req.extensions().get::<Session>().cloned();
