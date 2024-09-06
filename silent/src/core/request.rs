@@ -5,12 +5,8 @@ use crate::core::req_body::ReqBody;
 #[cfg(feature = "multipart")]
 use crate::core::serde::from_str_multi_val;
 use crate::header::CONTENT_TYPE;
-#[cfg(feature = "scheduler")]
-use crate::Scheduler;
 use crate::{Configs, Result, SilentError};
 use bytes::Bytes;
-#[cfg(feature = "cookie")]
-use cookie::{Cookie, CookieJar};
 use http::request::Parts;
 use http::{Extensions, HeaderMap, HeaderValue, Method, Uri, Version};
 use http::{Request as BaseRequest, StatusCode};
@@ -21,10 +17,6 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
-#[cfg(feature = "scheduler")]
-use std::sync::Arc;
-#[cfg(feature = "scheduler")]
-use tokio::sync::Mutex;
 use tokio::sync::OnceCell;
 use url::form_urlencoded;
 
@@ -43,8 +35,6 @@ pub struct Request {
     #[cfg(feature = "multipart")]
     form_data: OnceCell<FormData>,
     json_data: OnceCell<Value>,
-    #[cfg(feature = "cookie")]
-    pub(crate) cookies: CookieJar,
     pub(crate) configs: Configs,
 }
 
@@ -128,8 +118,6 @@ impl Request {
             #[cfg(feature = "multipart")]
             form_data: OnceCell::new(),
             json_data: OnceCell::new(),
-            #[cfg(feature = "cookie")]
-            cookies: CookieJar::default(),
             configs: Configs::default(),
         }
     }
@@ -423,33 +411,5 @@ impl Request {
     pub(crate) fn split_url(self) -> (Self, String) {
         let url = self.uri().path().to_string();
         (self, url)
-    }
-
-    #[cfg(feature = "cookie")]
-    /// Get `CookieJar` reference.
-    #[inline]
-    pub fn cookies(&self) -> &CookieJar {
-        &self.cookies
-    }
-    #[cfg(feature = "cookie")]
-    /// Get `CookieJar` mutable reference.
-    #[inline]
-    pub fn cookies_mut(&mut self) -> &mut CookieJar {
-        &mut self.cookies
-    }
-    #[cfg(feature = "cookie")]
-    /// Get `Cookie` from cookies.
-    #[inline]
-    pub fn cookie<T>(&self, name: T) -> Option<&Cookie<'static>>
-    where
-        T: AsRef<str>,
-    {
-        self.cookies.get(name.as_ref())
-    }
-    #[cfg(feature = "scheduler")]
-    #[inline]
-    /// Get `Scheduler` from extensions.
-    pub fn scheduler(&self) -> &Arc<Mutex<Scheduler>> {
-        self.extensions().get().unwrap()
     }
 }

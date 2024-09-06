@@ -42,7 +42,7 @@ pub use handler::HandlerWrapper;
 pub use headers;
 pub use hyper::{header, Method, StatusCode};
 #[cfg(feature = "scheduler")]
-pub use scheduler::{ProcessTime, Scheduler, Task};
+pub use scheduler::{ProcessTime, Scheduler, SchedulerExt, Task};
 
 pub mod prelude {
     pub use crate::configs::Configs;
@@ -66,7 +66,7 @@ pub mod prelude {
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
     pub use crate::route::{RootRoute, Route, RouteService, RouterAdapt};
     #[cfg(feature = "scheduler")]
-    pub use crate::scheduler::Task;
+    pub use crate::scheduler::{SchedulerExt, Task};
     #[cfg(feature = "security")]
     pub use crate::security::{argon2, pbkdf2};
     #[cfg(feature = "server")]
