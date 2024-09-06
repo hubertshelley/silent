@@ -17,7 +17,7 @@ fn main() {
                 })
             }),
         );
-        req.scheduler().lock().await.add_task(task)?;
+        req.scheduler()?.lock().await.add_task(task)?;
         Ok("hello world")
     });
     Server::new().run(route);

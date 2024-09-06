@@ -1,5 +1,7 @@
 pub mod adapt;
 
+#[cfg(feature = "cookie")]
+pub(crate) mod cookie;
 #[cfg(feature = "multipart")]
 pub(crate) mod form;
 pub(crate) mod next;

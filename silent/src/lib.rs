@@ -1,6 +1,5 @@
 mod configs;
 /// The `silent` library.
-#[warn(missing_docs)]
 mod core;
 mod error;
 #[cfg(feature = "grpc")]
@@ -31,6 +30,8 @@ mod ws;
 use multer;
 
 pub use crate::configs::Configs;
+#[cfg(feature = "cookie")]
+pub use crate::core::cookie::CookieExt;
 pub use crate::core::{next::Next, request::Request, response::Response};
 #[cfg(feature = "grpc")]
 pub use crate::grpc::{GrpcHandler, GrpcRegister};
@@ -42,10 +43,12 @@ pub use handler::HandlerWrapper;
 pub use headers;
 pub use hyper::{header, Method, StatusCode};
 #[cfg(feature = "scheduler")]
-pub use scheduler::{ProcessTime, Scheduler, Task};
+pub use scheduler::{ProcessTime, Scheduler, SchedulerExt, Task};
 
 pub mod prelude {
     pub use crate::configs::Configs;
+    #[cfg(feature = "cookie")]
+    pub use crate::core::cookie::CookieExt;
     #[cfg(feature = "multipart")]
     pub use crate::core::form::{FilePart, FormData};
     pub use crate::core::{
@@ -66,7 +69,7 @@ pub mod prelude {
     pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
     pub use crate::route::{RootRoute, Route, RouteService, RouterAdapt};
     #[cfg(feature = "scheduler")]
-    pub use crate::scheduler::Task;
+    pub use crate::scheduler::{SchedulerExt, Task};
     #[cfg(feature = "security")]
     pub use crate::security::{argon2, pbkdf2};
     #[cfg(feature = "server")]
