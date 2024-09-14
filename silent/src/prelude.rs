@@ -16,8 +16,6 @@ pub use crate::handler::Handler;
 pub use crate::handler::HandlerWrapper;
 pub use crate::log::*;
 pub use crate::middleware::MiddleWareHandler;
-#[cfg(feature = "upgrade")]
-pub use crate::route::handler_append::WSHandlerAppend;
 pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
 pub use crate::route::{RootRoute, Route, RouteService, RouterAdapt};
 #[cfg(feature = "scheduler")]
@@ -32,7 +30,7 @@ pub use crate::sse::{sse_reply, SSEEvent};
 pub use crate::templates::*;
 #[cfg(feature = "upgrade")]
 pub use crate::ws::{
-    FnOnClose, FnOnConnect, FnOnNoneResultFut, FnOnReceive, FnOnSend, FnOnSendFut,
+    FnOnClose, FnOnConnect, FnOnNoneResultFut, FnOnReceive, FnOnSend, FnOnSendFut, WSHandlerAppend,
 };
 #[cfg(feature = "upgrade")]
 pub use crate::ws::{Message, WebSocket, WebSocketHandler, WebSocketParts};
