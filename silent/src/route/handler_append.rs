@@ -1,16 +1,8 @@
 use super::Route;
-#[cfg(feature = "upgrade")]
-use crate::ws::{HandlerWrapperWebSocket, Message, WebSocketHandler, WebSocketParts};
 use crate::{Handler, HandlerWrapper, Method, Request, Response, Result};
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
-#[cfg(feature = "upgrade")]
-use tokio::sync::mpsc::UnboundedSender;
-#[cfg(feature = "upgrade")]
-use tokio::sync::RwLock;
-#[cfg(feature = "upgrade")]
-use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 pub trait HandlerGetter {
     fn get_handler_mut(&mut self) -> &mut HashMap<Method, Arc<dyn Handler>>;
@@ -33,61 +25,6 @@ where
     fn handler_append(&mut self, method: Method, handler: F) {
         let handler = Arc::new(HandlerWrapper::new(handler));
         self.get_handler_mut().insert(method, handler);
-    }
-}
-
-#[cfg(feature = "upgrade")]
-pub trait WSHandlerAppend<
-    FnOnConnect,
-    FnOnConnectFut,
-    FnOnSend,
-    FnOnSendFut,
-    FnOnReceive,
-    FnOnReceiveFut,
-    FnOnClose,
-    FnOnCloseFut,
->: HandlerGetter where
-    FnOnConnect: Fn(Arc<RwLock<WebSocketParts>>, UnboundedSender<Message>) -> FnOnConnectFut
-        + Send
-        + Sync
-        + 'static,
-    FnOnConnectFut: Future<Output = Result<()>> + Send + Sync + 'static,
-    FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
-    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
-    FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
-    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
-    FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
-    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
-{
-    fn ws(
-        self,
-        config: Option<WebSocketConfig>,
-        handler: WebSocketHandler<
-            FnOnConnect,
-            FnOnConnectFut,
-            FnOnSend,
-            FnOnSendFut,
-            FnOnReceive,
-            FnOnReceiveFut,
-            FnOnClose,
-            FnOnCloseFut,
-        >,
-    ) -> Self;
-    fn ws_handler_append(
-        &mut self,
-        handler: HandlerWrapperWebSocket<
-            FnOnConnect,
-            FnOnConnectFut,
-            FnOnSend,
-            FnOnSendFut,
-            FnOnReceive,
-            FnOnReceiveFut,
-            FnOnClose,
-            FnOnCloseFut,
-        >,
-    ) {
-        let handler = Arc::new(handler);
-        self.get_handler_mut().insert(Method::GET, handler);
     }
 }
 
@@ -151,60 +88,6 @@ where
 
     fn options(mut self, handler: F) -> Self {
         self.handler_append(Method::OPTIONS, handler);
-        self
-    }
-}
-
-#[cfg(feature = "upgrade")]
-impl<
-        FnOnConnect,
-        FnOnConnectFut,
-        FnOnSend,
-        FnOnSendFut,
-        FnOnReceive,
-        FnOnReceiveFut,
-        FnOnClose,
-        FnOnCloseFut,
-    >
-    WSHandlerAppend<
-        FnOnConnect,
-        FnOnConnectFut,
-        FnOnSend,
-        FnOnSendFut,
-        FnOnReceive,
-        FnOnReceiveFut,
-        FnOnClose,
-        FnOnCloseFut,
-    > for Route
-where
-    FnOnConnect: Fn(Arc<RwLock<WebSocketParts>>, UnboundedSender<Message>) -> FnOnConnectFut
-        + Send
-        + Sync
-        + 'static,
-    FnOnConnectFut: Future<Output = Result<()>> + Send + Sync + 'static,
-    FnOnSend: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnSendFut + Send + Sync + 'static,
-    FnOnSendFut: Future<Output = Result<Message>> + Send + Sync + 'static,
-    FnOnReceive: Fn(Message, Arc<RwLock<WebSocketParts>>) -> FnOnReceiveFut + Send + Sync + 'static,
-    FnOnReceiveFut: Future<Output = Result<()>> + Send + Sync + 'static,
-    FnOnClose: Fn(Arc<RwLock<WebSocketParts>>) -> FnOnCloseFut + Send + Sync + 'static,
-    FnOnCloseFut: Future<Output = ()> + Send + Sync + 'static,
-{
-    fn ws(
-        mut self,
-        config: Option<WebSocketConfig>,
-        handler: WebSocketHandler<
-            FnOnConnect,
-            FnOnConnectFut,
-            FnOnSend,
-            FnOnSendFut,
-            FnOnReceive,
-            FnOnReceiveFut,
-            FnOnClose,
-            FnOnCloseFut,
-        >,
-    ) -> Self {
-        let handler = HandlerWrapperWebSocket::new(config).set_handler(handler);
-        self.ws_handler_append(handler);
         self
     }
 }
