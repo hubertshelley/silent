@@ -5,7 +5,7 @@ use crate::core::req_body::ReqBody;
 #[cfg(feature = "multipart")]
 use crate::core::serde::from_str_multi_val;
 use crate::header::CONTENT_TYPE;
-use crate::{Result, SilentError};
+use crate::{Configs, Result, SilentError};
 use bytes::Bytes;
 use http::request::Parts;
 use http::{Extensions, HeaderMap, HeaderValue, Method, Uri, Version};
