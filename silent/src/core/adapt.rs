@@ -50,6 +50,7 @@ impl RequestAdapt for HyperRequest<ReqBody> {
         #[cfg(feature = "cookie")]
         let cookies = get_cookie(&self).unwrap_or_default();
         let (parts, body) = self.into_parts();
+        #[allow(unused_mut)]
         let mut req = Request::from_parts(parts, body);
         #[cfg(feature = "cookie")]
         req.extensions_mut().insert(cookies);
