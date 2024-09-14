@@ -30,7 +30,10 @@ mod ws;
 #[allow(clippy::single_component_path_imports)]
 use multer;
 
-pub use crate::core::{request::Request, response::Response};
+pub use crate::configs::Configs;
+#[cfg(feature = "cookie")]
+pub use crate::core::cookie::CookieExt;
+pub use crate::core::{next::Next, request::Request, response::Response};
 #[cfg(feature = "grpc")]
 pub use crate::grpc::{GrpcHandler, GrpcRegister};
 pub use crate::middleware::{middlewares, MiddleWareHandler};
