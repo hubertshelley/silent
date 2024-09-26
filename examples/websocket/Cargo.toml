@@ -9,7 +9,7 @@ edition = "2021"
 async-trait = "0.1.82"
 silent = { path = "../../silent", features = ["upgrade"] }
 tokio = { version = "1.40.0", features = ["full"] }
-tokio-tungstenite = "0.23.1"
+tokio-tungstenite = "0.24.0"
 futures-util = "0.3.30"
 backtrace = "0.3.73"
 headers = "0.4.0"
