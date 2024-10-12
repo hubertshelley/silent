@@ -24,6 +24,8 @@ pub use crate::scheduler::{SchedulerExt, Task};
 pub use crate::security::{argon2, pbkdf2};
 #[cfg(feature = "server")]
 pub use crate::service::Server;
+#[cfg(feature = "session")]
+pub use crate::session::session_ext::SessionExt;
 #[cfg(feature = "sse")]
 pub use crate::sse::{sse_reply, SSEEvent};
 #[cfg(feature = "template")]
