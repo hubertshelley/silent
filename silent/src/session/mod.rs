@@ -1,3 +1,5 @@
+pub mod session_ext;
+
 use crate::{
     CookieExt, Handler, MiddleWareHandler, Next, Request, Response, Result, SilentError, StatusCode,
 };
@@ -41,6 +43,7 @@ where
         let cookie = cookies.get("silent-web-session");
         let session_store = self.session_store.read().await;
         let session = if cookie.is_none() {
+            req.extensions_mut().insert(cookies.clone());
             Session::new()
         } else {
             let cookie = cookie.unwrap();
@@ -58,6 +61,7 @@ where
         req.extensions_mut().insert(session.clone());
         let mut res = next.call(req).await?;
         res.extensions_mut().insert(session.clone());
+        res.extensions_mut().insert(cookies);
         let cookie_value = session_store.store_session(session).await.map_err(|e| {
             SilentError::business_error(
                 StatusCode::INTERNAL_SERVER_ERROR,
