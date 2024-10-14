@@ -234,7 +234,15 @@ impl MiddleWareHandler for Cors {
         if req.method() == Method::OPTIONS {
             return Ok(res);
         }
-        res.copy_from_response(next.call(req).await?);
-        Ok(res)
+        match next.call(req).await {
+            Ok(result) => {
+                res.copy_from_response(result);
+                Ok(res)
+            }
+            Err(e) => {
+                res.copy_from_response(e.into());
+                Ok(res)
+            }
+        }
     }
 }
