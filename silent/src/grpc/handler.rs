@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use super::utils::merge_grpc_response;
 use crate::grpc::service::GrpcService;
 use crate::{Handler, Response, SilentError};
 use async_trait::async_trait;
@@ -13,8 +14,6 @@ use tonic::codegen::Service;
 use tonic::server::NamedService;
 use tonic::Status;
 use tracing::{error, info};
-
-use super::utils::merge_grpc_response;
 
 trait GrpcRequestAdapter {
     fn into_grpc_request(self) -> http::Request<BoxBody>;

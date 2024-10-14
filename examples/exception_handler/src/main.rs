@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+
+use silent::middlewares::ExceptionHandler;
 use silent::prelude::*;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -10,13 +12,8 @@ struct Exception {
 fn main() {
     logger::fmt().with_max_level(Level::INFO).init();
     let route = Route::new("")
+        .root_hook(ExceptionHandler::new(|res, _| async move { res }))
         .get(|mut req| async move { req.params_parse::<Exception>() })
-        .route()
-        .set_exception_handler(|e, _| async move {
-            Exception {
-                code: e.status().as_u16(),
-                msg: e.to_string(),
-            }
-        });
+        .route();
     Server::new().run(route);
 }

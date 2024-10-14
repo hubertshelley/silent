@@ -82,8 +82,8 @@ async fn on_close(parts: Arc<RwLock<WebSocketParts>>) {
     ONLINE_USERS.write().await.remove(my_id);
 }
 
-async fn index<'a>(_res: Request) -> Result<&'a str> {
-    Ok(INDEX_HTML)
+async fn index(_res: Request) -> Result<Response> {
+    Ok(Response::html(INDEX_HTML))
 }
 
 static INDEX_HTML: &str = r#"<!DOCTYPE html>

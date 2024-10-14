@@ -15,8 +15,9 @@ fn main() {
     Server::new().run(route);
 }
 
-async fn show_form(_req: Request) -> Result<&'static str> {
-    Ok(r#"<!DOCTYPE html>
+async fn show_form(_req: Request) -> Result<Response> {
+    Ok(Response::html(
+        r#"<!DOCTYPE html>
 <html>
     <head>
         <title>WS</title>
@@ -38,5 +39,6 @@ async fn show_form(_req: Request) -> Result<&'static str> {
         </script>
     </body>
 </html>
-"#)
+"#,
+    ))
 }

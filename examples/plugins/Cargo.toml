@@ -1,0 +1,15 @@
+[package]
+name = "examples-plugins"
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lib]
+crate-type = ['cdylib']
+
+[dependencies]
+silent = { path = "../../silent" }

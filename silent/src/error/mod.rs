@@ -1,10 +1,5 @@
-mod exception_handler_trait;
-mod exception_handler_wrapper;
-
 use crate::headers::ContentType;
 use crate::{Response, StatusCode};
-pub(crate) use exception_handler_trait::ExceptionHandler;
-pub(crate) use exception_handler_wrapper::ExceptionHandlerWrapper;
 use serde::Serialize;
 use serde_json::Value;
 use std::backtrace::Backtrace;
@@ -69,6 +64,8 @@ pub enum SilentError {
         /// 错误信息
         msg: String,
     },
+    #[error("not found")]
+    NotFound,
 }
 
 pub type SilentResult<T> = Result<T, SilentError>;
@@ -119,6 +116,7 @@ impl SilentError {
             Self::BusinessError { code, .. } => *code,
             Self::SerdeDeError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::SerdeJsonError(_) => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::NotFound => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

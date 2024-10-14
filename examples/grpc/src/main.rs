@@ -3,7 +3,8 @@ use tonic::{Request, Response, Status};
 
 use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
-use silent::prelude::{info, logger, HandlerAppend, Level, Route, RouteService, Server};
+use silent::prelude::{info, logger, HandlerAppend, Level, Route, Server};
+use silent::GrpcRegister;
 
 mod client;
 
@@ -40,12 +41,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     // Wrap all services in the middleware stack
     //     .add_service(greeter_server)
     //     .into_router();
-    let route = Route::new("").get(|_req| async { Ok("hello world") });
-    let root = route.route().with_grpc(greeter_server.into());
-    info!("route: \n{:?}", root);
+    let route = Route::new("")
+        .get(|_req| async { Ok("hello world") })
+        .append(greeter_server.service());
+    info!("route: \n{:?}", route);
     Server::new()
         .bind("0.0.0.0:50051".parse().unwrap())
-        .serve(root)
+        .serve(route)
         .await;
     Ok(())
 }

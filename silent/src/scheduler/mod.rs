@@ -1,6 +1,7 @@
 mod process_time;
 mod storage;
 mod task;
+pub mod traits;
 
 use anyhow::{anyhow, Result};
 use std::sync::Arc;
@@ -10,6 +11,7 @@ use tracing::{debug, error, info};
 
 pub use process_time::ProcessTime;
 pub use task::Task;
+pub use traits::SchedulerExt;
 
 #[derive(Debug, Clone)]
 pub struct Scheduler {

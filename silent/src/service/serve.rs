@@ -3,33 +3,40 @@ use std::net::SocketAddr;
 
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto::Builder;
-use tokio::net::TcpStream;
+use tokio::io::{AsyncRead, AsyncWrite};
 
-use crate::route::RootRoute;
 use crate::service::hyper_service::HyperServiceHandler;
+use crate::Handler;
 
-pub(crate) struct Serve<E = TokioExecutor> {
-    pub(crate) routes: RootRoute,
+pub(crate) struct Serve<S, E = TokioExecutor>
+where
+    S: Handler,
+{
+    pub(crate) routes: S,
     pub(crate) builder: Builder<E>,
+    pub(crate) peer_addr: SocketAddr,
 }
 
-impl Serve {
-    pub(crate) fn new(routes: RootRoute) -> Self {
+impl<S> Serve<S>
+where
+    S: Handler + Clone,
+{
+    pub(crate) fn new(routes: S, peer_addr: SocketAddr) -> Self {
         Self {
             routes,
             builder: Builder::new(TokioExecutor::new()),
+            peer_addr,
         }
     }
-    pub(crate) async fn call(
+    pub(crate) async fn call<T: AsyncRead + AsyncWrite + Unpin + Send + Sync + 'static>(
         &self,
-        stream: TcpStream,
-        peer_addr: SocketAddr,
+        stream: T,
     ) -> Result<(), Box<dyn StdError + Send + Sync>> {
         let io = TokioIo::new(stream);
         self.builder
             .serve_connection_with_upgrades(
                 io,
-                HyperServiceHandler::new(peer_addr, self.routes.clone()),
+                HyperServiceHandler::new(self.peer_addr, self.routes.clone()),
             )
             .await
     }

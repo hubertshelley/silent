@@ -3,7 +3,8 @@ use tonic::{Request, Response, Status};
 
 use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
-use silent::prelude::{info, logger, HandlerAppend, Level, Route, RouteService};
+use silent::prelude::{info, logger, HandlerAppend, Level, Route};
+use silent::GrpcRegister;
 
 pub mod hello_world {
     tonic::include_proto!("helloworld");
@@ -29,14 +30,14 @@ impl Greeter for MyGreeter {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let greeter = MyGreeter::default();
-    logger::fmt().with_max_level(Level::INFO).init();
-
-    let route = Route::new("").get(|_req| async { Ok("hello world") });
-    let root = route.route().with_grpc(GreeterServer::new(greeter).into());
-    silent::prelude::Server::new()
-        .bind("0.0.0.0:50051".parse().unwrap())
-        .serve(root)
-        .await;
+    let _greeter = MyGreeter::default();
+    // logger::fmt().with_max_level(Level::INFO).init();
+    //
+    // let mut route = Route::new("").get(|_req| async { Ok("hello world") });
+    // GreeterServer::new(greeter).register(&mut route);
+    // silent::prelude::Server::new()
+    //     .bind("0.0.0.0:50051".parse().unwrap())
+    //     .serve(route)
+    //     .await;
     Ok(())
 }
