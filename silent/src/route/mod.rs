@@ -31,7 +31,7 @@ pub struct Route {
     pub middlewares: Vec<Arc<dyn MiddleWareHandler>>,
     pub root_middlewares: Vec<Arc<dyn MiddleWareHandler>>,
     special_match: bool,
-    create_path: String,
+    pub create_path: String,
 }
 
 impl RouterAdapt for Route {
