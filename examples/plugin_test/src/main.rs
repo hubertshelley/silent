@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use crossbeam_epoch::Pointable;
 use dlopen2::wrapper::{Container, WrapperApi};
 use silent::prelude::{logger, Level, Route, Server};
