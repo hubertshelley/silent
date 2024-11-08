@@ -97,7 +97,7 @@ impl Request {
 
         let mut body = self.take_body();
         builder
-            .body(body.frame().await.unwrap().unwrap().into_data().unwrap())
+            .body(body.frame().await.unwrap()?.into_data().unwrap())
             .map_err(|e| SilentError::business_error(StatusCode::BAD_REQUEST, e.to_string()))
     }
 }
@@ -272,7 +272,7 @@ impl Request {
         for<'de> T: Deserialize<'de>,
     {
         let query = self.uri().query().unwrap_or("");
-        let params = serde_urlencoded::from_str(query)?;
+        let params = serde_html_form::from_str(query)?;
         Ok(params)
     }
 
@@ -353,7 +353,7 @@ impl Request {
                         match content_type.subtype() {
                             mime::WWW_FORM_URLENCODED => {
                                 let bytes = body.collect().await.unwrap().to_bytes();
-                                serde_urlencoded::from_bytes(&bytes).map_err(SilentError::from)
+                                serde_html_form::from_bytes(&bytes).map_err(SilentError::from)
                             }
                             mime::JSON => {
                                 let bytes = body.collect().await.unwrap().to_bytes();
@@ -367,7 +367,7 @@ impl Request {
             }
             ReqBody::Once(bytes) => match content_type.subtype() {
                 mime::WWW_FORM_URLENCODED => {
-                    serde_urlencoded::from_bytes(&bytes).map_err(SilentError::from)
+                    serde_html_form::from_bytes(&bytes).map_err(SilentError::from)
                 }
                 mime::JSON => serde_json::from_slice(&bytes).map_err(|e| e.into()),
                 _ => Err(SilentError::JsonEmpty),
@@ -420,5 +420,32 @@ impl Request {
     /// Get `Scheduler` from extensions.
     pub fn scheduler(&self) -> &Arc<Mutex<Scheduler>> {
         self.extensions().get().unwrap()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Deserialize, Debug, PartialEq)]
+    struct TestStruct {
+        a: i32,
+        b: String,
+        #[serde(default, alias = "c[]")]
+        c: Vec<String>,
+    }
+
+    #[test]
+    fn test_query_parse_alias() {
+        let mut req = Request::empty();
+        *req.uri_mut() = Uri::from_static("http://localhost:8080/test?a=1&b=2&c[]=3&c[]=4");
+        let _ = req.params_parse::<TestStruct>().unwrap();
+    }
+
+    #[test]
+    fn test_query_parse() {
+        let mut req = Request::empty();
+        *req.uri_mut() = Uri::from_static("http://localhost:8080/test?a=1&b=2&c=3&c=4");
+        let _ = req.params_parse::<TestStruct>().unwrap();
     }
 }
