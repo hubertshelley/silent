@@ -20,8 +20,20 @@ pub struct KeepAlive {
     max_interval: Duration,
 }
 
-#[allow(dead_code)]
+impl Default for KeepAlive {
+    fn default() -> Self {
+        Self {
+            comment_text: Cow::Borrowed(""),
+            max_interval: Duration::from_secs(15),
+        }
+    }
+}
+
 impl KeepAlive {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Customize the interval between keep-alive messages.
     ///
     /// Default is 15 seconds.
@@ -33,7 +45,7 @@ impl KeepAlive {
     /// Customize the text of the keep-alive message.
     ///
     /// Default is an empty comment.
-    pub fn text(mut self, text: impl Into<Cow<'static, str>>) -> Self {
+    pub fn comment_text(mut self, text: impl Into<Cow<'static, str>>) -> Self {
         self.comment_text = text.into();
         self
     }
@@ -59,7 +71,6 @@ impl KeepAlive {
     }
 }
 
-#[allow(missing_debug_implementations)]
 #[pin_project]
 struct SseKeepAlive<S> {
     #[pin]
@@ -68,13 +79,6 @@ struct SseKeepAlive<S> {
     max_interval: Duration,
     #[pin]
     alive_timer: Sleep,
-}
-
-pub fn keep_alive() -> KeepAlive {
-    KeepAlive {
-        comment_text: Cow::Borrowed(""),
-        max_interval: Duration::from_secs(15),
-    }
 }
 
 impl<S> Stream for SseKeepAlive<S>

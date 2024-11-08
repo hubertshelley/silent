@@ -27,7 +27,7 @@ pub use crate::service::Server;
 #[cfg(feature = "session")]
 pub use crate::session::session_ext::SessionExt;
 #[cfg(feature = "sse")]
-pub use crate::sse::{sse_reply, SSEEvent};
+pub use crate::sse::{sse_reply, KeepAlive, SSEEvent};
 #[cfg(feature = "template")]
 pub use crate::templates::*;
 #[cfg(feature = "upgrade")]
