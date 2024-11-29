@@ -1,5 +1,5 @@
 fn main() {
     tonic_build::configure()
-        .compile(&["proto/helloworld.proto"], &["/proto"])
+        .compile_protos(&["proto/hello_world.proto"], &["/proto"])
         .unwrap();
 }

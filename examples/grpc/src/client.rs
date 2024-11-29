@@ -3,7 +3,7 @@ use hello_world::HelloRequest;
 use silent::prelude::info;
 
 pub mod hello_world {
-    tonic::include_proto!("helloworld");
+    tonic::include_proto!("hello_world");
 }
 #[allow(dead_code)]
 #[tokio::main]

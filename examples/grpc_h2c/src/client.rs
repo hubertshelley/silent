@@ -6,7 +6,7 @@ use hyper_util::rt::TokioExecutor;
 use silent::prelude::info;
 
 pub mod hello_world {
-    tonic::include_proto!("helloworld");
+    tonic::include_proto!("hello_world");
 }
 
 #[tokio::main]
