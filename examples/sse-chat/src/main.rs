@@ -82,8 +82,7 @@ async fn user_connected(_req: Request) -> Result<Response> {
             Ok(SSEEvent::default().data(reply))
         }
     });
-    let res = sse_reply(stream);
-    Ok(res)
+    sse_reply(stream)
 }
 
 fn user_message(my_id: usize, msg: &str) {

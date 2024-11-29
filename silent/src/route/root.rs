@@ -9,7 +9,9 @@ use crate::session::middleware::SessionMiddleware;
 use crate::templates::TemplateMiddleware;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
-use crate::{Configs, Handler, MiddleWareHandler, Next, Request, Response, SilentError};
+use crate::{
+    Configs, Handler, HandlerWrapper, MiddleWareHandler, Next, Request, Response, SilentError,
+};
 #[cfg(feature = "session")]
 use async_session::SessionStore;
 use async_trait::async_trait;
@@ -92,7 +94,14 @@ impl Handler for RootHandler {
                 let next = Next::build(Arc::new(route), self.middlewares.clone());
                 next.call(req).await
             }
-            RouteMatched::Unmatched => Err(SilentError::NotFound),
+            RouteMatched::Unmatched => {
+                let handler = |_req| async move { Err::<(), SilentError>(SilentError::NotFound) };
+                let next = Next::build(
+                    Arc::new(HandlerWrapper::new(handler)),
+                    self.middlewares.clone(),
+                );
+                next.call(req).await
+            }
         }
     }
 }

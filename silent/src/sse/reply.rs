@@ -1,17 +1,16 @@
 use crate::header::{CACHE_CONTROL, CONTENT_TYPE};
 use crate::prelude::stream_body;
-use crate::sse::{keep_alive, SSEEvent};
+use crate::sse::{KeepAlive, SSEEvent};
 use crate::{headers::HeaderValue, log, Response, Result, SilentError, StatusCode};
 use futures_util::{future, Stream, TryStreamExt};
 
-pub fn sse_reply<S>(stream: S) -> Response
+pub fn sse_reply<S>(stream: S) -> Result<Response>
 where
     S: Stream<Item = Result<SSEEvent>> + Send + 'static,
 {
-    let event_stream = keep_alive().stream(stream);
+    let event_stream = KeepAlive::default().stream(stream);
     let body_stream = event_stream
         .map_err(|error| {
-            // FIXME: error logging
             log::error!("sse stream error: {}", error.to_string());
             SilentError::BusinessError {
                 code: StatusCode::INTERNAL_SERVER_ERROR,
@@ -29,5 +28,5 @@ where
     // Disable response body caching
     res.headers_mut()
         .insert(CACHE_CONTROL, HeaderValue::from_static("no-cache"));
-    res
+    Ok(res)
 }
