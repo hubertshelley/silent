@@ -12,7 +12,7 @@ fn main() {
             "task description".to_string(),
             Arc::new(|| {
                 Box::pin(async {
-                    println!("task run: {:?}", Utc::now());
+                    info!("task run: {:?}", Utc::now());
                     Ok(())
                 })
             }),

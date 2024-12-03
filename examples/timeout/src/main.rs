@@ -7,9 +7,9 @@ fn main() {
     let route = Route::new("")
         .hook(Timeout::new(Duration::from_secs(1)))
         .get(|_req| async {
-            println!("sleeping for 2 seconds");
+            info!("sleeping for 2 seconds");
             tokio::time::sleep(Duration::from_secs(2)).await;
-            println!("done sleeping");
+            info!("done sleeping");
             Ok("hello world")
         });
     Server::new().run(route);

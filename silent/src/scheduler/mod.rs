@@ -148,7 +148,6 @@ mod tests {
             }),
         );
         scheduler.add_task(async_task.clone()).unwrap();
-        println!("{:?}", scheduler.get_tasks());
         assert_eq!(scheduler.get_tasks().len(), 2);
         assert!(scheduler.add_task(async_task.clone()).is_err());
         scheduler.remove_task(&async_task.id);

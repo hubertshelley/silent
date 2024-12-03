@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Streaming echo:");
     streaming_echo(&mut client, 5).await;
-    tokio::time::sleep(Duration::from_secs(1)).await; //do not mess server println functions
+    tokio::time::sleep(Duration::from_secs(1)).await; //do not mess server info functions
 
     // Echo stream that sends 17 requests then graceful end that connection
     println!("\r\nBidirectional stream echo:");

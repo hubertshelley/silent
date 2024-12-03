@@ -38,7 +38,7 @@ impl Task {
         match self.is_async {
             true => Err(anyhow::anyhow!("async task not support run")),
             false => match self.process_time.is_active() {
-                true => (self.action.clone())(),
+                true => self.action.clone()(),
                 false => Ok(()),
             },
         }
@@ -46,7 +46,7 @@ impl Task {
     pub(crate) async fn run_async(&self) -> Result<()> {
         match self.is_async {
             true => match self.process_time.is_active() {
-                true => (self.action_async.clone())().await,
+                true => self.action_async.clone()().await,
                 false => Ok(()),
             },
             false => Err(anyhow::anyhow!("sync task not support run_async")),
@@ -113,7 +113,6 @@ mod tests {
                 Ok(())
             }),
         );
-        println!("{:?}", task);
         task.run().unwrap();
         assert_eq!(counter.load(Ordering::SeqCst), 0);
         task.process_time = ProcessTime::try_from("2023-01-01T00:00:00Z".to_string()).unwrap();
