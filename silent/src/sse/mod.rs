@@ -28,8 +28,7 @@
 //!
 //! let route = Route::new("push-notifications")
 //!     .get(|req| async {
-//!         let mut res = sse_reply(sse_events());
-//!         Ok(res)
+//!         sse_reply(sse_events())
 //!     });
 //! ```
 //!
