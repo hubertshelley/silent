@@ -1,54 +1,52 @@
-use crate::{Request, Response, Result, SilentError};
+use crate::core::next::Next;
+use crate::{Request, Response, Result};
 use async_trait::async_trait;
-
-pub enum MiddlewareResult {
-    Continue,
-    Break(Response),
-    Error(SilentError),
-}
 
 #[async_trait]
 pub trait MiddleWareHandler: Send + Sync + 'static {
     async fn match_req(&self, _req: &Request) -> bool {
         true
     }
-    async fn pre_request(
-        &self,
-        _req: &mut Request,
-        _res: &mut Response,
-    ) -> Result<MiddlewareResult> {
-        Ok(MiddlewareResult::Continue)
-    }
-    async fn after_response(&self, _res: &mut Response) -> Result<MiddlewareResult> {
-        Ok(MiddlewareResult::Continue)
-    }
+    async fn handle(&self, _req: Request, _next: &Next) -> Result<Response>;
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use hyper::Uri;
+    use crate::{Handler, HandlerWrapper};
+    use std::sync::Arc;
+    use tracing::info;
 
-    struct MiddleWare {}
+    use super::*;
+
+    struct TestMiddleWare {
+        count: u32,
+    }
 
     #[async_trait]
-    impl MiddleWareHandler for MiddleWare {
-        async fn match_req(&self, req: &Request) -> bool {
-            req.uri().path().ends_with("hello")
+    impl MiddleWareHandler for TestMiddleWare {
+        async fn handle(&self, req: Request, next: &Next) -> Result<Response> {
+            info!("{}", self.count);
+            next.call(req).await
         }
+    }
+
+    async fn hello_world(_req: Request) -> Result<String> {
+        Ok("Hello World".into())
     }
 
     #[tokio::test]
     async fn test_middleware() -> Result<()> {
-        let middleware = MiddleWare {};
-        let mut req = Request::empty();
-        let mut res = Response::empty();
-        *req.uri_mut() = "/hello".parse::<Uri>().unwrap();
-        assert!(middleware.match_req(&req).await);
-        *req.uri_mut() = "/hell".parse::<Uri>().unwrap();
-        assert!(!middleware.match_req(&req).await);
-        assert!(middleware.pre_request(&mut req, &mut res).await.is_ok());
-        assert!(middleware.after_response(&mut res).await.is_ok());
+        let handler_wrapper = HandlerWrapper::new(hello_world).arc();
+        let middleware1 = TestMiddleWare { count: 1 };
+        let middleware2 = TestMiddleWare { count: 2 };
+        let req = Request::empty();
+        let middlewares = Next::build(
+            handler_wrapper,
+            vec![Arc::new(middleware1), Arc::new(middleware2)],
+        );
+        let res = middlewares.call(req).await;
+        assert!(res.is_ok());
+        info!("{:?}", res.unwrap());
         Ok(())
     }
 }

@@ -1,4 +1,4 @@
-use crate::{MiddleWareHandler, MiddlewareResult, Response, Result, SilentError, StatusCode};
+use crate::{Handler, MiddleWareHandler, Next, Request, Response, Result, SilentError, StatusCode};
 use async_trait::async_trait;
 use serde::Serialize;
 use serde_json::Value;
@@ -41,7 +41,8 @@ impl TemplateMiddleware {
 
 #[async_trait]
 impl MiddleWareHandler for TemplateMiddleware {
-    async fn after_response(&self, res: &mut Response) -> Result<MiddlewareResult> {
+    async fn handle(&self, req: Request, next: &Next) -> Result<Response> {
+        let mut res = next.call(req).await?;
         let template = res.extensions.get::<TemplateResponse>().unwrap();
         res.set_body(
             self.template
@@ -63,7 +64,7 @@ impl MiddleWareHandler for TemplateMiddleware {
                 .into(),
         );
         res.set_typed_header(headers::ContentType::html());
-        Ok(MiddlewareResult::Continue)
+        Ok(res)
     }
 }
 
@@ -72,7 +73,7 @@ mod tests {
     use super::*;
     use crate::prelude::{HandlerAppend, Route};
     use crate::route::RootRoute;
-    use crate::Request;
+    use crate::{Handler, Request};
     use bytes::Bytes;
     use http_body_util::BodyExt;
 
@@ -99,11 +100,13 @@ mod tests {
             .hook(temp_middleware);
         let mut routes = RootRoute::new();
         routes.push(route);
-        let req = Request::empty();
+        let mut req = Request::empty();
+        req.set_remote("127.0.0.1:8080".parse().unwrap());
         assert_eq!(
             routes
-                .handle(req, "127.0.0.1:8000".parse().unwrap())
+                .call(req)
                 .await
+                .unwrap()
                 .body
                 .frame()
                 .await

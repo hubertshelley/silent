@@ -48,7 +48,7 @@ struct Msg {
 async fn chat_send(mut req: Request) -> Result<Response> {
     let my_id = req.get_path_params::<i32>("id")?;
     let msg = req.json_parse::<Msg>().await?;
-    println!("chat_send: my_id: {}, msg: {:?}", my_id, msg);
+    info!("chat_send: my_id: {}, msg: {:?}", my_id, msg);
     user_message(my_id as usize, msg.msg.as_str());
     Ok(Response::empty())
 }
@@ -82,8 +82,7 @@ async fn user_connected(_req: Request) -> Result<Response> {
             Ok(SSEEvent::default().data(reply))
         }
     });
-    let res = sse_reply(stream);
-    Ok(res)
+    sse_reply(stream)
 }
 
 fn user_message(my_id: usize, msg: &str) {

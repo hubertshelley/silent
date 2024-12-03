@@ -1,6 +1,7 @@
 mod process_time;
 mod storage;
 mod task;
+pub mod traits;
 
 use anyhow::{anyhow, Result};
 use std::sync::Arc;
@@ -10,6 +11,7 @@ use tracing::{debug, error, info};
 
 pub use process_time::ProcessTime;
 pub use task::Task;
+pub use traits::SchedulerExt;
 
 #[derive(Debug, Clone)]
 pub struct Scheduler {
@@ -146,7 +148,6 @@ mod tests {
             }),
         );
         scheduler.add_task(async_task.clone()).unwrap();
-        println!("{:?}", scheduler.get_tasks());
         assert_eq!(scheduler.get_tasks().len(), 2);
         assert!(scheduler.add_task(async_task.clone()).is_err());
         scheduler.remove_task(&async_task.id);

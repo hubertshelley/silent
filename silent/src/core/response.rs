@@ -4,8 +4,6 @@ use std::fmt::{Display, Formatter};
 use crate::core::res_body::{full, ResBody};
 use crate::headers::{ContentType, Header, HeaderMap, HeaderMapExt};
 use crate::{header, Configs, Result, SilentError, StatusCode};
-#[cfg(feature = "cookie")]
-use cookie::{Cookie, CookieJar};
 use http::{Extensions, Version};
 use http_body::{Body, SizeHint};
 use serde::Serialize;
@@ -24,8 +22,6 @@ pub struct Response<B: Body = ResBody> {
     /// The HTTP headers.
     pub(crate) headers: HeaderMap,
     pub(crate) body: B,
-    #[cfg(feature = "cookie")]
-    pub(crate) cookies: CookieJar,
     pub(crate) extensions: Extensions,
     pub(crate) configs: Configs,
 }
@@ -52,8 +48,6 @@ impl Response {
             headers: HeaderMap::new(),
             version: Version::default(),
             body: ResBody::None,
-            #[cfg(feature = "cookie")]
-            cookies: CookieJar::default(),
             extensions: Extensions::default(),
             configs: Configs::default(),
         }
@@ -206,41 +200,6 @@ impl<B: Body> Response<B> {
         self
     }
 
-    #[cfg(feature = "cookie")]
-    /// Get `CookieJar` reference.
-    #[inline]
-    pub fn cookies(&self) -> &CookieJar {
-        &self.cookies
-    }
-    #[cfg(feature = "cookie")]
-    /// Get `CookieJar` mutable reference.
-    #[inline]
-    pub fn cookies_mut(&mut self) -> &mut CookieJar {
-        &mut self.cookies
-    }
-    #[cfg(feature = "cookie")]
-    /// Get `Cookie` from cookies.
-    #[inline]
-    pub fn cookie<T>(&self, name: T) -> Option<&Cookie<'static>>
-    where
-        T: AsRef<str>,
-    {
-        self.cookies.get(name.as_ref())
-    }
-
-    #[cfg(feature = "cookie")]
-    /// move response to from another response
-    pub fn copy_from_response(&mut self, res: Response<B>) {
-        self.headers.extend(res.headers);
-        res.cookies.delta().for_each(|cookie| {
-            self.cookies.add(cookie.clone());
-        });
-        self.status = res.status;
-        self.extensions.extend(res.extensions);
-        self.set_body(res.body);
-    }
-
-    #[cfg(not(feature = "cookie"))]
     /// move response to from another response
     pub fn copy_from_response(&mut self, res: Response<B>) {
         self.headers.extend(res.headers);

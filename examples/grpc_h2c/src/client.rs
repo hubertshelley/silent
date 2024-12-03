@@ -5,7 +5,7 @@ use hyper_util::client::legacy::Client;
 use hyper_util::rt::TokioExecutor;
 
 pub mod hello_world {
-    tonic::include_proto!("helloworld");
+    tonic::include_proto!("hello_world");
 }
 
 #[tokio::main]
