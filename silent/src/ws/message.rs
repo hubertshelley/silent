@@ -14,7 +14,7 @@ impl Message {
     #[inline]
     pub fn text<S: Into<String>>(s: S) -> Message {
         Message {
-            inner: protocol::Message::text(s),
+            inner: protocol::Message::text(s.into()),
         }
     }
 
@@ -22,7 +22,7 @@ impl Message {
     #[inline]
     pub fn binary<V: Into<Vec<u8>>>(v: V) -> Message {
         Message {
-            inner: protocol::Message::binary(v),
+            inner: protocol::Message::binary(v.into()),
         }
     }
 
@@ -30,7 +30,7 @@ impl Message {
     #[inline]
     pub fn ping<V: Into<Vec<u8>>>(v: V) -> Message {
         Message {
-            inner: protocol::Message::Ping(v.into()),
+            inner: protocol::Message::Ping(v.into().into()),
         }
     }
 
@@ -97,7 +97,7 @@ impl Message {
     #[inline]
     pub fn to_str(&self) -> Result<&str> {
         match self.inner {
-            protocol::Message::Text(ref s) => Ok(s),
+            protocol::Message::Text(ref s) => Ok(s.as_str()),
             _ => Err(SilentError::WsError("not a text message".into())),
         }
     }
@@ -106,10 +106,10 @@ impl Message {
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         match self.inner {
-            protocol::Message::Text(ref s) => s.as_bytes(),
-            protocol::Message::Binary(ref v) => v,
-            protocol::Message::Ping(ref v) => v,
-            protocol::Message::Pong(ref v) => v,
+            protocol::Message::Text(ref s) => s.as_slice(),
+            protocol::Message::Binary(ref v) => v.as_slice(),
+            protocol::Message::Ping(ref v) => v.as_slice(),
+            protocol::Message::Pong(ref v) => v.as_slice(),
             protocol::Message::Close(_) => &[],
             protocol::Message::Frame(ref v) => v.payload(),
         }
@@ -118,7 +118,7 @@ impl Message {
     /// Destructure this message into binary data.
     #[inline]
     pub fn into_bytes(self) -> Vec<u8> {
-        self.inner.into_data()
+        self.inner.into_data().as_slice().to_vec()
     }
 }
 
