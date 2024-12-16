@@ -2,25 +2,35 @@ use crate::{Result, SilentError};
 use std::borrow::Cow;
 use std::fmt;
 use std::fmt::Formatter;
+use std::ops::Deref;
 use tokio_tungstenite::tungstenite::protocol;
+use tokio_tungstenite::tungstenite::protocol::frame::{Payload, Utf8Payload};
 
 #[derive(Eq, PartialEq, Clone)]
 pub struct Message {
     pub(crate) inner: protocol::Message,
 }
 
+impl Deref for Message {
+    type Target = protocol::Message;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 impl Message {
     /// Construct a new Text `Message`.
     #[inline]
-    pub fn text<S: Into<String>>(s: S) -> Message {
+    pub fn text<S: Into<Utf8Payload>>(s: S) -> Message {
         Message {
-            inner: protocol::Message::text(s.into()),
+            inner: protocol::Message::text(s),
         }
     }
 
     /// Construct a new Binary `Message`.
     #[inline]
-    pub fn binary<V: Into<Vec<u8>>>(v: V) -> Message {
+    pub fn binary<V: Into<Payload>>(v: V) -> Message {
         Message {
             inner: protocol::Message::binary(v.into()),
         }
@@ -28,9 +38,17 @@ impl Message {
 
     /// Construct a new Ping `Message`.
     #[inline]
-    pub fn ping<V: Into<Vec<u8>>>(v: V) -> Message {
+    pub fn ping<V: Into<Payload>>(v: V) -> Message {
         Message {
-            inner: protocol::Message::Ping(v.into().into()),
+            inner: protocol::Message::Ping(v.into()),
+        }
+    }
+
+    /// Construct a new pong `Message`.
+    #[inline]
+    pub fn pong<V: Into<Payload>>(v: V) -> Message {
+        Message {
+            inner: protocol::Message::Pong(v.into()),
         }
     }
 
@@ -96,10 +114,9 @@ impl Message {
     /// Try to get a reference to the string text, if this is a Text message.
     #[inline]
     pub fn to_str(&self) -> Result<&str> {
-        match self.inner {
-            protocol::Message::Text(ref s) => Ok(s.as_str()),
-            _ => Err(SilentError::WsError("not a text message".into())),
-        }
+        self.inner
+            .to_text()
+            .map_err(|_| SilentError::WsError("not a text message".into()))
     }
 
     /// Returns the bytes of this message, if the message can contain data.
