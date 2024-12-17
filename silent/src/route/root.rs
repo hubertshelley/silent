@@ -86,6 +86,7 @@ struct RootHandler {
     inner: RouteMatched,
     middlewares: Vec<Arc<dyn MiddleWareHandler>>,
 }
+
 #[async_trait]
 impl Handler for RootHandler {
     async fn call(&self, req: Request) -> Result<Response, SilentError> {
