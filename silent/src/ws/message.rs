@@ -1,10 +1,9 @@
 use crate::{Result, SilentError};
-use std::borrow::Cow;
+use bytes::Bytes;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Deref;
-use tokio_tungstenite::tungstenite::protocol;
-use tokio_tungstenite::tungstenite::protocol::frame::{Payload, Utf8Payload};
+use tokio_tungstenite::tungstenite::{protocol, Utf8Bytes};
 
 #[derive(Eq, PartialEq, Clone)]
 pub struct Message {
@@ -22,7 +21,7 @@ impl Deref for Message {
 impl Message {
     /// Construct a new Text `Message`.
     #[inline]
-    pub fn text<S: Into<Utf8Payload>>(s: S) -> Message {
+    pub fn text<S: Into<Utf8Bytes>>(s: S) -> Message {
         Message {
             inner: protocol::Message::text(s),
         }
@@ -30,15 +29,15 @@ impl Message {
 
     /// Construct a new Binary `Message`.
     #[inline]
-    pub fn binary<V: Into<Payload>>(v: V) -> Message {
+    pub fn binary<V: Into<Bytes>>(v: V) -> Message {
         Message {
-            inner: protocol::Message::binary(v.into()),
+            inner: protocol::Message::binary(v),
         }
     }
 
     /// Construct a new Ping `Message`.
     #[inline]
-    pub fn ping<V: Into<Payload>>(v: V) -> Message {
+    pub fn ping<V: Into<Bytes>>(v: V) -> Message {
         Message {
             inner: protocol::Message::Ping(v.into()),
         }
@@ -46,7 +45,7 @@ impl Message {
 
     /// Construct a new pong `Message`.
     #[inline]
-    pub fn pong<V: Into<Payload>>(v: V) -> Message {
+    pub fn pong<V: Into<Bytes>>(v: V) -> Message {
         Message {
             inner: protocol::Message::Pong(v.into()),
         }
@@ -62,11 +61,11 @@ impl Message {
 
     /// Construct a Close `Message` with a code and reason.
     #[inline]
-    pub fn close_with(code: impl Into<u16>, reason: impl Into<Cow<'static, str>>) -> Message {
+    pub fn close_with(code: impl Into<u16>, reason: impl Into<String>) -> Message {
         Message {
             inner: protocol::Message::Close(Some(protocol::frame::CloseFrame {
                 code: protocol::frame::coding::CloseCode::from(code.into()),
-                reason: reason.into(),
+                reason: reason.into().into(),
             })),
         }
     }
@@ -123,10 +122,10 @@ impl Message {
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         match self.inner {
-            protocol::Message::Text(ref s) => s.as_slice(),
-            protocol::Message::Binary(ref v) => v.as_slice(),
-            protocol::Message::Ping(ref v) => v.as_slice(),
-            protocol::Message::Pong(ref v) => v.as_slice(),
+            protocol::Message::Text(ref s) => s.as_bytes(),
+            protocol::Message::Binary(ref v) => v.iter().as_slice(),
+            protocol::Message::Ping(ref v) => v.iter().as_slice(),
+            protocol::Message::Pong(ref v) => v.iter().as_slice(),
             protocol::Message::Close(_) => &[],
             protocol::Message::Frame(ref v) => v.payload(),
         }
@@ -135,7 +134,7 @@ impl Message {
     /// Destructure this message into binary data.
     #[inline]
     pub fn into_bytes(self) -> Vec<u8> {
-        self.inner.into_data().as_slice().to_vec()
+        self.inner.into_data().to_vec()
     }
 }
 
