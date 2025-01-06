@@ -1,18 +1,21 @@
 mod hyper_service;
 mod serve;
 
+use crate::core::listener::Listener;
 use crate::route::RouteService;
 use crate::service::serve::Serve;
 use crate::Configs;
 #[cfg(feature = "scheduler")]
 use crate::Scheduler;
 use std::net::SocketAddr;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, UnixListener};
 use tokio::signal;
 use tokio::task::JoinSet;
+
 pub struct Server {
     addr: Option<SocketAddr>,
-    listener: Option<TcpListener>,
+    path: Option<String>,
+    listener: Option<Listener>,
     shutdown_callback: Option<Box<dyn Fn() + Send + Sync>>,
     configs: Option<Configs>,
 }
@@ -27,6 +30,7 @@ impl Server {
     pub fn new() -> Self {
         Self {
             addr: None,
+            path: None,
             listener: None,
             shutdown_callback: None,
             configs: None,
@@ -52,8 +56,14 @@ impl Server {
     }
 
     #[inline]
-    pub fn listen(mut self, listener: TcpListener) -> Self {
-        self.listener = Some(listener);
+    pub fn bind_unix<P: Into<String>>(mut self, path: P) -> Self {
+        self.path = Some(path.into());
+        self
+    }
+
+    #[inline]
+    pub fn listen<T: Into<Listener>>(mut self, listener: T) -> Self {
+        self.listener = Some(listener.into());
         self
     }
 
@@ -73,25 +83,33 @@ impl Server {
             listener,
             configs,
             addr,
+            path,
             ..
         } = self;
 
         let listener = match listener {
-            None => match addr {
-                None => TcpListener::bind("127.0.0.1:0")
-                    .await
-                    .expect("failed to listen"),
-                Some(addr) => TcpListener::bind(addr)
-                    .await
-                    .unwrap_or_else(|_| panic!("failed to listen {}", addr)),
+            None => match (addr, path.clone()) {
+                (None, None) => Listener::TokioListener(
+                    TcpListener::bind("127.0.0.1:0")
+                        .await
+                        .expect("failed to listen"),
+                ),
+                (Some(addr), _) => Listener::TokioListener(
+                    TcpListener::bind(addr)
+                        .await
+                        .unwrap_or_else(|_| panic!("failed to listen {}", addr)),
+                ),
+                (None, Some(path)) => {
+                    let _ = tokio::fs::remove_file(&path).await;
+                    Listener::TokioUnixListener(
+                        UnixListener::bind(path.clone())
+                            .unwrap_or_else(|_| panic!("failed to listen {}", path)),
+                    )
+                }
             },
             Some(listener) => listener,
         };
-        tracing::info!(
-            "listening on: http{}//{}",
-            ":",
-            listener.local_addr().unwrap()
-        );
+        tracing::info!("listening on: {:?}", listener.local_addr().unwrap());
         let mut root_route = service.route();
         root_route.set_configs(configs.clone());
         #[cfg(feature = "session")]

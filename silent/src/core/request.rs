@@ -4,6 +4,7 @@ use crate::core::path_param::PathParam;
 use crate::core::req_body::ReqBody;
 #[cfg(feature = "multipart")]
 use crate::core::serde::from_str_multi_val;
+use crate::core::socket_addr::SocketAddr;
 use crate::header::CONTENT_TYPE;
 use crate::{Configs, Result, SilentError};
 use bytes::Bytes;
@@ -16,7 +17,6 @@ use serde::de::StdError;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
 use tokio::sync::OnceCell;
 use url::form_urlencoded;
 
@@ -134,7 +134,7 @@ impl Request {
 
     /// 获取访问真实地址
     #[inline]
-    pub fn remote(&self) -> IpAddr {
+    pub fn remote(&self) -> SocketAddr {
         self.headers()
             .get("x-real-ip")
             .and_then(|h| h.to_str().ok())
@@ -148,7 +148,7 @@ impl Request {
     pub fn set_remote(&mut self, remote_addr: SocketAddr) {
         if self.headers().get("x-real-ip").is_none() {
             self.headers_mut()
-                .insert("x-real-ip", remote_addr.ip().to_string().parse().unwrap());
+                .insert("x-real-ip", remote_addr.to_string().parse().unwrap());
         }
     }
 

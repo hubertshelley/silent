@@ -1,10 +1,10 @@
 use std::future::Future;
-use std::net::SocketAddr;
 use std::pin::Pin;
 
 use hyper::service::Service as HyperService;
 use hyper::{Request as HyperRequest, Response as HyperResponse};
 
+use crate::core::socket_addr::SocketAddr;
 use crate::core::{adapt::RequestAdapt, adapt::ResponseAdapt, res_body::ResBody};
 use crate::prelude::ReqBody;
 use crate::{Handler, Request, Response};
@@ -65,7 +65,10 @@ mod tests {
     #[tokio::test]
     async fn test_handle_request() {
         // Arrange
-        let remote_addr = "127.0.0.1:8080".parse().unwrap();
+        let remote_addr = "127.0.0.1:8080"
+            .parse::<std::net::SocketAddr>()
+            .unwrap()
+            .into();
         let routes = RootRoute::new(); // Assuming RootRoute::new() creates a new instance of RootRoute
         let hsh = HyperServiceHandler::new(remote_addr, routes);
         let req = hyper::Request::builder().body(()).unwrap(); // Assuming Request::new() creates a new instance of Request
