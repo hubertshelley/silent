@@ -1,12 +1,10 @@
-use std::error::Error as StdError;
-use std::net::SocketAddr;
-
-use hyper_util::rt::{TokioExecutor, TokioIo};
-use hyper_util::server::conn::auto::Builder;
-use tokio::net::TcpStream;
-
+use crate::core::socket_addr::SocketAddr;
+use crate::core::stream::Stream;
 use crate::route::RootRoute;
 use crate::service::hyper_service::HyperServiceHandler;
+use hyper_util::rt::{TokioExecutor, TokioIo};
+use hyper_util::server::conn::auto::Builder;
+use std::error::Error as StdError;
 
 pub(crate) struct Serve<E = TokioExecutor> {
     pub(crate) routes: RootRoute,
@@ -22,7 +20,7 @@ impl Serve {
     }
     pub(crate) async fn call(
         &self,
-        stream: TcpStream,
+        stream: Stream,
         peer_addr: SocketAddr,
     ) -> Result<(), Box<dyn StdError + Send + Sync>> {
         let io = TokioIo::new(stream);
