@@ -1,6 +1,4 @@
-use crate::{
-    CookieExt, Handler, MiddleWareHandler, Next, Request, Response, SilentError, StatusCode,
-};
+use crate::{CookieExt, Handler, MiddleWareHandler, Next, Request, Response};
 use async_session::{MemoryStore, Session, SessionStore};
 use async_trait::async_trait;
 use cookie::{Cookie, CookieJar};
@@ -41,25 +39,23 @@ where
         let cookie = cookies.get("silent-web-session");
         let session_store = self.session_store.read().await;
         let mut session_key_exists = false;
-        let cookie_value = if cookie.is_some() {
+        let mut cookie_value = if cookie.is_some() {
             session_key_exists = true;
             cookie.unwrap().value().to_string()
         } else {
             session_store.store_session(Session::new()).await?.unwrap()
         };
-        let session = session_store
-            .load_session(cookie_value.clone())
-            .await
-            .map_err(|e| {
-                SilentError::business_error(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to load session: {}", e),
-                )
-            })?
-            .ok_or(SilentError::business_error(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to load session",
-            ))?;
+        let session =
+            if let Ok(Some(session)) = session_store.load_session(cookie_value.clone()).await {
+                session
+            } else {
+                session_key_exists = false;
+                cookie_value = session_store.store_session(Session::new()).await?.unwrap();
+                session_store
+                    .load_session(cookie_value.clone())
+                    .await?
+                    .unwrap()
+            };
         req.extensions_mut().insert(session.clone());
         let session_copied = session.clone();
         if !session_key_exists {
