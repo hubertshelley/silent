@@ -15,9 +15,9 @@ path = "src/client.rs"
 [dependencies]
 tonic = { version = "0.12.3" }
 prost = "0.13"
-tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.42", features = ["macros", "rt-multi-thread"] }
 silent = { path = "../../silent", features = ["grpc"] }
-async-trait = "0.1.83"
+async-trait = "0.1.85"
 
 [build-dependencies]
 tonic-build = { version = "0.12.3" }

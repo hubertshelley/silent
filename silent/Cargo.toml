@@ -34,33 +34,33 @@ grpc = ["upgrade", "dep:tonic", "dep:pin-project-lite", "dep:pin-project", "dep:
 
 [dependencies]
 # Basic dependencies
-thiserror = "2.0.0"
-hyper = { version = "1.5.0", features = ["full"] }
-hyper-util = { version = "0.1.9", features = ["server-auto", "tokio"] }
-tokio = { version = "1.41.0", optional = true }
-bytes = "1.8.0"
+thiserror = "2.0.9"
+hyper = { version = "1.5.2", features = ["full"] }
+hyper-util = { version = "0.1.10", features = ["server-auto", "tokio"] }
+tokio = { version = "1.42.0", optional = true }
+bytes = "1.9.0"
 http-body-util = "0.1.2"
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["chrono"] }
-async-trait = "0.1.83"
-serde = { version = "1.0.213", features = ["derive"] }
-serde_json = "1.0.132"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["chrono"] }
+async-trait = "0.1.85"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.135"
 uuid = "1.11.0"
-url = "2.5.2"
-serde_html_form = "0.2.6"
+url = "2.5.4"
+serde_html_form = "0.2.7"
 mime = "0.3.17"
 futures-util = "0.3.31"
-chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
+chrono = { version = "0.4.39", default-features = false, features = ["clock"] }
 tokio-tungstenite = { version = "0.26.1", optional = true }
 headers = "0.4.0"
-tokio-stream = { version = "0.1.16", features = ["net"], optional = true }
+tokio-stream = { version = "0.1.17", features = ["net"], optional = true }
 pin-project = { version = "1.1", optional = true }
-pin-project-lite = { version = "0.2.15", optional = true }
-http = "1.1.0"
+pin-project-lite = { version = "0.2.16", optional = true }
+http = "1.2.0"
 http-body = "1.0.1"
 futures = "0.3.31"
-tokio-util = "0.7.12"
-anyhow = "1.0.91"
+tokio-util = "0.7.13"
+anyhow = "1.0.95"
 
 # Scheduler
 cron = { version = "0.14.0", optional = true }
@@ -68,7 +68,7 @@ cron = { version = "0.14.0", optional = true }
 # Multipart
 multer = { version = "3.1.0", optional = true }
 multimap = { version = "0.10.0", features = ["serde"], optional = true }
-tempfile = { version = "3.13.0", optional = true }
+tempfile = { version = "3.15.0", optional = true }
 textnonce = { version = "1.0.0", optional = true }
 
 
@@ -87,5 +87,5 @@ argon2 = { version = "0.5.3", optional = true }
 pbkdf2 = { version = "0.12", features = ["simple"], optional = true }
 aes-gcm = { version = "0.10.3", optional = true }
 aes = { version = "0.8", optional = true }
-rsa = { version = "0.9.6", optional = true }
+rsa = { version = "0.9.7", optional = true }
 mime_guess = "2.0.5"
