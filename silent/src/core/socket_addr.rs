@@ -1,17 +1,26 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::str::FromStr;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum SocketAddr {
     TcpSocketAddr(std::net::SocketAddr),
     UnixSocketAddr(std::os::unix::net::SocketAddr),
+}
+
+impl Debug for SocketAddr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SocketAddr::TcpSocketAddr(addr) => write!(f, "http://{}", addr),
+            SocketAddr::UnixSocketAddr(addr) => write!(f, "UnixSocketAddr({:?})", addr),
+        }
+    }
 }
 
 impl Display for SocketAddr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             #[allow(clippy::write_literal)]
-            SocketAddr::TcpSocketAddr(addr) => write!(f, "http{}//{:?}", ':', addr),
+            SocketAddr::TcpSocketAddr(addr) => write!(f, "{}", addr),
             SocketAddr::UnixSocketAddr(addr) => {
                 write!(f, "{:?}", addr.as_pathname())
             }
@@ -57,7 +66,7 @@ mod tests {
     fn test_socket_addr() {
         let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 8080));
         let socket_addr = SocketAddr::from(addr);
-        assert_eq!(format!("{}", socket_addr), "http://127.0.0.1:8080");
+        assert_eq!(format!("{}", socket_addr), "127.0.0.1:8080");
 
         let _ = std::fs::remove_file("/tmp/sock");
         let addr = std::os::unix::net::SocketAddr::from_pathname("/tmp/sock").unwrap();
