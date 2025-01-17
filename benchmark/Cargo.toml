@@ -1,0 +1,15 @@
+[package]
+name = "benchmark"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+silent = { path = "../silent" }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "route_benchmark"
+path = "benches/route_benchmark.rs"
+harness = false
