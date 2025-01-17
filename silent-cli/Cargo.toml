@@ -1,0 +1,20 @@
+[package]
+name = "silent-cli"
+edition.workspace = true
+authors.workspace = true
+categories = ["command-line-utilities", "development-tools"]
+documentation = "https://docs.rs/silent/"
+description = "CLI tool for creating Silent web projects"
+homepage.workspace = true
+keywords = ["cli", "web-framework", "scaffolding"]
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
+indicatif = "0.17"
+fs_extra = "1.3"

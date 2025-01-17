@@ -1,6 +1,6 @@
 [workspace]
-members = ["silent", "examples/*", ]
-default-members = ["silent", ]
+members = ["silent", "examples/*", "silent-cli"]
+default-members = ["silent", "silent-cli"]
 resolver = "2"
 
 [workspace.package]
