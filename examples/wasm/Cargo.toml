@@ -10,4 +10,4 @@ version.workspace = true
 
 [dependencies]
 silent = { path = "../../silent" }
-tokio_wasi = { version = "1", features = ["full"] }
+tokio_wasi.workspace = true

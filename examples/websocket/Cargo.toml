@@ -6,10 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = "0.1.85"
+async-trait.workspace = true
 silent = { path = "../../silent", features = ["upgrade"] }
-tokio = { version = "1.42.0", features = ["full"] }
-tokio-tungstenite = "0.26.1"
-futures-util = "0.3.31"
-backtrace = "0.3.74"
-headers = "0.4.0"
+tokio = { workspace = true, features = ["full"] }
+tokio-tungstenite.workspace = true
+futures-util.workspace = true
+backtrace.workspace = true
+headers.workspace = true
