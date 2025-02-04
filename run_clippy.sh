@@ -8,10 +8,10 @@ for project in "$PROJECT_ROOT"/*; do
     echo "Checking $project"
     if [ -d "$project" ]; then
         # 进入项目目录
-        cd "$project"
+        cd "$project" || exit
         # 运行 cargo clippy
         cargo clippy --all-targets --all-features --tests --benches -- -D warnings
         # 返回项目组根目录
-        cd -
+        cd - || exit
     fi
 done

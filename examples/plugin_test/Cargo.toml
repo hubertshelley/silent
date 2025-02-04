@@ -10,5 +10,4 @@ version.workspace = true
 
 [dependencies]
 silent = { path = "../../silent" }
-crossbeam-epoch.workspace = true
 dlopen2 = { workspace = true, features = ["derive"] }

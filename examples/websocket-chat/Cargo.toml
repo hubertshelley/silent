@@ -8,6 +8,4 @@ publish = false
 [dependencies]
 silent = { path = "../../silent", features = ["upgrade"] }
 tokio = { workspace = true, features = ["full"] }
-tokio-stream.workspace = true
-futures-util.workspace = true
 once_cell.workspace = true

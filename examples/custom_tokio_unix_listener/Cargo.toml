@@ -11,4 +11,3 @@ http-body-util = "0.1"
 hyper = { workspace = true, features = ["full"] }
 hyper-util = { workspace = true, features = ["tokio", "server-auto", "http1"] }
 tokio = { workspace = true, features = ["full"] }
-tracing-subscriber = { workspace = true, features = ["env-filter"] }
