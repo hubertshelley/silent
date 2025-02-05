@@ -168,10 +168,7 @@ impl Route {
 
     #[cfg(feature = "static")]
     pub fn with_static_in_url(self, url: &str, path: &str) -> Self {
-        self.append(
-            Route::new(format!("{}/<path:**>", url).as_str())
-                .insert_handler(Method::GET, Arc::new(static_handler(path))),
-        )
+        self.append(Route::new(url).with_static(path))
     }
 }
 
