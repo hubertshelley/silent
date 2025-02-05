@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 silent = { path = "../../silent" }
-async-trait = "0.1.85"
-tokio = { version = "1.42.0", features = ["full"] }
+async-trait.workspace = true
+tokio.workspace = true

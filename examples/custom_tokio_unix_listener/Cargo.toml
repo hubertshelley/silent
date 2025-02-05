@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 silent = { path = "../../silent" }
 http-body-util = "0.1"
-hyper = { version = "1.5.2", features = ["full"] }
-hyper-util = { version = "0.1", features = ["tokio", "server-auto", "http1"] }
-tokio = { version = "1.42", features = ["full"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+hyper = { workspace = true, features = ["full"] }
+hyper-util = { workspace = true, features = ["tokio", "server-auto", "http1"] }
+tokio = { workspace = true, features = ["full"] }
