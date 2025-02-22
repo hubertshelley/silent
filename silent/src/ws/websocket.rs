@@ -13,10 +13,10 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio::sync::RwLock;
-use tokio_tungstenite::tungstenite::protocol;
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 use tokio_tungstenite::WebSocketStream;
+use tokio_tungstenite::tungstenite::protocol;
 
 pub struct WebSocket {
     parts: Arc<RwLock<WebSocketParts>>,
@@ -141,15 +141,15 @@ pub trait WebSocketHandlerTrait<
 
 #[async_trait]
 impl<
-        FnOnConnect,
-        FnOnConnectFut,
-        FnOnSend,
-        FnOnSendFut,
-        FnOnReceive,
-        FnOnReceiveFut,
-        FnOnClose,
-        FnOnCloseFut,
-    >
+    FnOnConnect,
+    FnOnConnectFut,
+    FnOnSend,
+    FnOnSendFut,
+    FnOnReceive,
+    FnOnReceiveFut,
+    FnOnClose,
+    FnOnCloseFut,
+>
     WebSocketHandlerTrait<
         FnOnConnect,
         FnOnConnectFut,

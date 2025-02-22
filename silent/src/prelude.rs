@@ -5,15 +5,15 @@ pub use crate::cookie::cookie_ext::CookieExt;
 pub use crate::core::form::{FilePart, FormData};
 pub use crate::core::{
     listener::Listener, next::Next, path_param::PathParam, req_body::ReqBody, request::Request,
-    res_body::full, res_body::stream_body, res_body::ResBody, response::Response, stream::Stream,
+    res_body::ResBody, res_body::full, res_body::stream_body, response::Response, stream::Stream,
 };
 pub use crate::error::{SilentError, SilentResult as Result};
 #[cfg(feature = "grpc")]
 pub use crate::grpc::{GrpcHandler, GrpcRegister};
-#[cfg(feature = "static")]
-pub use crate::handler::static_handler;
 pub use crate::handler::Handler;
 pub use crate::handler::HandlerWrapper;
+#[cfg(feature = "static")]
+pub use crate::handler::static_handler;
 pub use crate::log::*;
 pub use crate::middleware::MiddleWareHandler;
 pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
@@ -27,7 +27,7 @@ pub use crate::service::Server;
 #[cfg(feature = "session")]
 pub use crate::session::session_ext::SessionExt;
 #[cfg(feature = "sse")]
-pub use crate::sse::{sse_reply, KeepAlive, SSEEvent};
+pub use crate::sse::{KeepAlive, SSEEvent, sse_reply};
 #[cfg(feature = "template")]
 pub use crate::templates::*;
 #[cfg(feature = "upgrade")]
@@ -39,6 +39,6 @@ pub use crate::ws::{Message, WebSocket, WebSocketHandler, WebSocketParts};
 #[cfg(feature = "session")]
 pub use async_session::{Session, SessionStore};
 #[cfg(feature = "cookie")]
-pub use cookie::{time as CookieTime, Cookie, CookieJar, Key};
+pub use cookie::{Cookie, CookieJar, Key, time as CookieTime};
 pub use headers;
-pub use hyper::{header, upgrade, Method, StatusCode};
+pub use hyper::{Method, StatusCode, header, upgrade};

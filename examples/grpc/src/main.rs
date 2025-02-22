@@ -3,8 +3,8 @@ use tonic::{Request, Response, Status};
 
 use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
-use silent::prelude::{info, logger, HandlerAppend, Level, Route, Server};
 use silent::GrpcRegister;
+use silent::prelude::{HandlerAppend, Level, Route, Server, info, logger};
 
 mod client;
 

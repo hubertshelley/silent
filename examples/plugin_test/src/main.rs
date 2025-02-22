@@ -1,6 +1,6 @@
 // use crossbeam_epoch::Pointable;
 use dlopen2::wrapper::{Container, WrapperApi};
-use silent::prelude::{logger, Level, Route, Server};
+use silent::prelude::{Level, Route, Server, logger};
 use std::error::Error;
 
 #[derive(WrapperApi)]

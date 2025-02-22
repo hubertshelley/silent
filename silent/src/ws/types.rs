@@ -1,11 +1,11 @@
-use crate::ws::upgrade::WebSocketParts;
-use crate::ws::Message;
 use crate::Result;
+use crate::ws::Message;
+use crate::ws::upgrade::WebSocketParts;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
+use tokio::sync::mpsc::UnboundedSender;
 
 pub type FnOnConnect = dyn Fn(
         Arc<RwLock<WebSocketParts>>,

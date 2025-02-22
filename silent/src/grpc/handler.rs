@@ -4,15 +4,15 @@ use super::utils::merge_grpc_response;
 use crate::grpc::service::GrpcService;
 use crate::{Handler, Response, SilentError};
 use async_trait::async_trait;
-use http::{header, HeaderValue, StatusCode};
+use http::{HeaderValue, StatusCode, header};
 use http_body_util::BodyExt;
 use hyper::upgrade::OnUpgrade;
 use hyper_util::rt::TokioExecutor;
 use tokio::sync::Mutex;
+use tonic::Status;
 use tonic::body::BoxBody;
 use tonic::codegen::Service;
 use tonic::server::NamedService;
-use tonic::Status;
 use tracing::{error, info};
 
 trait GrpcRequestAdapter {

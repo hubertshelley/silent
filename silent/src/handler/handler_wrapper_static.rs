@@ -66,11 +66,11 @@ mod tests {
     use bytes::Bytes;
     use http_body_util::BodyExt;
 
-    use crate::prelude::*;
     use crate::Handler;
     use crate::Request;
     use crate::SilentError;
     use crate::StatusCode;
+    use crate::prelude::*;
 
     use super::HandlerWrapperStatic;
 

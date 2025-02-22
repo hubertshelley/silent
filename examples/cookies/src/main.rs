@@ -1,4 +1,4 @@
-use silent::header::{HeaderValue, CONTENT_TYPE};
+use silent::header::{CONTENT_TYPE, HeaderValue};
 use silent::prelude::*;
 
 fn main() {

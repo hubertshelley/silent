@@ -1,10 +1,10 @@
-use crate::ws::message::Message;
-use crate::ws::WebSocketParts;
 use crate::Result;
+use crate::ws::WebSocketParts;
+use crate::ws::message::Message;
 use std::future::Future;
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Clone, Default)]
 pub struct WebSocketHandler<
@@ -36,15 +36,15 @@ pub struct WebSocketHandler<
 }
 
 impl<
-        FnOnConnect,
-        FnOnConnectFut,
-        FnOnSend,
-        FnOnSendFut,
-        FnOnReceive,
-        FnOnReceiveFut,
-        FnOnClose,
-        FnOnCloseFut,
-    >
+    FnOnConnect,
+    FnOnConnectFut,
+    FnOnSend,
+    FnOnSendFut,
+    FnOnReceive,
+    FnOnReceiveFut,
+    FnOnClose,
+    FnOnCloseFut,
+>
     WebSocketHandler<
         FnOnConnect,
         FnOnConnectFut,

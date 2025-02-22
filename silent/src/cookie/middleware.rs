@@ -1,7 +1,7 @@
 use crate::{Handler, MiddleWareHandler, Next, Request, Response, Result, SilentError};
 use async_trait::async_trait;
 use cookie::{Cookie, CookieJar};
-use http::{header, StatusCode};
+use http::{StatusCode, header};
 
 #[derive(Debug, Default)]
 pub struct CookieMiddleware {}

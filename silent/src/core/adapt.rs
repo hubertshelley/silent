@@ -1,16 +1,16 @@
 #[cfg(feature = "cookie")]
 use cookie::{Cookie, CookieJar};
 #[cfg(feature = "cookie")]
-use http::{header, StatusCode};
+use http::{StatusCode, header};
 use http_body::Body;
 use hyper::Request as HyperRequest;
 use hyper::Response as HyperResponse;
 
-use crate::core::req_body::ReqBody;
 #[cfg(feature = "cookie")]
 use crate::CookieExt;
 #[cfg(feature = "cookie")]
 use crate::SilentError;
+use crate::core::req_body::ReqBody;
 use crate::{Request, Response};
 
 pub trait RequestAdapt {

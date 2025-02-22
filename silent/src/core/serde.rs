@@ -264,10 +264,9 @@ where
     where
         V: Visitor<'de>,
     {
-        if let Some(item) = self.0.into_iter().next() {
-            item.deserialize_any(visitor)
-        } else {
-            Err(DeError::custom("expected vec not empty"))
+        match self.0.into_iter().next() {
+            Some(item) => item.deserialize_any(visitor),
+            _ => Err(DeError::custom("expected vec not empty")),
         }
     }
 
@@ -328,10 +327,9 @@ where
     where
         V: Visitor<'de>,
     {
-        if let Some(item) = self.0.into_iter().next() {
-            visitor.visit_enum(ValueEnumAccess(item.0))
-        } else {
-            Err(DeError::custom("expected vec not empty"))
+        match self.0.into_iter().next() {
+            Some(item) => visitor.visit_enum(ValueEnumAccess(item.0)),
+            _ => Err(DeError::custom("expected vec not empty")),
         }
     }
 

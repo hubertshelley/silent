@@ -97,8 +97,8 @@ impl Task {
 mod tests {
     use crate::scheduler::process_time::ProcessTime;
     use crate::scheduler::task::Task;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
     fn test_task() {

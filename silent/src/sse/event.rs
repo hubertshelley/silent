@@ -67,13 +67,13 @@ impl SSEEvent {
 
 impl fmt::Display for SSEEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(ref comment) = &self.comment {
+        if let Some(comment) = &self.comment {
             ":".fmt(f)?;
             comment.fmt(f)?;
             f.write_char('\n')?;
         }
 
-        if let Some(ref event) = &self.event {
+        if let Some(event) = &self.event {
             "event:".fmt(f)?;
             event.fmt(f)?;
             f.write_char('\n')?;
@@ -95,13 +95,13 @@ impl fmt::Display for SSEEvent {
             None => {}
         }
 
-        if let Some(ref id) = &self.id {
+        if let Some(id) = &self.id {
             "id:".fmt(f)?;
             id.fmt(f)?;
             f.write_char('\n')?;
         }
 
-        if let Some(ref duration) = &self.retry {
+        if let Some(duration) = &self.retry {
             "retry:".fmt(f)?;
 
             let secs = duration.as_secs();

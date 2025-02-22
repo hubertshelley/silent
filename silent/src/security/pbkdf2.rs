@@ -1,7 +1,7 @@
 use crate::{Result, SilentError, StatusCode};
+use pbkdf2::Pbkdf2;
 use pbkdf2::password_hash::rand_core::OsRng;
 use pbkdf2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
-use pbkdf2::Pbkdf2;
 
 pub fn make_password(password: String) -> Result<String> {
     let salt = SaltString::generate(&mut OsRng);

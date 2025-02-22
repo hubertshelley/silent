@@ -26,7 +26,7 @@ impl<H: Handler + Clone> HyperServiceHandler<H> {
     }
     /// Handle [`Request`] and returns [`Response`].
     #[inline]
-    pub fn handle(&self, mut req: Request) -> impl Future<Output = Response> {
+    pub fn handle(&self, mut req: Request) -> impl Future<Output = Response> + use<H> {
         let Self {
             remote_addr,
             routes,

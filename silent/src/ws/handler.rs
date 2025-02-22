@@ -1,5 +1,5 @@
 use crate::headers::{Connection, HeaderMapExt, SecWebsocketAccept, SecWebsocketKey, Upgrade};
-use crate::{header, Request, Response, Result, SilentError, StatusCode};
+use crate::{Request, Response, Result, SilentError, StatusCode, header};
 
 pub fn websocket_handler(req: &Request) -> Result<Response> {
     let mut res = Response::empty();

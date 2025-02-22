@@ -138,7 +138,7 @@ impl Configs {
     /// ```
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.map.as_ref().map_or(true, |map| map.is_empty())
+        self.map.as_ref().is_none_or(|map| map.is_empty())
     }
 
     /// Get the numer of extensions available.
@@ -206,16 +206,24 @@ mod tests {
                 if i % 5 == 0 {
                     // let mut configs = configs.clone();
                     let configs = configs.clone();
-                    if let Some(my_type) = configs.get::<MyStringType>() {
-                        // my_type.0 = i.to_string();
-                        info!("Ok: i:{}, v:{}", i, my_type.0)
-                    } else {
-                        info!("Err: i:{}", i)
+                    match configs.get::<MyStringType>() {
+                        Some(my_type) => {
+                            // my_type.0 = i.to_string();
+                            info!("Ok: i:{}, v:{}", i, my_type.0)
+                        }
+                        _ => {
+                            info!("Err: i:{}", i)
+                        }
                     }
-                } else if let Some(my_type) = configs.get::<MyStringType>() {
-                    info!("Ok: i:{}, v:{}", i, my_type.0)
                 } else {
-                    info!("Err: i:{}", i)
+                    match configs.get::<MyStringType>() {
+                        Some(my_type) => {
+                            info!("Ok: i:{}, v:{}", i, my_type.0)
+                        }
+                        _ => {
+                            info!("Err: i:{}", i)
+                        }
+                    }
                 }
             });
         }
@@ -246,24 +254,34 @@ mod tests {
             thread::spawn(move || {
                 if i % 5 == 0 {
                     let configs = configs.clone();
-                    if let Some(my_type) = configs.get::<Arc<RwLock<MyStringType>>>().cloned() {
-                        if let Ok(mut my_type) = my_type.write() {
-                            my_type.0 = i.to_string();
-                            info!("Ok: i:{}, v:{}", i, my_type.0)
-                        } else {
-                            error!("Rwlock Lock Err: i:{}", i)
+                    match configs.get::<Arc<RwLock<MyStringType>>>().cloned() {
+                        Some(my_type) => match my_type.write() {
+                            Ok(mut my_type) => {
+                                my_type.0 = i.to_string();
+                                info!("Ok: i:{}, v:{}", i, my_type.0)
+                            }
+                            _ => {
+                                error!("Rwlock Lock Err: i:{}", i)
+                            }
+                        },
+                        _ => {
+                            error!("Get Err: i:{}", i)
                         }
-                    } else {
-                        error!("Get Err: i:{}", i)
-                    }
-                } else if let Some(my_type) = configs.get::<Arc<RwLock<MyStringType>>>() {
-                    if let Ok(my_type) = my_type.read() {
-                        info!("Ok: i:{}, v:{}", i, my_type.0)
-                    } else {
-                        error!("Rwlock Read Err: i:{}", i)
                     }
                 } else {
-                    error!("Err: i:{}", i)
+                    match configs.get::<Arc<RwLock<MyStringType>>>() {
+                        Some(my_type) => match my_type.read() {
+                            Ok(my_type) => {
+                                info!("Ok: i:{}, v:{}", i, my_type.0)
+                            }
+                            _ => {
+                                error!("Rwlock Read Err: i:{}", i)
+                            }
+                        },
+                        _ => {
+                            error!("Err: i:{}", i)
+                        }
+                    }
                 }
             });
         }

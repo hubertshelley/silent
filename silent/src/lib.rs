@@ -38,12 +38,12 @@ pub use crate::cookie::cookie_ext::CookieExt;
 pub use crate::core::{next::Next, request::Request, response::Response};
 #[cfg(feature = "grpc")]
 pub use crate::grpc::{GrpcHandler, GrpcRegister};
-pub use crate::middleware::{middlewares, MiddleWareHandler};
+pub use crate::middleware::{MiddleWareHandler, middlewares};
 pub use error::SilentError;
 pub use error::SilentResult as Result;
 pub use handler::Handler;
 pub use handler::HandlerWrapper;
 pub use headers;
-pub use hyper::{header, Method, StatusCode};
+pub use hyper::{Method, StatusCode, header};
 #[cfg(feature = "scheduler")]
 pub use scheduler::{ProcessTime, Scheduler, SchedulerExt, Task};
