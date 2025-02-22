@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use silent::prelude::*;
-use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 use tokio::net::TcpListener;
 
 #[tokio::main]

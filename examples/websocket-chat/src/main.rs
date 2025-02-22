@@ -4,11 +4,11 @@
 // port from https://github.com/seanmonstar/warp/blob/master/examples/websocket_chat.rs
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use once_cell::sync::Lazy;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 
 use silent::prelude::*;
 
