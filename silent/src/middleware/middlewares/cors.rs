@@ -1,6 +1,6 @@
 use crate::{Handler, MiddleWareHandler, Next, Request, Response, Result, SilentError};
 use async_trait::async_trait;
-use http::{header, Method};
+use http::{Method, header};
 
 #[derive(Debug)]
 pub enum CorsType {

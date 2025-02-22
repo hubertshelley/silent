@@ -4,7 +4,7 @@ default-members = ["silent"]
 resolver = "2"
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 authors = ["Hubert Shelley <hubertshelley@163.com>"]
 homepage = "https://github.com/hubertshelley/silent"
 license = "Apache-2.0"

@@ -1,6 +1,6 @@
 use super::{RootRoute, Route};
-use crate::core::path_param::PathParam;
 use crate::Request;
+use crate::core::path_param::PathParam;
 
 #[derive(Debug, Clone)]
 pub(crate) enum RouteMatched {

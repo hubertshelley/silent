@@ -1,5 +1,5 @@
 use crate::core::req_body::ReqBody;
-use crate::header::{HeaderMap, CONTENT_TYPE};
+use crate::header::{CONTENT_TYPE, HeaderMap};
 use crate::multer::{Field, Multipart};
 use crate::{SilentError, StatusCode};
 use multimap::MultiMap;

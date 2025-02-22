@@ -6,9 +6,9 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
+use crate::handler::Handler;
 #[cfg(feature = "static")]
 use crate::handler::static_handler;
-use crate::handler::Handler;
 use crate::middleware::MiddleWareHandler;
 #[cfg(feature = "static")]
 use crate::prelude::HandlerGetter;

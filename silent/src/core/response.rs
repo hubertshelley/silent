@@ -1,9 +1,9 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-use crate::core::res_body::{full, ResBody};
+use crate::core::res_body::{ResBody, full};
 use crate::headers::{ContentType, Header, HeaderMap, HeaderMapExt};
-use crate::{header, Configs, Result, SilentError, StatusCode};
+use crate::{Configs, Result, SilentError, StatusCode, header};
 use http::{Extensions, Version};
 use http_body::{Body, SizeHint};
 use serde::Serialize;

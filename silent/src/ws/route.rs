@@ -4,8 +4,8 @@ use crate::ws::{HandlerWrapperWebSocket, WebSocketHandler};
 use http::Method;
 use std::future::Future;
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 pub trait WSHandlerAppend<
@@ -62,15 +62,15 @@ pub trait WSHandlerAppend<
     }
 }
 impl<
-        FnOnConnect,
-        FnOnConnectFut,
-        FnOnSend,
-        FnOnSendFut,
-        FnOnReceive,
-        FnOnReceiveFut,
-        FnOnClose,
-        FnOnCloseFut,
-    >
+    FnOnConnect,
+    FnOnConnectFut,
+    FnOnSend,
+    FnOnSendFut,
+    FnOnReceive,
+    FnOnReceiveFut,
+    FnOnClose,
+    FnOnCloseFut,
+>
     WSHandlerAppend<
         FnOnConnect,
         FnOnConnectFut,

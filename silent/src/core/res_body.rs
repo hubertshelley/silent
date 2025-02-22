@@ -4,8 +4,8 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use bytes::Bytes;
-use futures_util::stream::{BoxStream, Stream};
 use futures_util::TryStreamExt;
+use futures_util::stream::{BoxStream, Stream};
 use http_body::{Body, Frame, SizeHint};
 use hyper::body::Incoming;
 

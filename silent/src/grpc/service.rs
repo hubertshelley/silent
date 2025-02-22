@@ -6,9 +6,9 @@ use http_body_util::BodyExt;
 use hyper::body::Incoming;
 use hyper::service::Service as HyperService;
 use tokio::sync::Mutex;
+use tonic::Status;
 use tonic::body::BoxBody;
 use tonic::codegen::Service;
-use tonic::Status;
 use tracing::error;
 
 #[doc(hidden)]

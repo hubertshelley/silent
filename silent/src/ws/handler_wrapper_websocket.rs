@@ -1,13 +1,13 @@
 use crate::ws::handler::websocket_handler;
 use crate::ws::websocket::{WebSocket, WebSocketHandlerTrait};
 use crate::ws::websocket_handler::WebSocketHandler;
-use crate::ws::{upgrade, Message, WebSocketParts};
+use crate::ws::{Message, WebSocketParts, upgrade};
 use crate::{Handler, Request, Response, Result};
 use async_trait::async_trait;
 use std::future::Future;
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio_tungstenite::tungstenite::protocol;
 use tracing::error;
 
@@ -51,15 +51,15 @@ pub struct HandlerWrapperWebSocket<
 }
 
 impl<
-        FnOnConnect,
-        FnOnConnectFut,
-        FnOnSend,
-        FnOnSendFut,
-        FnOnReceive,
-        FnOnReceiveFut,
-        FnOnClose,
-        FnOnCloseFut,
-    >
+    FnOnConnect,
+    FnOnConnectFut,
+    FnOnSend,
+    FnOnSendFut,
+    FnOnReceive,
+    FnOnReceiveFut,
+    FnOnClose,
+    FnOnCloseFut,
+>
     HandlerWrapperWebSocket<
         FnOnConnect,
         FnOnConnectFut,
@@ -110,15 +110,15 @@ where
 
 #[async_trait]
 impl<
-        FnOnConnect,
-        FnOnConnectFut,
-        FnOnSend,
-        FnOnSendFut,
-        FnOnReceive,
-        FnOnReceiveFut,
-        FnOnClose,
-        FnOnCloseFut,
-    > Handler
+    FnOnConnect,
+    FnOnConnectFut,
+    FnOnSend,
+    FnOnSendFut,
+    FnOnReceive,
+    FnOnReceiveFut,
+    FnOnClose,
+    FnOnCloseFut,
+> Handler
     for HandlerWrapperWebSocket<
         FnOnConnect,
         FnOnConnectFut,

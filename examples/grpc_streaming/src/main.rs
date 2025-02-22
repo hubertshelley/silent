@@ -1,12 +1,12 @@
 use std::{error::Error, io::ErrorKind, pin::Pin, time::Duration};
 
 use tokio::sync::mpsc;
-use tokio_stream::{wrappers::ReceiverStream, Stream, StreamExt};
+use tokio_stream::{Stream, StreamExt, wrappers::ReceiverStream};
 use tonic::{Request, Response, Status, Streaming};
 
 use pb::{EchoRequest, EchoResponse};
-use silent::prelude::{info, logger, HandlerAppend, Level, Route, RouteService, Server};
 use silent::GrpcRegister;
+use silent::prelude::{HandlerAppend, Level, Route, RouteService, Server, info, logger};
 
 mod client;
 

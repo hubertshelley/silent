@@ -3,7 +3,7 @@ mod storage;
 mod task;
 pub mod traits;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::sync::Arc;
 use std::thread;
 use tokio::sync::Mutex;
@@ -71,8 +71,14 @@ impl Scheduler {
             if task.is_async {
                 tokio::spawn(async move {
                     match task.clone().run_async().await {
-                        Ok(_) => debug!("task: ID:{:?} Description:{:?} ProcessTime:{:?} activate success!", task.id, task.description, task.process_time),
-                        Err(e) => error!("task: ID:{:?} Description:{:?} ProcessTime:{:?} run failed! error: {:?}", task.id, task.description, task.process_time, e),
+                        Ok(_) => debug!(
+                            "task: ID:{:?} Description:{:?} ProcessTime:{:?} activate success!",
+                            task.id, task.description, task.process_time
+                        ),
+                        Err(e) => error!(
+                            "task: ID:{:?} Description:{:?} ProcessTime:{:?} run failed! error: {:?}",
+                            task.id, task.description, task.process_time, e
+                        ),
                     }
                 });
             } else {
@@ -111,13 +117,13 @@ impl Scheduler {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::sync::Mutex;
 
+    use crate::scheduler::Scheduler;
     use crate::scheduler::process_time::ProcessTime;
     use crate::scheduler::task::Task;
-    use crate::scheduler::Scheduler;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
     async fn test_scheduler_async() {

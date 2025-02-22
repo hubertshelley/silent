@@ -1,14 +1,14 @@
+#[cfg(feature = "scheduler")]
+use crate::Scheduler;
 #[cfg(feature = "cookie")]
 use crate::cookie::middleware::CookieMiddleware;
 use crate::middlewares::RequestTimeLogger;
-use crate::route::handler_match::{Match, RouteMatched};
 use crate::route::Route;
+use crate::route::handler_match::{Match, RouteMatched};
 #[cfg(feature = "session")]
 use crate::session::middleware::SessionMiddleware;
 #[cfg(feature = "template")]
 use crate::templates::TemplateMiddleware;
-#[cfg(feature = "scheduler")]
-use crate::Scheduler;
 use crate::{
     Configs, Handler, HandlerWrapper, MiddleWareHandler, Next, Request, Response, SilentError,
 };

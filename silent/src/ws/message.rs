@@ -3,7 +3,7 @@ use bytes::Bytes;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Deref;
-use tokio_tungstenite::tungstenite::{protocol, Utf8Bytes};
+use tokio_tungstenite::tungstenite::{Utf8Bytes, protocol};
 
 #[derive(Eq, PartialEq, Clone)]
 pub struct Message {
