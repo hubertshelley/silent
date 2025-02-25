@@ -117,6 +117,8 @@ impl SilentError {
             Self::SerdeDeError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::SerdeJsonError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::NotFound => StatusCode::NOT_FOUND,
+            Self::BodyEmpty => StatusCode::BAD_REQUEST,
+            Self::JsonEmpty => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

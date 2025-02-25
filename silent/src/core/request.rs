@@ -356,11 +356,19 @@ impl Request {
                     .get_or_try_init(|| async {
                         match content_type.subtype() {
                             mime::WWW_FORM_URLENCODED => {
-                                let bytes = body.collect().await.unwrap().to_bytes();
+                                let bytes = body
+                                    .collect()
+                                    .await
+                                    .or(Err(SilentError::BodyEmpty))?
+                                    .to_bytes();
                                 serde_html_form::from_bytes(&bytes).map_err(SilentError::from)
                             }
                             mime::JSON => {
-                                let bytes = body.collect().await.unwrap().to_bytes();
+                                let bytes = body
+                                    .collect()
+                                    .await
+                                    .or(Err(SilentError::JsonEmpty))?
+                                    .to_bytes();
                                 serde_json::from_slice(&bytes).map_err(|e| e.into())
                             }
                             _ => Err(SilentError::JsonEmpty),
