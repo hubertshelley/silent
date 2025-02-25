@@ -293,7 +293,7 @@ impl Request {
     #[cfg(feature = "multipart")]
     #[inline]
     pub async fn form_data(&mut self) -> Result<&FormData> {
-        let content_type = self.content_type().unwrap();
+        let content_type = self.content_type().ok_or(SilentError::ContentTypeError)?;
         if content_type.subtype() != mime::FORM_DATA {
             return Err(SilentError::ContentTypeError);
         }
@@ -345,7 +345,7 @@ impl Request {
         for<'de> T: Deserialize<'de>,
     {
         let body = self.take_body();
-        let content_type = self.content_type().unwrap();
+        let content_type = self.content_type().ok_or(SilentError::ContentTypeError)?;
         if content_type.subtype() == mime::FORM_DATA {
             return Err(SilentError::ContentTypeError);
         }
