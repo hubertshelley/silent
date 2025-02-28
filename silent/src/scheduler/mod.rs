@@ -1,10 +1,11 @@
+pub(crate) mod middleware;
 mod process_time;
 mod storage;
 mod task;
 pub mod traits;
 
 use anyhow::{Result, anyhow};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::thread;
 use tokio::sync::Mutex;
 use tracing::{debug, error, info};
@@ -12,6 +13,9 @@ use tracing::{debug, error, info};
 pub use process_time::ProcessTime;
 pub use task::Task;
 pub use traits::SchedulerExt;
+
+pub static SCHEDULER: LazyLock<Arc<Mutex<Scheduler>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(Scheduler::new())));
 
 #[derive(Debug, Clone)]
 pub struct Scheduler {

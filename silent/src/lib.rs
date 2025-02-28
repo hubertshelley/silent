@@ -46,4 +46,4 @@ pub use handler::HandlerWrapper;
 pub use headers;
 pub use hyper::{Method, StatusCode, header};
 #[cfg(feature = "scheduler")]
-pub use scheduler::{ProcessTime, Scheduler, SchedulerExt, Task};
+pub use scheduler::{ProcessTime, SCHEDULER, Scheduler, SchedulerExt, Task};
