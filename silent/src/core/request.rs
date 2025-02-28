@@ -293,7 +293,7 @@ impl Request {
     #[cfg(feature = "multipart")]
     #[inline]
     pub async fn form_data(&mut self) -> Result<&FormData> {
-        let content_type = self.content_type().unwrap();
+        let content_type = self.content_type().ok_or(SilentError::ContentTypeError)?;
         if content_type.subtype() != mime::FORM_DATA {
             return Err(SilentError::ContentTypeError);
         }
@@ -345,8 +345,8 @@ impl Request {
         for<'de> T: Deserialize<'de>,
     {
         let body = self.take_body();
-        let content_type = self.content_type().unwrap();
-        if content_type.subtype() == mime::FORM_DATA {
+        let content_type = self.content_type().ok_or(SilentError::ContentTypeError)?;
+        if content_type.subtype() != mime::JSON {
             return Err(SilentError::ContentTypeError);
         }
         match body {
@@ -354,17 +354,15 @@ impl Request {
                 let value = self
                     .json_data
                     .get_or_try_init(|| async {
-                        match content_type.subtype() {
-                            mime::WWW_FORM_URLENCODED => {
-                                let bytes = body.collect().await.unwrap().to_bytes();
-                                serde_html_form::from_bytes(&bytes).map_err(SilentError::from)
-                            }
-                            mime::JSON => {
-                                let bytes = body.collect().await.unwrap().to_bytes();
-                                serde_json::from_slice(&bytes).map_err(|e| e.into())
-                            }
-                            _ => Err(SilentError::JsonEmpty),
+                        let bytes = body
+                            .collect()
+                            .await
+                            .or(Err(SilentError::JsonEmpty))?
+                            .to_bytes();
+                        if bytes.is_empty() {
+                            return Err(SilentError::JsonEmpty);
                         }
+                        serde_json::from_slice(&bytes).map_err(|e| e.into())
                     })
                     .await?;
                 Ok(serde_json::from_value(value.to_owned())?)
