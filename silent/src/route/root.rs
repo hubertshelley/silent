@@ -1,5 +1,3 @@
-#[cfg(feature = "scheduler")]
-use crate::Scheduler;
 #[cfg(feature = "cookie")]
 use crate::cookie::middleware::CookieMiddleware;
 use crate::middlewares::RequestTimeLogger;
@@ -17,8 +15,6 @@ use async_session::SessionStore;
 use async_trait::async_trait;
 use std::fmt;
 use std::sync::Arc;
-#[cfg(feature = "scheduler")]
-use tokio::sync::Mutex;
 
 #[derive(Clone, Default)]
 pub struct RootRoute {
@@ -27,8 +23,6 @@ pub struct RootRoute {
     #[cfg(feature = "session")]
     pub(crate) session_set: bool,
     pub(crate) configs: Option<Configs>,
-    #[cfg(feature = "scheduler")]
-    pub(crate) scheduler: Arc<Mutex<Scheduler>>,
 }
 
 impl fmt::Debug for RootRoute {
@@ -51,8 +45,6 @@ impl RootRoute {
             #[cfg(feature = "session")]
             session_set: false,
             configs: None,
-            #[cfg(feature = "scheduler")]
-            scheduler: Arc::new(Mutex::new(Scheduler::new())),
         }
     }
 
@@ -110,8 +102,6 @@ impl Handler for RootRoute {
         tracing::debug!("{:?}", req);
         let configs = self.configs.clone().unwrap_or_default();
         req.configs = configs.clone();
-        #[cfg(feature = "scheduler")]
-        req.extensions_mut().insert(self.scheduler.clone());
 
         let mut root_middlewares = vec![];
         for middleware in self.middlewares.iter().cloned() {

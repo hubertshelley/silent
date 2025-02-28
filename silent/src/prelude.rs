@@ -19,7 +19,7 @@ pub use crate::middleware::MiddleWareHandler;
 pub use crate::route::handler_append::{HandlerAppend, HandlerGetter};
 pub use crate::route::{RootRoute, Route, RouteService, RouterAdapt};
 #[cfg(feature = "scheduler")]
-pub use crate::scheduler::{SchedulerExt, Task};
+pub use crate::scheduler::{SCHEDULER, SchedulerExt, Task};
 #[cfg(feature = "security")]
 pub use crate::security::{argon2, pbkdf2};
 #[cfg(feature = "server")]

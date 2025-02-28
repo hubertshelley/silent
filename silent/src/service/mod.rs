@@ -6,6 +6,8 @@ use crate::Configs;
 use crate::Scheduler;
 use crate::core::listener::Listener;
 use crate::route::RouteService;
+#[cfg(feature = "scheduler")]
+use crate::scheduler::{SCHEDULER, middleware::SchedulerMiddleware};
 use crate::service::serve::Serve;
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, UnixListener};
@@ -117,9 +119,10 @@ impl Server {
         #[cfg(feature = "cookie")]
         root_route.check_cookie();
         #[cfg(feature = "scheduler")]
-        let scheduler = root_route.scheduler.clone();
+        root_route.hook_first(SchedulerMiddleware::new());
         #[cfg(feature = "scheduler")]
         tokio::spawn(async move {
+            let scheduler = SCHEDULER.clone();
             Scheduler::schedule(scheduler).await;
         });
         let mut join_set = JoinSet::new();
