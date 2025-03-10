@@ -8,7 +8,7 @@ use anyhow::{Result, anyhow};
 use std::sync::{Arc, LazyLock};
 use std::thread;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 pub use process_time::ProcessTime;
 pub use task::Task;
@@ -75,10 +75,7 @@ impl Scheduler {
             if task.is_async {
                 tokio::spawn(async move {
                     match task.clone().run_async().await {
-                        Ok(_) => debug!(
-                            "task: ID:{:?} Description:{:?} ProcessTime:{:?} activate success!",
-                            task.id, task.description, task.process_time
-                        ),
+                        Ok(_) => {}
                         Err(e) => error!(
                             "task: ID:{:?} Description:{:?} ProcessTime:{:?} run failed! error: {:?}",
                             task.id, task.description, task.process_time, e
@@ -87,10 +84,7 @@ impl Scheduler {
                 });
             } else {
                 thread::spawn(move || match task.clone().run() {
-                    Ok(_) => debug!(
-                        "task: ID:{:?} Description:{:?} ProcessTime:{:?} activate success!",
-                        task.id, task.description, task.process_time
-                    ),
+                    Ok(_) => {}
                     Err(e) => error!(
                         "task: ID:{:?} Description:{:?} ProcessTime:{:?} run failed! error: {:?}",
                         task.id, task.description, task.process_time, e

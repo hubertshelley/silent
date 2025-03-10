@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use tracing::debug;
 
 pub type JobToRun = dyn Fn() -> Result<()> + Send + Sync;
 pub type JobToRunAsync = dyn Fn() -> Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync;
@@ -38,7 +39,13 @@ impl Task {
         match self.is_async {
             true => Err(anyhow::anyhow!("async task not support run")),
             false => match self.process_time.is_active() {
-                true => self.action.clone()(),
+                true => {
+                    debug!(
+                        "task: ID:{:?} Description:{:?} ProcessTime:{:?} activate success!",
+                        self.id, self.description, self.process_time
+                    );
+                    self.action.clone()()
+                }
                 false => Ok(()),
             },
         }
@@ -46,7 +53,13 @@ impl Task {
     pub(crate) async fn run_async(&self) -> Result<()> {
         match self.is_async {
             true => match self.process_time.is_active() {
-                true => self.action_async.clone()().await,
+                true => {
+                    debug!(
+                        "async task: ID:{:?} Description:{:?} ProcessTime:{:?} activate success!",
+                        self.id, self.description, self.process_time
+                    );
+                    self.action_async.clone()().await
+                }
                 false => Ok(()),
             },
             false => Err(anyhow::anyhow!("sync task not support run_async")),
