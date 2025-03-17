@@ -2,12 +2,10 @@ mod hyper_service;
 mod serve;
 
 use crate::Configs;
-#[cfg(feature = "scheduler")]
-use crate::Scheduler;
 use crate::core::listener::Listener;
 use crate::route::RouteService;
 #[cfg(feature = "scheduler")]
-use crate::scheduler::{SCHEDULER, middleware::SchedulerMiddleware};
+use crate::scheduler::{SCHEDULER, Scheduler, middleware::SchedulerMiddleware};
 use crate::service::serve::Serve;
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, UnixListener};
