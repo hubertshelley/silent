@@ -35,6 +35,12 @@ impl HandlerWrapperStatic {
 impl Handler for HandlerWrapperStatic {
     async fn call(&self, req: Request) -> Result<Response, SilentError> {
         if let Ok(file_path) = req.get_path_params::<String>("path") {
+            // 文件路径使用url解码
+            let file_path =
+                urlencoding::decode(&file_path).map_err(|_| SilentError::BusinessError {
+                    code: StatusCode::NOT_FOUND,
+                    msg: "Not Found".to_string(),
+                })?;
             let mut path = format!("{}/{}", self.path, file_path);
             if path.ends_with('/') {
                 path.push_str("index.html");
@@ -43,6 +49,8 @@ impl Handler for HandlerWrapperStatic {
                 let mut res = Response::empty();
                 if let Some(content_type) = mime_guess::from_path(path).first() {
                     res.set_typed_header(headers::ContentType::from(content_type));
+                } else {
+                    res.set_typed_header(headers::ContentType::octet_stream());
                 }
                 let reader_stream = ReaderStream::new(file);
                 let stream = reader_stream.boxed();
