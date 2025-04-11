@@ -5,30 +5,22 @@ use crate::grpc::service::GrpcService;
 use crate::{Handler, Response, SilentError};
 use async_trait::async_trait;
 use http::{HeaderValue, StatusCode, header};
-use http_body_util::BodyExt;
 use hyper::upgrade::OnUpgrade;
 use hyper_util::rt::TokioExecutor;
 use tokio::sync::Mutex;
-use tonic::Status;
-use tonic::body::BoxBody;
+use tonic::body::Body;
 use tonic::codegen::Service;
 use tonic::server::NamedService;
 use tracing::{error, info};
 
 trait GrpcRequestAdapter {
-    fn into_grpc_request(self) -> http::Request<BoxBody>;
+    fn into_grpc_request(self) -> http::Request<Body>;
 }
 
 impl GrpcRequestAdapter for crate::Request {
-    fn into_grpc_request(self) -> http::Request<BoxBody> {
+    fn into_grpc_request(self) -> http::Request<Body> {
         let (parts, body) = self.into_http().into_parts();
-        http::Request::from_parts(
-            parts,
-            body.map_err(|e| {
-                Status::internal(format!("convert request to http request failed: {}", e))
-            })
-            .boxed_unsync(),
-        )
+        http::Request::from_parts(parts, Body::new(body))
     }
 }
 
@@ -39,7 +31,7 @@ pub struct GrpcHandler<S> {
 
 impl<S> GrpcHandler<S>
 where
-    S: Service<http::Request<BoxBody>, Response = http::Response<BoxBody>> + NamedService,
+    S: Service<http::Request<Body>, Response = http::Response<Body>> + NamedService,
     S: Clone + Send + 'static,
     S: Sync + Send + 'static,
     S::Future: Send + 'static,
@@ -57,7 +49,7 @@ where
 
 impl<S> From<S> for GrpcHandler<S>
 where
-    S: Service<http::Request<BoxBody>, Response = http::Response<BoxBody>> + NamedService,
+    S: Service<http::Request<Body>, Response = http::Response<Body>> + NamedService,
     S: Clone + Send + 'static,
     S: Sync + Send + 'static,
     S::Future: Send + 'static,
@@ -73,7 +65,7 @@ where
 #[async_trait]
 impl<S> Handler for GrpcHandler<S>
 where
-    S: Service<http::Request<BoxBody>, Response = http::Response<BoxBody>>,
+    S: Service<http::Request<Body>, Response = http::Response<Body>>,
     S: Clone + Send + 'static,
     S: Sync + Send + 'static,
     S::Future: Send + 'static,

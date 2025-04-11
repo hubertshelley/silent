@@ -2,12 +2,12 @@ use crate::Response;
 use crate::prelude::ResBody;
 use http::response::Parts;
 use http_body_util::BodyExt;
-use tonic::body::BoxBody;
+use tonic::body::Body;
 
 #[cfg(feature = "grpc")]
 /// 合并axum响应
 #[inline]
-pub async fn merge_grpc_response(res: &mut Response, grpc_res: http::Response<BoxBody>) {
+pub async fn merge_grpc_response(res: &mut Response, grpc_res: http::Response<Body>) {
     let (parts, body) = grpc_res.into_parts();
     let Parts {
         status,

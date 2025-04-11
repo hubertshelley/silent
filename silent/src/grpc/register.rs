@@ -3,7 +3,7 @@ use crate::prelude::HandlerGetter;
 use crate::prelude::Route;
 use http::Method;
 use std::sync::Arc;
-use tonic::body::BoxBody;
+use tonic::body::Body;
 use tonic::codegen::Service;
 use tonic::server::NamedService;
 
@@ -15,7 +15,7 @@ pub trait GrpcRegister<S> {
 
 impl<S> GrpcRegister<S> for S
 where
-    S: Service<http::Request<BoxBody>, Response = http::Response<BoxBody>> + NamedService,
+    S: Service<http::Request<Body>, Response = http::Response<Body>> + NamedService,
     S: Clone + Send + 'static,
     S: Sync + Send + 'static,
     S::Future: Send + 'static,
