@@ -112,15 +112,7 @@ pub struct TlsListener {
 
 #[cfg(feature = "tls")]
 impl Listen for TlsListener {
-    fn accept(
-        &self,
-    ) -> Pin<
-        Box<
-            dyn Future<Output = Result<(Box<dyn Connection + Send + Sync>, SocketAddr)>>
-                + Send
-                + '_,
-        >,
-    > {
+    fn accept(&self) -> AcceptFuture {
         let accept_future = async move {
             let (stream, addr) = self.listener.accept().await?;
             let tls_stream = self.acceptor.accept(stream).await?;
@@ -138,7 +130,7 @@ impl Listen for TlsListener {
 }
 
 pub(crate) struct ListenersBuilder {
-    listeners: Vec<Box<dyn Listen + Send + Sync>>,
+    listeners: Vec<Box<dyn Listen + Send + Sync + 'static>>,
 }
 
 impl ListenersBuilder {
@@ -162,39 +154,46 @@ impl ListenersBuilder {
             std::os::unix::net::UnixListener::bind(path).expect("failed to bind listener"),
         )));
     }
-    pub fn listen<'a>(mut self) -> Result<Listeners<'a>> {
+    pub fn listen(mut self) -> Result<Listeners> {
         if self.listeners.is_empty() {
             self.listeners.push(Box::new(Listener::from(
                 std::net::TcpListener::bind("127.0.0.1:0").expect("failed to bind listener"),
             )));
         }
-        let mut listener_futures = FuturesUnordered::new();
         let local_addrs = self
             .listeners
             .iter()
             .flat_map(|listener| listener.local_addr())
             .collect();
-        listener_futures.extend(self.listeners.into_iter().map(|listener| {
-            let fut: AcceptFuture = Box::pin(async move { listener.accept().await });
-            fut
-        }));
+        let listeners = self.listeners;
         Ok(Listeners {
-            listeners: listener_futures,
+            listeners,
             local_addrs,
         })
     }
 }
 
-pub(crate) struct Listeners<'a> {
-    listeners: FuturesUnordered<AcceptFuture<'a>>,
+pub(crate) struct Listeners {
+    listeners: Vec<Box<dyn Listen + Send + Sync + 'static>>,
     local_addrs: Vec<SocketAddr>,
 }
 
-impl<'a> Listeners<'a> {
+impl Listeners {
     pub(crate) async fn accept(
         &mut self,
-    ) -> Option<Result<(Box<dyn Connection + Send + Sync + 'a>, SocketAddr)>> {
-        self.listeners.next().await
+    ) -> Option<Result<(Box<dyn Connection + Send + Sync>, SocketAddr)>> {
+        let mut listener_futures: FuturesUnordered<AcceptFuture<'_>> = self
+            .listeners
+            .iter()
+            .map(|listener| {
+                let fut: AcceptFuture<'_> = Box::pin(async move {
+                    let listener = listener.as_ref();
+                    listener.accept().await
+                });
+                fut
+            })
+            .collect();
+        listener_futures.next().await
     }
 
     pub(crate) fn local_addrs(&self) -> &Vec<SocketAddr> {
