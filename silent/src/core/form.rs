@@ -122,7 +122,7 @@ impl FilePart {
     pub fn save(&self, path: String) -> Result<u64, SilentError> {
         std::fs::copy(self.path(), Path::new(&path)).map_err(|e| SilentError::BusinessError {
             code: StatusCode::INTERNAL_SERVER_ERROR,
-            msg: format!("Failed to save file: {}", e),
+            msg: format!("Failed to save file: {e}"),
         })
     }
 

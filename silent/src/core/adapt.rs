@@ -32,7 +32,7 @@ fn get_cookie(req: &HyperRequest<ReqBody>) -> Result<CookieJar, SilentError> {
             .map_err(|e| {
                 SilentError::business_error(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to parse cookie: {}", e),
+                    format!("Failed to parse cookie: {e}"),
                 )
             })?
             .split(';')

@@ -24,11 +24,11 @@ impl SocketAddr {
 impl Debug for SocketAddr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            SocketAddr::Tcp(addr) => write!(f, "http://{}", addr),
+            SocketAddr::Tcp(addr) => write!(f, "http://{addr}"),
             #[cfg(feature = "tls")]
-            SocketAddr::TlsTcp(addr) => write!(f, "https://{}", addr),
+            SocketAddr::TlsTcp(addr) => write!(f, "https://{addr}"),
             #[cfg(not(target_os = "windows"))]
-            SocketAddr::Unix(addr) => write!(f, "UnixSocketAddr({:?})", addr),
+            SocketAddr::Unix(addr) => write!(f, "UnixSocketAddr({addr:?})"),
         }
     }
 }
@@ -37,9 +37,9 @@ impl Display for SocketAddr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             #[allow(clippy::write_literal)]
-            SocketAddr::Tcp(addr) => write!(f, "{}", addr),
+            SocketAddr::Tcp(addr) => write!(f, "{addr}"),
             #[cfg(feature = "tls")]
-            SocketAddr::TlsTcp(addr) => write!(f, "{}", addr),
+            SocketAddr::TlsTcp(addr) => write!(f, "{addr}"),
             #[cfg(not(target_os = "windows"))]
             SocketAddr::Unix(addr) => {
                 write!(f, "{:?}", addr.as_pathname())
@@ -98,7 +98,7 @@ mod tests {
     fn test_tcp_socket_addr() {
         let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 8080));
         let socket_addr = SocketAddr::from(addr);
-        assert_eq!(format!("{}", socket_addr), "127.0.0.1:8080");
+        assert_eq!(format!("{socket_addr}"), "127.0.0.1:8080");
     }
 
     #[cfg(not(target_os = "windows"))]
@@ -109,7 +109,7 @@ mod tests {
         let addr = std::os::unix::net::SocketAddr::from_pathname("/tmp/sock").unwrap();
         let socket_addr = SocketAddr::from(addr);
         assert_eq!(
-            format!("{}", socket_addr),
+            format!("{socket_addr}"),
             format!("{:?}", Some(Path::new("/tmp/sock")))
         );
     }
