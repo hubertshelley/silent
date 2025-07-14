@@ -10,13 +10,13 @@ homepage = "https://github.com/hubertshelley/silent"
 license = "Apache-2.0"
 readme = "./readme.md"
 repository = "https://github.com/hubertshelley/silent"
-version = "2.5.1"
+version = "2.5.2"
 
 [workspace.dependencies]
 async-trait = "0.1.88"
 tokio = { version = "1", features = ["full"] }
 tonic = "0.13"
-prost = "0.13"
+prost = "0.14"
 http = "1"
 hyper-util = "0.1"
 hyper = "1"
