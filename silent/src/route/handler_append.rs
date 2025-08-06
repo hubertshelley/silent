@@ -24,7 +24,8 @@ where
     fn options(self, handler: F) -> Self;
     fn handler_append(&mut self, method: Method, handler: F) {
         let handler = Arc::new(HandlerWrapper::new(handler));
-        self.get_handler_mut().insert(method, handler);
+        let handler_map = self.get_handler_mut();
+        handler_map.insert(method, handler);
     }
 }
 
