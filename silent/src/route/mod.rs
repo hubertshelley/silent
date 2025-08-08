@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use http::StatusCode;
 // RootRoute 已被 Route 替代，不再导出
 pub use route_service::RouteService;
 use std::collections::HashMap;
@@ -12,58 +11,13 @@ use crate::handler::static_handler;
 use crate::middleware::MiddleWareHandler;
 #[cfg(feature = "static")]
 use crate::prelude::HandlerGetter;
-use crate::route::handler_match::{Match, RouteMatched};
-use crate::{HandlerWrapper, Method, Next, Request, Response, SilentError};
+use crate::{Method, Request, Response};
 
 pub(crate) mod handler_append;
 mod handler_match;
 mod route_service;
-
-// LayeredHandler 从 root.rs 移过来
-struct LayeredHandler {
-    inner: RouteMatched,
-    middleware_layers: Vec<Vec<Arc<dyn MiddleWareHandler>>>,
-}
-
-#[async_trait]
-impl Handler for LayeredHandler {
-    async fn call(&self, req: Request) -> Result<Response, SilentError> {
-        match self.inner.clone() {
-            RouteMatched::Matched(route) => {
-                // 将所有层级的中间件扁平化，按顺序执行
-                let mut flattened_middlewares = vec![];
-                for layer in &self.middleware_layers {
-                    for middleware in layer {
-                        // 检查中间件是否匹配当前请求
-                        if middleware.match_req(&req).await {
-                            flattened_middlewares.push(middleware.clone());
-                        }
-                    }
-                }
-
-                let next = Next::build(Arc::new(route), flattened_middlewares);
-                next.call(req).await
-            }
-            RouteMatched::Unmatched => {
-                let handler = |_req| async move { Err::<(), SilentError>(SilentError::NotFound) };
-
-                // 对于未匹配的路由，仍然执行根级中间件（如果需要的话）
-                let mut root_middlewares = vec![];
-                if let Some(first_layer) = self.middleware_layers.first() {
-                    for middleware in first_layer {
-                        if middleware.match_req(&req).await {
-                            root_middlewares.push(middleware.clone());
-                        }
-                    }
-                }
-
-                let next = Next::build(Arc::new(HandlerWrapper::new(handler)), root_middlewares);
-                next.call(req).await
-            }
-        }
-    }
-}
-
+mod route_tree;
+pub(crate) use route_tree::RouteTree;
 pub trait RouterAdapt {
     fn into_router(self) -> Route;
 }
@@ -184,10 +138,11 @@ impl Route {
         real_route.children.push(route);
         self
     }
-    pub fn extend<R: RouterAdapt>(&mut self, route: R) {
-        let route = route.into_router();
+    pub fn extend<R: RouterAdapt>(&mut self, routes: Vec<R>) {
+        let routes: Vec<Route> = routes.into_iter().map(|r| r.into_router()).collect();
+
         let real_route = self.get_append_real_route(&self.create_path.clone());
-        real_route.children.push(route);
+        real_route.children.extend(routes);
     }
     pub fn hook(mut self, handler: impl MiddleWareHandler + 'static) -> Self {
         self.middlewares.push(Arc::new(handler));
@@ -206,24 +161,24 @@ impl Route {
         self.append(Route::new(url).with_static(path))
     }
 
-    /// 添加子路由（原 RootRoute::push 功能）
-    pub fn push(&mut self, route: Route) {
-        self.children.push(route);
+    pub fn push<R: RouterAdapt>(&mut self, route: R) {
+        let route = route.into_router();
+        let real_route = self.get_append_real_route(&self.create_path.clone());
+        real_route.children.push(route);
     }
 
-    /// 添加中间件到当前路由首位（原 RootRoute::hook_first 功能）
     pub fn hook_first(&mut self, handler: impl MiddleWareHandler + 'static) {
         let handler = Arc::new(handler);
         self.middlewares.insert(0, handler);
     }
 
     /// 设置配置（任何路由都可以使用）
-    pub fn set_configs(&mut self, configs: Option<crate::Configs>) {
+    pub(crate) fn set_configs(&mut self, configs: Option<crate::Configs>) {
         self.configs = configs;
     }
 
     /// 获取配置
-    pub fn get_configs(&self) -> Option<&crate::Configs> {
+    pub(crate) fn get_configs(&self) -> Option<&crate::Configs> {
         self.configs.as_ref()
     }
 
@@ -252,81 +207,26 @@ impl Route {
         self.middlewares.push(Arc::new(handler));
         self
     }
-
-    /// 作为服务入口点处理请求（包含路径匹配和中间件层级管理）
-    async fn handle_as_service_entry(
-        &self,
-        mut req: Request,
-    ) -> crate::error::SilentResult<Response> {
-        tracing::debug!("{:?}", req);
-        let configs = self.configs.clone().unwrap_or_default();
-        req.configs = configs.clone();
-
-        let (mut req, path) = req.split_url();
-
-        // 使用新的中间件收集逻辑
-        let (matched_route, middleware_layers) =
-            self.handler_match_collect_middlewares(&mut req, &path);
-
-        // 收集根级中间件
-        let mut root_middlewares = vec![];
-        for middleware in self.middlewares.iter().cloned() {
-            if middleware.match_req(&req).await {
-                root_middlewares.push(middleware);
-            }
-        }
-
-        // 将根级中间件添加到第一层
-        let mut all_middleware_layers = vec![];
-        if !root_middlewares.is_empty() {
-            all_middleware_layers.push(root_middlewares);
-        }
-        all_middleware_layers.extend(middleware_layers);
-
-        let handler = LayeredHandler {
-            inner: matched_route,
-            middleware_layers: all_middleware_layers,
-        };
-
-        // 直接调用 LayeredHandler
-        handler.call(req).await
-    }
 }
+
+// 路由执行实现
 
 #[async_trait]
 impl Handler for Route {
-    async fn call(&self, req: Request) -> crate::error::SilentResult<Response> {
-        // 统一的路由处理逻辑
-
-        // 如果当前路由有配置，说明是服务入口点，需要处理路径匹配和中间件层级
+    async fn call(&self, mut req: Request) -> crate::error::SilentResult<Response> {
         if self.configs.is_some() {
-            return self.handle_as_service_entry(req).await;
+            req.configs_mut()
+                .insert(self.get_configs().unwrap().clone());
         }
-
-        // 普通路由的直接处理逻辑
-        let configs = req.configs();
-
-        match self.handler.get(req.method()) {
-            None => Err(SilentError::business_error(
-                StatusCode::METHOD_NOT_ALLOWED,
-                "method not allowed".to_string(),
-            )),
-            Some(handler) => {
-                let mut pre_res = Response::empty();
-                pre_res.configs = configs;
-                let mut active_middlewares = vec![];
-                for middleware in self.middlewares.iter().cloned() {
-                    if middleware.match_req(&req).await {
-                        active_middlewares.push(middleware);
-                    }
-                }
-                let next = Next::build(handler.clone(), active_middlewares);
-                pre_res.copy_from_response(next.call(req).await?);
-                Ok(pre_res)
-            }
-        }
+        let (req, last_path) = req.split_url();
+        // Route 结构已不再在服务路径上使用，保持向后兼容：
+        // 直接把自身转换为 RouteTree 并调用，避免重复维护两套匹配逻辑
+        let tree = self.clone().convert_to_route_tree();
+        tree.call_with_path(req, last_path).await
     }
 }
+
+// RouteTree 已移动到 route_tree.rs
 
 #[cfg(test)]
 mod tests {
